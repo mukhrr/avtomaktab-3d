@@ -68,6 +68,13 @@ describe('noIndicator', () => {
     expect(ids(drive(new IndicatorRule(road), laneChange(1, early('left', 8, 16))))).toEqual(['noIndicator']);
   });
 
+  test('a stalk left on after one maneuver does not signal another one much later', () => {
+    const on = () => ({ indicator: 'left' as const });
+    const twice = (gap: number) => [...laneChange(1, on), ...repeat(gap, { ref: lane(1), speed: 8, cabin: on() }), ...repeat(15, { ref: lane(2), speed: 8, cabin: on() })];
+    expect(ids(drive(new IndicatorRule(road), twice(120)))).toEqual(['noIndicator']);
+    expect(drive(new IndicatorRule(road), twice(30))).toEqual([]);
+  });
+
   test('lane index changes inside a junction or while reversing are not lane changes', () => {
     const junction = { match: { inJunction: 'cross', onConnector: true } };
     expect(drive(new IndicatorRule(road), laneChange(1).map(f => ({ ...f, ...junction })))).toEqual([]);

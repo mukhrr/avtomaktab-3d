@@ -4,7 +4,7 @@ import type { Indicator } from '../../vehicle/cabin';
 import type { Glance } from '../../vehicle/drivetrain';
 import type { DriveSnapshot } from '../snapshot';
 import type { RoadInfo } from './road';
-import { EPS, EXIT_SETTLE_DISTANCE, INDICATOR_LEAD, INDICATOR_RECENT, LANE_CHANGE_HOLD } from './thresholds';
+import { EPS, EXIT_SETTLE_DISTANCE, INDICATOR_LEAD, INDICATOR_RECENT, INDICATOR_REUSE, LANE_CHANGE_HOLD } from './thresholds';
 
 export interface Maneuver {
   kind: 'turn' | 'laneChange';
@@ -36,6 +36,7 @@ export class ManeuverWatch {
   private spans: Record<Indicator, { on: number; off: number } | null> = { left: null, right: null };
   /** Switch-on time of the signal the last judged maneuver used, so one signal is not credited to two maneuvers. */
   private used = -Infinity;
+  private usedAt = -Infinity;
   private settled: LaneRef | null = null;
   private transit: (Captured & { from: LaneRef | null; reversed: boolean }) | null = null;
   private pending: (Captured & { to: LaneRef; held: number }) | null = null;
@@ -68,7 +69,7 @@ export class ManeuverWatch {
       const turn = this.road.turn(from, ref);
       const side = turn === 'straight' ? null : turn === 'right' ? 'right' : 'left';
       out = { kind: 'turn', turn, side, from, to: ref, start, indicator, indicatorSince, lastGlance };
-      if (indicator) this.used = indicatorSince;
+      if (indicator) [this.used, this.usedAt] = [indicatorSince, s.t];
     }
     if (transit) this.settling = { held: 0, travelled: 0 };
 
@@ -94,7 +95,7 @@ export class ManeuverWatch {
     this.settled = ref;
     this.pending = null;
     const side = ref.lane > from.lane ? 'left' : 'right';
-    if (p.indicator) this.used = p.indicatorSince;
+    if (p.indicator) [this.used, this.usedAt] = [p.indicatorSince, s.t];
     return { kind: 'laneChange', turn: side, side, from, to: ref, start: p.start, indicator: p.indicator, indicatorSince: p.indicatorSince, lastGlance: p.lastGlance };
   }
 
@@ -103,6 +104,7 @@ export class ManeuverWatch {
     this.indicatorSince = -Infinity;
     this.spans = { left: null, right: null };
     this.used = -Infinity;
+    this.usedAt = -Infinity;
     this.settled = null;
     this.transit = null;
     this.pending = null;
@@ -111,6 +113,7 @@ export class ManeuverWatch {
 
   private capture(s: DriveSnapshot): Captured {
     let indicator = this.indicator, indicatorSince = this.indicatorSince;
+    if (indicator && indicatorSince === this.used && s.t - this.usedAt > INDICATOR_REUSE + EPS) indicator = null;
     if (!indicator) {
       const recent = (['left', 'right'] as const)
         .map(side => ({ side, span: this.spans[side] }))
