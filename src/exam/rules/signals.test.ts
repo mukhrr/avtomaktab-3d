@@ -34,12 +34,12 @@ describe('redLight', () => {
     expect(ids(vs)).toEqual(['redLight']);
   });
 
-  test('fires when the front, not the centre, is over the line', () => {
-    const [v] = drive(new RedLightRule(), run(90, 1, 100, () => 'red'));
+  test('fires when the front is 2 m over the line, actually entering', () => {
+    const [v] = drive(new RedLightRule(), run(90, 1, 150, () => 'red'));
     expect(v.id).toBe('redLight');
     const frontPast = (90 + 1 * DT * Math.round(v.t / DT)) - STOP_AT + FRONT_OFFSET;
-    expect(frontPast).toBeGreaterThan(0.5);
-    expect(frontPast).toBeLessThan(0.7);
+    expect(frontPast).toBeGreaterThan(2);
+    expect(frontPast).toBeLessThan(2.2);
     expect(v.detail).toEqual({ line: 'a|1|100' });
   });
 
@@ -52,11 +52,16 @@ describe('redLight', () => {
     expect(rulesAlone([...run(80, 5, 20, () => 'red').filter(f => f.match!.edgeS! < STOP_AT - FRONT_OFFSET), ...stopFrontPast(0.3, 'red', 30)])).toEqual([]);
   });
 
-  test('stopping past the line on red gives both from the rules and only redLight from the engine', () => {
-    const frames = [...run(85, 3, 40, () => 'red').filter(f => f.match!.edgeS! < STOP_AT - FRONT_OFFSET + 1), ...stopFrontPast(1, 'red', 20)];
-    expect(ids(rulesAlone(frames)).sort()).toEqual(['redLight', 'stopLinePast']);
+  test('overshooting to 1.5 m and stopping on red is one stopLinePast and no redLight', () => {
+    const frames = [...run(85, 3, 40, () => 'red').filter(f => f.match!.edgeS! < STOP_AT - FRONT_OFFSET + 1.5), ...stopFrontPast(1.5, 'red', 20)];
+    expect(ids(rulesAlone(frames))).toEqual(['stopLinePast']);
     const engine = new RuleEngine(all());
-    expect(ids(frames.flatMap((f, i) => engine.update(snapAt(f, i))))).toEqual(['redLight']);
+    expect(ids(frames.flatMap((f, i) => engine.update(snapAt(f, i))))).toEqual(['stopLinePast']);
+  });
+
+  test('carrying on to 2.5 m on red is redLight', () => {
+    const frames = run(85, 3, 60, () => 'red').filter(f => f.match!.edgeS! < STOP_AT - FRONT_OFFSET + 2.5);
+    expect(ids(rulesAlone([...frames, ...stopFrontPast(2.5, 'red', 20)]))).toEqual(['redLight']);
   });
 });
 
@@ -97,6 +102,16 @@ describe('stopLinePast', () => {
   test('needs a full second at rest', () => {
     expect(drive(new StopLinePastRule(), stopFrontPast(1, 'red', 9))).toEqual([]);
     expect(ids(drive(new StopLinePastRule(), stopFrontPast(1, 'red', 10)))).toEqual(['stopLinePast']);
+  });
+
+  test('redYellow counts as red; a stop more than 2 m over is not judged here', () => {
+    expect(ids(drive(new StopLinePastRule(), stopFrontPast(1, 'redYellow', 20)))).toEqual(['stopLinePast']);
+    expect(drive(new StopLinePastRule(), stopFrontPast(2.3, 'red', 20))).toEqual([]);
+  });
+
+  test('stopped past the line on green, then the light turns red, is not a violation', () => {
+    const frames = [...stopFrontPast(1, 'green', 20), ...stopFrontPast(1, 'yellow', 30), ...stopFrontPast(1, 'red', 40)];
+    expect(rulesAlone(frames)).toEqual([]);
   });
 
   test('only on red, only past 0.5 m, once per line', () => {

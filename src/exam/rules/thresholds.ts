@@ -4,6 +4,8 @@ export const STOP_SPEED = 0.3;
 export const FRONT_OFFSET = 2.24;
 /** How far the front may sit past a stop line before it counts as over it. */
 export const PAST_LINE = 0.5;
+/** Front this far past a red stop line counts as entering the junction; short of it a stop is only stopLinePast. */
+export const REDLIGHT_ENTRY = 2;
 
 export const YELLOW_MAX_DECEL = 4;
 export const STOP_LINE_PAST_HOLD = 1;

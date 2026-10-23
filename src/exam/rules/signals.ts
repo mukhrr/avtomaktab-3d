@@ -1,7 +1,7 @@
 import type { LightState } from '../../sim/signals';
 import { canStopBefore } from '../../traffic/idm';
 import type { DriveSnapshot } from '../snapshot';
-import { EPS, FRONT_OFFSET, PAST_LINE, STOP_LINE_PAST_HOLD, STOP_SPEED, YELLOW_MAX_DECEL } from './thresholds';
+import { EPS, FRONT_OFFSET, PAST_LINE, REDLIGHT_ENTRY, STOP_LINE_PAST_HOLD, STOP_SPEED, YELLOW_MAX_DECEL } from './thresholds';
 import { violation, type Rule, type Violation } from './types';
 
 interface Line {
@@ -22,11 +22,14 @@ class LineWatch {
   line: Line | null = null;
   /** Set on the step the front goes more than PAST_LINE over, with the light at that moment. */
   crossed: LightState | null = null;
+  /** Same, for REDLIGHT_ENTRY. */
+  entered: LightState | null = null;
 
   update(s: DriveSnapshot): void {
     const ref = s.match.ref;
     const seen = s.signalAhead;
     this.crossed = null;
+    this.entered = null;
     if (this.line && (!ref || ref.edgeId !== this.line.edgeId || ref.dir !== this.line.dir)) this.line = null;
     if (!ref) return;
     const past = (stopAt: number) => (s.match.edgeS - stopAt) * ref.dir + FRONT_OFFSET;
@@ -43,14 +46,18 @@ class LineWatch {
     if (!line) return;
     const now = past(line.stopAt);
     if (line.past <= PAST_LINE && now > PAST_LINE) this.crossed = line.state;
+    if (line.past <= REDLIGHT_ENTRY && now > REDLIGHT_ENTRY) this.entered = line.state;
     line.past = now;
   }
 
   reset(): void {
     this.line = null;
     this.crossed = null;
+    this.entered = null;
   }
 }
+
+const isRed = (state: LightState | null) => state === 'red' || state === 'redYellow';
 
 function couldStop(speed: number, centreToLine: number): boolean {
   const front = centreToLine - FRONT_OFFSET;
@@ -82,7 +89,7 @@ abstract class LineRule implements Rule {
 export class RedLightRule extends LineRule {
   readonly id = 'redLight';
   protected judge(): 'redLight' | null {
-    return this.watch.crossed === 'red' || this.watch.crossed === 'redYellow' ? 'redLight' : null;
+    return isRed(this.watch.entered) ? 'redLight' : null;
   }
 }
 
@@ -94,21 +101,29 @@ export class YellowEntryRule extends LineRule {
   }
 }
 
+/** Judged on the step the stop completes, so a light that turns red after the car stopped on green is no violation. */
 export class StopLinePastRule extends LineRule {
   readonly id = 'stopLinePast';
   private still = 0;
+  private stopped = false;
+  private stopping = false;
 
   update(s: DriveSnapshot): Violation[] {
     this.still = Math.abs(s.speed) < STOP_SPEED ? this.still + s.dt : 0;
+    const was = this.stopped;
+    this.stopped = this.still >= STOP_LINE_PAST_HOLD - EPS;
+    this.stopping = this.stopped && !was;
     return super.update(s);
   }
 
   reset(): void {
     super.reset();
     this.still = 0;
+    this.stopped = false;
+    this.stopping = false;
   }
 
   protected judge(_s: DriveSnapshot, line: Line): 'stopLinePast' | null {
-    return line.state === 'red' && line.past > PAST_LINE && this.still >= STOP_LINE_PAST_HOLD - EPS ? 'stopLinePast' : null;
+    return this.stopping && isRed(line.state) && line.past > PAST_LINE && line.past <= REDLIGHT_ENTRY ? 'stopLinePast' : null;
   }
 }
