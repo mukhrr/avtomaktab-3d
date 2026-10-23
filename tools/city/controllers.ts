@@ -145,11 +145,12 @@ export function buildControllers(
     sites.push({ controller: { id, phases, offset: 0 }, positions: group.map(s => s.position) });
   }
 
+  const clusterSites = [...sites];
   const outCrossings = crossings.map(c => ({ ...c }));
   for (const c of outCrossings) {
     if (c.kind !== 'signal') continue;
     let best: { controller: SignalController; dist: number } | undefined;
-    for (const site of sites) {
+    for (const site of clusterSites) {
       if (!site.controller.phases.flat().some(a => a.edgeId === c.edgeId)) continue;
       const dist = Math.min(...site.positions.map(p => Math.hypot(p[0] - c.position[0], p[1] - c.position[1])));
       if (dist <= CLUSTER_RADIUS && (!best || dist < best.dist)) best = { controller: site.controller, dist };

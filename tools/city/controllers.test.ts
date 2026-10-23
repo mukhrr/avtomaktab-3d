@@ -95,6 +95,15 @@ test('a lone signal crossing gets its own two-phase controller', () => {
   expect(r.crossings[0]).toMatchObject({ controllerId: 'ped-x', walkPhase: 1 });
 });
 
+test('two lone signal crossings on one edge each get their own controller', () => {
+  const edges = arms();
+  const xs = [signalCrossing('x', 'N', 30, [0, -30]), signalCrossing('y', 'N', 50, [0, -50])];
+  const r = buildControllers([], edges, nodes(edges), xs);
+  expect(r.controllers.map(c => c.id)).toEqual(['ped-x', 'ped-y']);
+  expect(r.controllers[1].phases[0]).toEqual([{ edgeId: 'N', dir: 1, stopAt: 47 }, { edgeId: 'N', dir: -1, stopAt: 53 }]);
+  expect(r.crossings.map(c => c.controllerId)).toEqual(['ped-x', 'ped-y']);
+});
+
 test('a crossing on a single-phase controller adds a pedestrian-only phase', () => {
   const edges = arms();
   const x = signalCrossing('x', 'N', 30, [0, -30]);
