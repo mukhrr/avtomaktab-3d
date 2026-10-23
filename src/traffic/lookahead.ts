@@ -29,7 +29,8 @@ export interface LookaheadWorld {
   leaving(laneKey: string): readonly Agent[] | undefined;
   /** Unsignalled junction at the end of this lane, or null. */
   gatedNode(ref: LaneRef): string | null;
-  canEnter(node: string, approach: string): boolean;
+  /** With `next`, also whether that exit lane has room for a car of `length` to clear the junction. */
+  canEnter(node: string, approach: string, next: LaneRef | null, length: number): boolean;
 }
 
 interface Piece {
@@ -111,7 +112,8 @@ export function nearestObstacle(a: Agent, w: LookaheadWorld, player: PlayerState
     }
 
     const node = w.gatedNode(ref);
-    if (node && !w.canEnter(node, approachKey(ref))) consider(p.length + p.base - half, 0, node);
+    const exit = p === route[0] && !a.conn ? a.next : null;
+    if (node && !w.canEnter(node, approachKey(ref), exit, a.length)) consider(p.length + p.base - half, 0, node);
   }
 
   const reach = LOOKAHEAD + player.length;

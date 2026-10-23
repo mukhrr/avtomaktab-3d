@@ -62,6 +62,8 @@ export interface Agent extends AgentView {
   factor: number;
   length: number;
   generation: number;
+  /** Seconds since the agent last moved. */
+  still: number;
 }
 
 interface Reservation {
@@ -87,6 +89,7 @@ const SPAWN_MAX = 300;
 const SPAWN_MIN = 120;
 const INITIAL_SPAWN_MIN = 30;
 const DESPAWN_AT = 350;
+const GRIDLOCK_TIME = 60;
 const SPAWN_ATTEMPTS = 30;
 const BRAKING = -1;
 const DEFAULT_KMH = 60;
@@ -118,6 +121,10 @@ export class TrafficSim {
   private readonly byPiece = new Map<string, Agent[]>();
   private readonly byLeaving = new Map<string, Agent[]>();
   private readonly reservations = new Map<string, Reservation>();
+  /** Agents on a connector of each gated node, and on gated-node connectors into each lane (laneKey). */
+  private readonly onNode = new Map<string, Set<Agent>>();
+  private readonly entering = new Map<string, Set<Agent>>();
+  private readonly deadEnds = new Set<string>();
   private readonly yields = new Map<string, { approach: string; until: number }>();
   /** Per gated node, approaches whose lead car is held at it, with the time it was last seen waiting. */
   private readonly waiting = new Map<string, Map<string, number>>();
@@ -151,6 +158,7 @@ export class TrafficSim {
       }
     }
     for (const n of d.graph.nodes) {
+      if (n.edges.length === 1) this.deadEnds.add(n.id);
       if (n.edges.length < 3) continue;
       // A junction is left to the lights only when one controller stops every arm arriving at it close by.
       const arms = n.edges.flatMap(id => {
@@ -184,7 +192,7 @@ export class TrafficSim {
       onPiece: k => this.byPiece.get(k),
       leaving: k => this.byLeaving.get(k),
       gatedNode: ref => this.gatedNode(ref),
-      canEnter: (node, approach) => this.canEnter(node, approach),
+      canEnter: (node, approach, next, length) => this.canEnter(node, approach) && (!next || this.hasRoom(next, length)),
     };
   }
 
@@ -192,11 +200,16 @@ export class TrafficSim {
     this.time += dt;
     for (const [node, r] of this.reservations) {
       if (this.time - r.lastActive <= RESERVATION_TTL) continue;
+      // Holders still on the junction keep it however long they stand there; only orphaned reservations expire.
+      if ([...r.holders].some(id => this.pool[id]?.active && this.pool[id].conn?.node === node)) continue;
       this.reservations.delete(node);
       this.yields.set(node, { approach: r.approach, until: this.time + YIELD_TIME });
     }
     for (const a of this.pool) {
-      if (a.active && dist(a.position, player.position) > DESPAWN_AT) this.despawn(a);
+      if (!a.active) continue;
+      const d = dist(a.position, player.position);
+      // Exclusive junctions can lock in a ring of short edges; a car stuck that long out of sight is cleared instead.
+      if (d > DESPAWN_AT || (a.still > GRIDLOCK_TIME && d > SPAWN_MIN)) this.despawn(a);
     }
     this.buildIndex();
     for (const a of this.pool) if (a.active) this.advance(a, dt, player, crossings);
@@ -241,6 +254,7 @@ export class TrafficSim {
     const acc = idmAccel(a.speed, ob ? ob.gap : null, ob ? ob.speed : 0, { v0, ...DEFAULT_DRIVER });
     a.speed = Math.max(0, a.speed + acc * dt);
     a.braking = acc < BRAKING;
+    a.still = a.speed < MOVING ? a.still + dt : 0;
     a.s += a.speed * dt;
     if (!this.moveAlong(a)) return;
     const p = pointAt(a.conn ? a.conn.points : this.net.path(a.ref).points, a.s);
@@ -254,6 +268,7 @@ export class TrafficSim {
       if (a.conn) {
         if (a.s < a.conn.length) return true;
         a.s -= a.conn.length;
+        this.leaveNode(a);
         this.release(a.conn.node, a.id);
         a.ref = a.conn.to;
         a.conn = a.next = a.nextConn = null;
@@ -270,7 +285,7 @@ export class TrafficSim {
       if (node) {
         const approach = approachKey(a.ref);
         // The gate, not the obstacle, is what keeps two approaches out of the junction in the same step.
-        if (!this.canEnter(node, approach)) {
+        if (!this.canEnter(node, approach) || !this.hasRoom(a.next, a.length)) {
           a.s = len;
           a.speed = 0;
           return true;
@@ -279,12 +294,19 @@ export class TrafficSim {
       }
       a.s -= len;
       a.conn = a.nextConn;
+      if (node) {
+        addTo(this.onNode, node, a);
+        addTo(this.entering, laneKey(a.next), a);
+      }
     }
   }
 
   private chooseNext(a: Agent): void {
     const forced = a.route.shift();
-    const exits = forced ? [forced] : this.net.exits(a.ref);
+    let exits = forced ? [forced] : this.net.exits(a.ref);
+    // A car turned into a dead end comes straight back through the junction, which can lock it with the next car in.
+    const through = exits.filter(r => !this.deadEnds.has(this.endNode(r)));
+    if (through.length) exits = through;
     if (!exits.length) {
       a.trapped = true;
       return;
@@ -328,10 +350,32 @@ export class TrafficSim {
   }
 
   private canEnter(node: string, approach: string): boolean {
+    for (const b of this.onNode.get(node) ?? []) if (b.conn && approachKey(b.conn.from) !== approach) return false;
     const r = this.reservations.get(node);
     if (r) return r.approach === approach && this.time - r.since < PLATOON_WINDOW;
     const y = this.yields.get(node);
     return !(y && y.approach === approach && this.time < y.until);
+  }
+
+  /**
+   * Whether a car entering `next` can get clear of the junction behind it. Without this two cars crossing
+   * neighbouring junctions toward each other each stop on a connector waiting for the other's junction.
+   */
+  private hasRoom(next: LaneRef, length: number): boolean {
+    // A moving car ahead is a stream to follow, not a queue to wait behind.
+    let limit = Infinity;
+    for (const b of this.byPiece.get(laneKey(next)) ?? []) {
+      if (b.speed <= MOVING) {
+        limit = b.s - b.length / 2;
+        break;
+      }
+    }
+    for (const b of this.entering.get(laneKey(next)) ?? []) {
+      if (b.conn && b.speed <= MOVING) limit = Math.min(limit, b.s - b.conn.length - b.length / 2);
+    }
+    const end = this.gatedNode(next);
+    if (end && !this.canEnter(end, approachKey(next))) limit = Math.min(limit, this.net.path(next).length);
+    return limit >= length + DEFAULT_DRIVER.s0;
   }
 
   private take(node: string, approach: string, id: number): void {
@@ -361,7 +405,14 @@ export class TrafficSim {
     }
   }
 
+  private leaveNode(a: Agent): void {
+    if (!a.conn) return;
+    this.onNode.get(a.conn.node)?.delete(a);
+    this.entering.get(laneKey(a.conn.to))?.delete(a);
+  }
+
   private despawn(a: Agent): void {
+    this.leaveNode(a);
     if (a.conn) this.release(a.conn.node, a.id);
     a.active = false;
     a.speed = 0;
@@ -433,7 +484,7 @@ export class TrafficSim {
       colour: COLOURS[Math.floor(this.rand() * COLOURS.length)], braking: false, speed: 0,
       ref, s, conn: null, next: null, nextConn: null, route: [], trapped: false,
       factor: 0.85 + 0.15 * this.rand(), length: CAR_CLASSES[carClass].length,
-      generation: (this.pool[id]?.generation ?? 0) + 1,
+      generation: (this.pool[id]?.generation ?? 0) + 1, still: 0,
     };
     a.speed = speed ?? 0.6 * this.desiredSpeed(a);
     this.pool[id] = a;
@@ -445,6 +496,12 @@ export class TrafficSim {
     if (!e) throw new Error(`unknown edge ${id}`);
     return e;
   }
+}
+
+function addTo<K, V>(m: Map<K, Set<V>>, k: K, v: V): void {
+  const set = m.get(k);
+  if (set) set.add(v);
+  else m.set(k, new Set([v]));
 }
 
 function dist(a: Vec2, b: Vec2): number {

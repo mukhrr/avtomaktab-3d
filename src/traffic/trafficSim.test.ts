@@ -272,6 +272,23 @@ test('stops for a person on an unmarked crossing', () => {
   expect(sim.agents[id].speed).toBeLessThan(0.1);
 });
 
+test('a car standing still for over 60 s is despawned only when it is out of the player\'s sight', () => {
+  const blocked: CrossingOccupancy = { occupied: id => id === 'z1' };
+  const run = (player: PlayerState) => {
+    const c = setup();
+    const id = c.sim.place(W, 10, { carClass: 'nexia' });
+    const alive: boolean[] = [];
+    for (let t = 0; t < 80; t += DT) {
+      c.step(player, blocked);
+      if (Math.abs(t - 50) < DT / 2 || Math.abs(t - 79) < DT / 2) alive.push(c.sim.agents[id].active);
+    }
+    return alive;
+  };
+  expect(Math.hypot(AWAY.position[0] + 40, AWAY.position[1])).toBeGreaterThan(120);
+  expect(run(AWAY)).toEqual([true, false]);
+  expect(run({ ...AWAY, position: [-40, 30] })).toEqual([true, true]);
+});
+
 test('a car already inside the 3 m setback of an occupied zebra still stops before it', () => {
   const c = setup();
   const occupied: CrossingOccupancy = { occupied: id => id === 'z1' };
@@ -298,6 +315,17 @@ test('an agent driving into the dead-end stub U-turns and keeps moving', () => {
   expect(c.sim.agents[id].active).toBe(true);
 });
 
+test('a car choosing freely at a junction does not turn into a dead end', () => {
+  for (let seed = 1; seed <= 20; seed++) {
+    const c = setup(0, seed);
+    const id = c.sim.place(E, c.net.path(E).length - 30, { carClass: 'nexia', speed: 8 });
+    for (let t = 0; t < 8; t += DT) {
+      c.step();
+      expect(c.sim.inspect(id)!.ref.edgeId).not.toBe('tStub');
+    }
+  }
+});
+
 test('20 agents over 120 s never produce a NaN position', () => {
   const c = setup(20, 7);
   for (let t = 0; t < 120; t += DT) {
@@ -314,11 +342,14 @@ test('spawns keep 100 m from the player and 9 m from other agents, holding the c
   const c = setup(30, 3);
   const player: PlayerState = { ...AWAY, position: [-60, 40] };
   const seen = new Set<string>();
-  let spawns = 0;
+  let spawns = 0, short = 0;
   for (let i = 0; i < 60 / DT; i++) {
     c.step(player);
     const active = c.sim.agents.filter(a => a.active);
-    expect(active).toHaveLength(30);
+    // A fill can miss for one step when the spawn band is crowded; it must catch up on the next.
+    short = active.length < 30 ? short + 1 : 0;
+    expect(active.length).toBeGreaterThanOrEqual(29);
+    expect(short).toBeLessThanOrEqual(1);
     for (const a of active) {
       const k = `${a.id}:${c.sim.inspect(a.id)!.generation}`;
       if (seen.has(k)) continue;
@@ -334,7 +365,7 @@ test('spawns keep 100 m from the player and 9 m from other agents, holding the c
   expect(spawns).toBeGreaterThan(0);
 });
 
-test('a reservation whose holder has been stuck on the connector for 6 s is released and the next car goes', () => {
+test('a car stuck on a junction connector keeps cross traffic out until it clears, then both go', () => {
   const c = setup();
   const tE: LaneRef = { edgeId: 'tE', dir: 1, lane: 0 };
   const stub: LaneRef = { edgeId: 'tStub', dir: -1, lane: 0 };
@@ -348,16 +379,71 @@ test('a reservation whose holder has been stuck on the connector for 6 s is rele
   }
   expect(held).toBeGreaterThan(0);
   const next = c.sim.place(stub, c.net.path(stub).length - 15, { carClass: 'nexia', speed: 6, route: [{ edgeId: 'e', dir: -1, lane: 0 }] });
-  let entered = 0, stopped = 0;
-  for (let t = 0; t < 20 && !entered; t += DT) {
+  const box = (id: number) => {
+    const a = c.sim.agents[id];
+    return corners(a.position, a.heading, NEXIA, CAR_CLASSES.nexia.width);
+  };
+  for (let t = 0; t < 20; t += DT) {
     c.step(player);
     expect(c.sim.inspect(stuck)!.connectorNode).toBe('t');
-    if (!stopped && c.sim.agents[stuck].speed < 0.5) stopped = c.signals.time;
-    if (c.sim.inspect(next)!.connectorNode === 't') entered = c.signals.time;
+    expect(c.sim.inspect(next)!.connectorNode).toBeNull();
+    expect(boxesOverlap(box(stuck), box(next))).toBe(false);
   }
-  expect(stopped).toBeGreaterThan(0);
-  expect(entered - stopped).toBeGreaterThan(6);
-  expect(entered - stopped).toBeLessThan(10);
+  expect(c.sim.agents[stuck].speed).toBeLessThan(0.1);
+  expect(c.sim.agents[next].speed).toBeLessThan(0.1);
+  let stuckOff = false, nextIn = false;
+  for (let t = 0; t < 20 && !(stuckOff && nextIn); t += DT) {
+    c.step();
+    if (c.sim.inspect(stuck)?.connectorNode !== 't') stuckOff = true;
+    if (c.sim.inspect(next)?.connectorNode === 't') {
+      expect(stuckOff).toBe(true);
+      nextIn = true;
+    }
+  }
+  expect(stuckOff && nextIn).toBe(true);
+});
+
+/** Two unsignalled crossroads p (0,0) and q (10,0) joined by a 10 m link, each with arms north and south. */
+function twinJunctions(): DistrictData {
+  const pos: Record<string, Vec2> = { p: [0, 0], q: [10, 0], pn: [0, -100], ps: [0, 100], qn: [10, -100], qs: [10, 100] };
+  const mk = (id: string, from: string, to: string) => ({
+    id, from, to, roadId: id, points: [pos[from], pos[to]], nodeIds: [from, to],
+    lanesForward: 1, lanesBackward: 1, width: 7, maxspeed: 60, name: id,
+  });
+  const edges = [mk('link', 'p', 'q'), mk('pn', 'pn', 'p'), mk('ps', 'p', 'ps'), mk('qn', 'qn', 'q'), mk('qs', 'q', 'qs')];
+  const nodes = Object.entries(pos).map(([id, position]) => ({ id, position, edges: edges.filter(e => e.from === id || e.to === id).map(e => e.id) }));
+  return {
+    name: 'twin', origin: { lat: 0, lon: 0 }, bounds: { minX: -110, maxX: 120, minZ: -110, maxZ: 110 },
+    roads: [], buildings: [], areas: [], waterways: [], signals: [], crossings: [], controllers: [], graph: { nodes, edges },
+  };
+}
+
+test('cars crossing two close unsignalled junctions in opposite directions never lock each other', () => {
+  const d = twinJunctions();
+  const net = new LaneNetwork(d);
+  const signals = new SignalSystem(d);
+  const sim = new TrafficSim(d, net, signals, { count: 0, seed: 1 });
+  const fromPn: LaneRef = { edgeId: 'pn', dir: 1, lane: 0 }, fromQs: LaneRef = { edgeId: 'qs', dir: -1, lane: 0 };
+  const east: LaneRef = { edgeId: 'link', dir: 1, lane: 0 }, west: LaneRef = { edgeId: 'link', dir: -1, lane: 0 };
+  const toQs: LaneRef = { edgeId: 'qs', dir: 1, lane: 0 }, toPn: LaneRef = { edgeId: 'pn', dir: -1, lane: 0 };
+  const ids = [0, 1, 2].flatMap(k => [
+    sim.place(fromPn, net.path(fromPn).length - 8 - 9 * k, { carClass: 'nexia', speed: 6, route: [east, toQs] }),
+    sim.place(fromQs, net.path(fromQs).length - 8 - 9 * k, { carClass: 'nexia', speed: 6, route: [west, toPn] }),
+  ]);
+  const done = new Set<number>();
+  for (let t = 0; t < 60 && done.size < ids.length; t += DT) {
+    signals.update(DT);
+    sim.step(DT, AWAY, FREE);
+    for (const node of ['p', 'q']) {
+      const on = ids.filter(id => sim.inspect(id)?.connectorNode === node);
+      expect(new Set(on.map(id => { const r = sim.inspect(id)!.ref; return `${r.edgeId}|${r.dir}`; })).size).toBeLessThanOrEqual(1);
+    }
+    for (const id of ids) {
+      const st = sim.inspect(id);
+      if (!st || (st.connectorNode === null && ['qs|1', 'pn|-1'].includes(`${st.ref.edgeId}|${st.ref.dir}`))) done.add(id);
+    }
+  }
+  expect(done.size).toBe(ids.length);
 });
 
 /** Drives one agent from w into the cross and reports whether it took a reservation there. */
