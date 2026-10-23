@@ -7,7 +7,7 @@ Quotes are short excerpts from that page, in Uzbek.
 | id | clause | quote |
 |---|---|---|
 | redLight | 31 | "qizil ishora ... harakatlanishni taqiqlaydi" |
-| yellowEntry | 31 (exception in 42) | "sariq ishora harakatlanishni taqiqlaydi" |
+| yellowEntry | 31 (prohibition), 42 (exception when unable to stop) | "sariq ishora harakatlanishni taqiqlaydi" |
 | stopLinePast | 41 | "toʻxtash chizigʻi ustiga chiqib ketmasligi kerak" |
 | noFullStopAtStopSign | 1-ilova, sign 2.5 | "Toʻxtamasdan harakatlanish taqiqlangan" |
 | pedestrianNotYielded | 109 (see also 111) | "tezligini kamaytirishi yoki toʻxtashi shart" |
@@ -17,7 +17,7 @@ Quotes are short excerpts from that page, in Uzbek.
 | noEntry | 1-ilova, sign 3.1 | "Barcha transport vositalarining kirishi taqiqlanishini bildiradi" |
 | turnRestriction | 1-ilova, signs 3.18.1 and 3.18.2 | "Oʻngga burilish taqiqlangan" |
 | speeding | 78 | "soatiga 60 kilometrdan oshirmasdan harakatlanishga ruxsat etiladi" |
-| speedingSevere | 78 | same clause, same quote as speeding |
+| speedingSevere | 78 | same clause and quote as speeding |
 | noIndicator | 45 | "burilish (qayrilib olish)dan ... oldin ... yorugʻlik ishoralarini yoqishi ... shart" |
 | noMirrorCheck | 47 | "orqadan kelayotgan ... ishonch hosil qilishi kerak" |
 | wrongLaneForTurn | 56 | "eng chetki holatni egallashi shart" |
@@ -25,6 +25,8 @@ Quotes are short excerpts from that page, in Uzbek.
 | noSeatBelt | 9 | "xavfsizlik kamarlarini taqib olishlari shart" |
 | stoppedOnCrossing | 112 | "piyodalar oʻtish joyiga kirish taqiqlanadi" |
 | noIndicatorPullOff | 45 | "harakatlanishni boshlashdan ... oldin" |
+
+Note on speedingSevere: clause 78 covers the speed limit only. The +20/+40 km/h severity thresholds are this game's choice (from the avtodrom-simulator baseline), not the rules text.
 
 ## Unverified
 

@@ -1,4 +1,4 @@
-import { PENALTY_IDS, loadPenalties } from './penalties';
+import { PENALTY_IDS, loadPenalties, validatePenalties } from './penalties';
 import { t } from '../i18n';
 
 const POINTS = { fail: 100, high: 20, low: 5 } as const;
@@ -57,4 +57,41 @@ test('every id has uz and ru text', () => {
   }
   expect(warn).not.toHaveBeenCalled();
   warn.mockRestore();
+});
+
+describe('validatePenalties', () => {
+  const good = () => structuredClone(JSON.parse(JSON.stringify(
+    Object.fromEntries(Object.values(loadPenalties()).map(({ id, ...rest }) => [id, rest])),
+  ))) as Record<string, Record<string, unknown>>;
+
+  test('accepts the shipped table', () => {
+    expect(() => validatePenalties(good())).not.toThrow();
+  });
+
+  test('rejects a missing id', () => {
+    const raw = good();
+    delete raw.redLight;
+    expect(() => validatePenalties(raw)).toThrow(/redLight/);
+  });
+
+  test('rejects an unknown tier', () => {
+    const raw = good();
+    raw.redLight.tier = 'medium';
+    expect(() => validatePenalties(raw)).toThrow(/redLight.*tier/);
+  });
+
+  test('rejects points that do not match the tier', () => {
+    const raw = good();
+    raw.stall.points = 20;
+    expect(() => validatePenalties(raw)).toThrow(/stall.*points/);
+  });
+
+  test('rejects an entry with neither clause and source nor unverified', () => {
+    const raw = good();
+    raw.speeding.source = null;
+    expect(() => validatePenalties(raw)).toThrow(/speeding/);
+    const raw2 = good();
+    raw2.collisionCar.unverified = false;
+    expect(() => validatePenalties(raw2)).toThrow(/collisionCar/);
+  });
 });

@@ -16,7 +16,7 @@
   "penalty.speeding": "Tezlikni oshirdi: {speed} km/soat",
   "penalty.speedingSevere": "Tezlikni keskin oshirdi: {speed} km/soat",
   "penalty.noIndicator": "Burilish ko'rsatkichini yoqmadi",
-  "penalty.noMirrorCheck": "Oynaga qaramadi",
+  "penalty.noMirrorCheck": "Ko'zguga qaramadi",
   "penalty.wrongLaneForTurn": "Burilish uchun noto'g'ri qatordan burildi",
   "penalty.tailgating": "Oldingi mashinaga juda yaqin yurdi",
   "penalty.harshBraking": "Keskin tormoz berdi",
