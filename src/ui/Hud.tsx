@@ -1,6 +1,20 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { REDLINE_RPM } from '../vehicle/drivetrain';
+import type { Vec2 } from '../shared/district';
+import type { StartChoice } from './choices';
+import { Debrief } from './Debrief';
+import { ExamHud } from './ExamHud';
 import type { HudStore } from './hudStore';
+import { StartScreen } from './StartScreen';
+
+export interface HudApp {
+  roads: Vec2[][];
+  routeKm: number;
+  choice: () => StartChoice;
+  onStart(c: StartChoice): void;
+  onRetry(): void;
+  onMenu(): void;
+}
 
 const TACH_MAX = 7000;
 const HELP_KEY = 'avtomaktab.helpDismissed';
@@ -13,7 +27,7 @@ const readDismissed = () => {
   }
 };
 
-export function Hud({ store, minimap, debug }: { store: HudStore; minimap: HTMLCanvasElement; debug: boolean }) {
+export function Hud({ store, minimap, debug, app }: { store: HudStore; minimap: HTMLCanvasElement; debug: boolean; app: HudApp }) {
   const s = useSyncExternalStore(store.subscribe, store.get);
   const [help, setHelp] = useState(!readDismissed());
   const mapHost = useRef<HTMLDivElement>(null);
@@ -73,6 +87,9 @@ export function Hud({ store, minimap, debug }: { store: HudStore; minimap: HTMLC
         <div className="street">{s.street}</div>
       </div>
       <div className="minimap" ref={mapHost} />
+      {s.screen === 'drive' && s.exam && <ExamHud exam={s.exam} toast={s.toast} subtitle={s.subtitle} />}
+      {s.screen === 'menu' && <StartScreen initial={app.choice()} routeKm={app.routeKm} onStart={app.onStart} />}
+      {s.screen === 'debrief' && s.debrief && <Debrief data={s.debrief} roads={app.roads} onRetry={app.onRetry} onMenu={app.onMenu} />}
     </div>
   );
 }

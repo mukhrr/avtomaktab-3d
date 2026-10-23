@@ -282,6 +282,11 @@ export class TrafficSim {
     this.started = true;
   }
 
+  /** Removes every car within `radius` of `position`, for placing the player there. */
+  clearNear(position: Vec2, radius: number): void {
+    for (const a of this.pool) if (a.active && dist(a.position, position) < radius) this.despawn(a);
+  }
+
   reservationHolder(nodeId: string): number | null {
     const r = this.reservations.get(nodeId);
     if (!r) return null;

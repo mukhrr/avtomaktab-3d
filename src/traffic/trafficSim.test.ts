@@ -520,3 +520,14 @@ test('a same-approach stream over 10 s never shares a wide unsignalled T, and th
   expect(crossEntered).toBeGreaterThanOrEqual(0);
   expect(crossEntered).toBeLessThan(15);
 });
+
+describe('clearNear', () => {
+  it('removes cars within the radius and keeps the rest', () => {
+    const { net, sim } = setup();
+    const near = sim.place(N, 10), far = sim.place({ edgeId: 'e', dir: 1, lane: 0 }, 150);
+    const at = pointAt(net.path(N).points, 12).position;
+    sim.clearNear(at, 20);
+    expect(sim.agents[near].active).toBe(false);
+    expect(sim.agents[far].active).toBe(true);
+  });
+});

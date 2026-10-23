@@ -16,7 +16,7 @@ export function spokenLineId(p: Prompt): string | null {
   return p.vars?.spoken === 1 ? `penalty.${p.vars.id}` : null;
 }
 
-function subtitle(lang: Lang, p: Prompt): string {
+export function subtitle(lang: Lang, p: Prompt): string {
   if (p.key !== 'exam.violation') return t(lang, p.key, p.vars);
   return `${t(lang, `penalty.${p.vars?.id}`, p.vars)}. ${t(lang, p.key, p.vars)}`;
 }

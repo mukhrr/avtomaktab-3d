@@ -274,3 +274,16 @@ test('spawning does nothing without footways in range and is capped per step', (
   expect(c.sim.spawnAttempts).toBeGreaterThan(0);
   expect(c.sim.spawnAttempts).toBeLessThanOrEqual(20);
 });
+
+describe('clearNear', () => {
+  it('removes pedestrians within the radius and keeps the rest', () => {
+    const { sim, step } = setup(testNetwork(), { crossers: 0, walkers: 20 });
+    for (let i = 0; i < 5; i++) step();
+    const active = sim.peds.filter(p => p.active);
+    expect(active.length).toBeGreaterThan(1);
+    const centre = active[0].position.slice() as Vec2;
+    sim.clearNear(centre, 15);
+    for (const p of sim.peds) if (p.active) expect(dist(p.position, centre)).toBeGreaterThanOrEqual(15);
+    expect(sim.peds.some(p => p.active)).toBe(active.some(p => dist(p.position, centre) >= 15));
+  });
+});

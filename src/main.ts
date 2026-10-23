@@ -5,7 +5,12 @@ import type { DistrictData } from './shared/district';
 import { CameraRig, CAR_LAYER, lookGlance } from './camera/cameras';
 import { createMirrors } from './camera/mirrors';
 import { fixedSteps, NO_EDGES, splitControls, STEP } from './physics/loop';
-import { createHudStore, gearLabel } from './ui/hudStore';
+import { ExamSession } from './exam/session';
+import { loadPenalties } from './exam/penalties';
+import type { ExamRoute } from './exam/route';
+import { SignSystem } from './sim/signs';
+import { loadChoice, type StartChoice } from './ui/choices';
+import { createHudStore, gearLabel, type Screen } from './ui/hudStore';
 import { createMinimap } from './ui/minimap';
 import { mountHud } from './ui/mount';
 import { createPhysics } from './physics/world';
@@ -38,8 +43,13 @@ const CROSSERS = 40;
 const WALKERS = 80;
 const PLAYER_LENGTH = 4.48;
 const PLAYER_WIDTH = 1.74;
+const ROUTE = 'route-1';
+/** No AI car or pedestrian is left this close to the exam start; the sims respawn farther out. */
+const START_CLEAR = 40;
+const NO_KEYS = new Set<string>();
 
 const district: DistrictData = await (await fetch(`/districts/${DISTRICT}/district.json`)).json();
+const route: ExamRoute = await (await fetch(`/districts/${DISTRICT}/routes/${ROUTE}.json`)).json();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -68,7 +78,9 @@ scene.add(car.object);
 car.sync();
 car.object.traverse(o => o.layers.set(CAR_LAYER));
 const signals = new SignalSystem(district);
-const traffic = new TrafficSim(district, new LaneNetwork(district), signals, { count: TRAFFIC_COUNT, seed: 1 });
+const net = new LaneNetwork(district);
+const signs = new SignSystem(district);
+const traffic = new TrafficSim(district, net, signals, { count: TRAFFIC_COUNT, seed: 1 }, signs);
 const peds = new PedSim(district, { crossers: CROSSERS, walkers: WALKERS, seed: 2 });
 const bodies = new TrafficBodies(world, TRAFFIC_COUNT);
 const carsView = trafficView(scene, TRAFFIC_COUNT);
@@ -122,17 +134,90 @@ let cabin = newCabin(), simClock = 0;
 const hud = createHudStore();
 if (params.has('debug')) events.on(e => console.log('[event]', e));
 const minimap = createMinimap(district);
-mountHud(hud, minimap.canvas, params.has('debug'));
+
+let screen: Screen = 'menu', choice: StartChoice = loadChoice(), seq = 0;
+const show = (s: Screen) => hud.set({ screen: (screen = s) });
+
+const session = new ExamSession({
+  d: district, net, signals, signs, peds, traffic, route, penalties: loadPenalties(), playerLength: PLAYER_LENGTH,
+  placeCar: (pose, gearbox) => {
+    car.gearbox = gearbox;
+    car.reset(pose);
+    car.sync();
+    cabin = newCabin();
+    flippedFor = 0;
+    traffic.clearNear(pose.position, START_CLEAR);
+    peds.clearNear(pose.position, START_CLEAR);
+    events.drain();
+  },
+});
+session.onPrompt = p => {
+  if (p.key !== 'exam.violation' || !p.vars) return;
+  const id = String(p.vars.id);
+  const e = session.penalties[id as keyof typeof session.penalties];
+  hud.set({ toast: { seq: ++seq, id, vars: p.vars, points: e.points, tier: e.tier } });
+};
+session.onSubtitle = text => hud.set({ subtitle: { seq: ++seq, text } });
+session.onEnd = result => {
+  hud.set({ debrief: { lang: session.lang, result, startT: session.startT, routeLine: session.routeLine, penalties: session.penalties }, exam: null });
+  show('debrief');
+};
+
+function examStep(steer: number) {
+  const p = playerState();
+  session.step({
+    t: simClock, dt: STEP, position: p.position, heading: p.heading, speed: p.speed,
+    drivetrain: car.drivetrain, cabin, steer, events: events.drain(),
+  });
+}
+
+/** Runs inside the click handler, so the brief's audio starts within the user gesture. */
+function startExam() {
+  hud.set({ toast: null, subtitle: null, debrief: null, exam: { lang: choice.lang, maneuver: null, distance: 0, total: 0 } });
+  show('drive');
+  session.start(choice.lang, choice.gearbox);
+  examStep(0);
+}
+
+const roads = district.graph.edges.map(e => e.points);
+mountHud(hud, minimap.canvas, params.has('debug'), {
+  roads,
+  routeKm: route.lengthM / 1000,
+  choice: () => choice,
+  onStart: c => {
+    choice = c;
+    if (c.mode === 'exam') return startExam();
+    if (Math.abs(car.speed) < STOPPED) car.gearbox = c.gearbox;
+    hud.set({ exam: null, toast: null, subtitle: null });
+    show('drive');
+  },
+  onRetry: startExam,
+  onMenu: () => {
+    session.silence();
+    show('menu');
+  },
+});
+
+/** During an exam R or a flip ends it; outside one they put the car back on a lane. */
+function resetOrAbandon() {
+  if (session.active) session.abandon();
+  else resetToLane();
+}
 
 renderer.setAnimationLoop(() => {
   const dt = clock.getDelta();
   renderer.info.reset();
-  const read = input.read(held, pressed, navigator.getGamepads?.() ?? [], dt);
+  const driving = screen === 'drive';
+  const read = input.read(driving ? held : NO_KEYS, driving ? pressed : NO_KEYS, driving ? navigator.getGamepads?.() ?? [] : [], dt);
   rig.glance = read.glance;
   const controls = { ...read, glance: read.glance ?? (rig.mode === 'cockpit' ? lookGlance(rig.headYaw, rig.headPitch) : null) };
-  if (pressed.has('KeyR')) resetToLane();
+  if (driving && pressed.has('KeyR')) resetOrAbandon();
+  if (driving && pressed.has('Escape')) {
+    if (session.active) session.abandon();
+    else show('menu');
+  }
   if (pressed.has('KeyC')) rig.cycle();
-  if (pressed.has('KeyG') && Math.abs(car.speed) < STOPPED) car.gearbox = car.drivetrain.gearbox === 'auto' ? 'manual' : 'auto';
+  if (driving && !session.active && pressed.has('KeyG') && Math.abs(car.speed) < STOPPED) car.gearbox = car.drivetrain.gearbox === 'auto' ? 'manual' : 'auto';
   pressed.clear();
 
   const r = fixedSteps(acc, dt);
@@ -166,15 +251,22 @@ renderer.setAnimationLoop(() => {
         peds.remove(id);
       }
     }
+    if (session.active) examStep(c.steer);
   }
   signalLamps.update(signals);
   carsView.update(traffic.agents);
   pedsView.update(peds.peds);
 
   const p = car.object.position, b = district.bounds;
-  if (p.x < b.minX - OUT_OF_BOUNDS || p.x > b.maxX + OUT_OF_BOUNDS || p.z < b.minZ - OUT_OF_BOUNDS || p.z > b.maxZ + OUT_OF_BOUNDS || p.y < -5) resetToLane();
+  if (p.x < b.minX - OUT_OF_BOUNDS || p.x > b.maxX + OUT_OF_BOUNDS || p.z < b.minZ - OUT_OF_BOUNDS || p.z > b.maxZ + OUT_OF_BOUNDS || p.y < -5) {
+    if (session.active) session.abandon();
+    resetToLane();
+  }
   flippedFor = car.upright < FLIPPED_UP_Y ? flippedFor + dt : 0;
-  if (flippedFor > FLIPPED_RESET_S) { resetToLane(); flippedFor = 0; }
+  if (flippedFor > FLIPPED_RESET_S) {
+    resetOrAbandon();
+    flippedFor = 0;
+  }
 
   if (orbit) orbit.update();
   else rig.update(car.object, car.speed, dt);
@@ -214,9 +306,17 @@ renderer.setAnimationLoop(() => {
       belt: cabin.belt,
       glance: cabin.glance,
     });
+    if (session.active) {
+      const next = session.nextManeuver;
+      hud.set({ exam: { lang: session.lang, maneuver: next?.maneuver ?? null, distance: next?.distance ?? 0, total: session.result?.total ?? 0 } });
+    }
     frames = 0;
     hudT = 0;
   }
 });
 
-Object.assign(window, { __game: { car, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, cabin: () => cabin } });
+Object.assign(window, { __game: { car, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, cabin: () => cabin, session, hud, route, start: (c: Partial<StartChoice>) => {
+  choice = { ...choice, ...c };
+  if (choice.mode === 'exam') startExam();
+  else show('drive');
+} } });

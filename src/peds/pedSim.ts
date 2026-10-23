@@ -252,6 +252,11 @@ export class PedSim implements CrossingOccupancy {
     return hits;
   }
 
+  /** Removes every pedestrian within `radius` of `position`, for placing the player there. */
+  clearNear(position: Vec2, radius: number): void {
+    for (const p of this.pool) if (p.active && dist(p.position, position) < radius) p.active = false;
+  }
+
   remove(id: number): void {
     const p = this.pool[id];
     if (p) p.active = false;
