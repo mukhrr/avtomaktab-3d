@@ -1,4 +1,5 @@
 import type { DistrictData, Vec2 } from '../shared/district';
+import { rng } from '../sim/rng';
 import { Grid, pointInPolygon, segmentDistance } from './spatial';
 
 const AVENUE_KINDS = new Set(['primary', 'secondary', 'tertiary', 'trunk']);
@@ -6,17 +7,6 @@ const SPACING = 10;
 const CURB_GAP = 3;
 const PARK_M2_PER_TREE = 150;
 const MAX_PER_AREA = 300;
-
-function rng(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 export function treePositions(d: DistrictData, seed: number): Vec2[] {
   const rand = rng(seed);
