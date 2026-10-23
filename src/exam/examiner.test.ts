@@ -20,8 +20,8 @@ class Run {
   t = 0;
   prompts: Prompt[] = [];
   ex: Examiner;
-  constructor(public route: ExamRoute, engine?: Pick<RuleEngine, 'flush'>) {
-    this.ex = new Examiner(route, this.net, penalties, this.d, engine);
+  constructor(public route: ExamRoute, engine?: Pick<RuleEngine, 'flush'>, planner?: typeof planRoute) {
+    this.ex = new Examiner(route, this.net, penalties, this.d, engine, planner);
     this.ex.update(snap({ t: 0 }), []);
     this.ex.start();
     this.prompts.push(...this.ex.update(snap({ t: 0, ref: null }), []));
@@ -201,6 +201,31 @@ describe('rerouting', () => {
     r.stopFor(stub, 30, 3);
     expect(r.ex.phase).toBe('finished');
     expect(r.keys.filter(k => k === 'exam.reroute')).toHaveLength(1);
+  });
+
+  it('retries a failed replan from the same lane and still finishes', () => {
+    const route = plan([[-100, 3], [120, 3], [237, 30]]);
+    let calls = 0;
+    const planner: typeof planRoute = (...a) => {
+      if (calls++ === 0) throw new Error('no route');
+      return planRoute(...a);
+    };
+    const r = new Run(route, undefined, planner);
+    r.lane(W_IN, 20);
+    r.junction(W_IN, N_OUT);
+    r.lane(N_OUT, 0, 15);
+    expect(r.keys).not.toContain('exam.reroute');
+    r.lane(N_OUT, 15, 60);
+    expect(r.keys.filter(k => k === 'exam.reroute')).toHaveLength(1);
+    r.lane(N_OUT, 60);
+    r.junction(N_OUT, N_BACK);
+    r.lane(N_BACK, 0);
+    r.junction(N_BACK, E_OUT);
+    r.lane(E_OUT, 0);
+    r.junction(E_OUT, lane('tStub', 1));
+    r.lane(lane('tStub', 1), 0, 30);
+    r.stopFor(lane('tStub', 1), 30, 3);
+    expect(r.ex.phase).toBe('finished');
   });
 
   it('ignores a brief wrong-lane flicker', () => {

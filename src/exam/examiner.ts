@@ -30,6 +30,8 @@ const FINISH_HOLD = 2;
 const OFF_ROUTE_HOLD = 0.5;
 /** Lanes ahead a match may skip, for short edges that the matcher steps over. */
 const SKIP_AHEAD = 3;
+/** A failed replan from a lane is retried after this long. */
+const REROUTE_RETRY = 5;
 const SPOKEN_TIERS = new Set(['high', 'fail']);
 
 const sameLane = (a: LaneRef, b: LaneRef) => a.edgeId === b.edgeId && a.dir === b.dir;
@@ -52,7 +54,7 @@ export class Examiner {
   private driven = 0;
   private offSince: number | null = null;
   private stillSince: number | null = null;
-  private failedReroute: string | null = null;
+  private failedReroute: { key: string; t: number } | null = null;
 
   constructor(
     private readonly route: ExamRoute,
@@ -60,6 +62,7 @@ export class Examiner {
     private readonly penalties: Record<PenaltyId, PenaltyEntry>,
     private readonly d: DistrictData,
     private readonly engine?: Pick<RuleEngine, 'flush'>,
+    private readonly planner: typeof planRoute = planRoute,
   ) {
     this.steps = route.steps;
     this.waypoints = route.waypoints;
@@ -72,7 +75,6 @@ export class Examiner {
     return this._phase;
   }
 
-  /** Moves from the briefing to the drive. */
   start(): void {
     if (this._phase !== 'briefing') return;
     this._phase = 'driving';
@@ -182,6 +184,7 @@ export class Examiner {
       const next = this.steps[this.cur + k];
       if (next && sameLane(ref, next.ref)) {
         this.cur += k;
+        this.failedReroute = null;
         this.directions = new DirectionTracker();
         this.offSince = null;
         return;
@@ -193,24 +196,25 @@ export class Examiner {
 
   private reroute(s: DriveSnapshot, ref: LaneRef, out: Prompt[]): void {
     const key = `${ref.edgeId}|${ref.dir}`;
-    if (this.failedReroute === key) return;
+    if (this.failedReroute?.key === key && s.t - this.failedReroute.t < REROUTE_RETRY) return;
     const path = this.net.path(ref);
     const at = Math.min(path.length, Math.max(0, this.net.pathS(ref, s.match.edgeS)));
     const here = pointAt(path.points, at).position;
     try {
-      const next = planRoute(this.net, this.d, [here, ...this.waypoints.slice(this.steps[this.cur].waypointIndex)], this.route.id, this.route.district);
+      const next = this.planner(this.net, this.d, [here, ...this.waypoints.slice(this.steps[this.cur].waypointIndex)], this.route.id, this.route.district);
       if (!sameLane(next.steps[0].ref, ref)) throw new Error('replanned from another lane');
       this.steps = next.steps;
       this.waypoints = next.waypoints;
       this.finish = next.finish;
       this.finishS = this.finishAlong();
+      this.failedReroute = null;
       this.cur = 0;
       this.directions = new DirectionTracker();
       this.offSince = null;
       this.distance = this.alongToManeuver(at);
       out.push({ key: 'exam.reroute' });
     } catch {
-      this.failedReroute = key;
+      this.failedReroute = { key, t: s.t };
       const last = this.steps.length - 1;
       if (sameLane(ref, this.steps[last].ref)) this.cur = last;
     }
