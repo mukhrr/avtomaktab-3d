@@ -12,6 +12,7 @@ export interface HudState {
   activeCars?: number;
   activePeds?: number;
   controllers?: number;
+  simMs?: number;
 }
 
 export interface HudStore {

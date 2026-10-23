@@ -116,6 +116,7 @@ function resetToLane() {
 
 const clock = new THREE.Clock();
 let acc = 0, pendingEdges = NO_EDGES, flippedFor = 0, frames = 0, hudT = 0;
+let simMs = 0, simSteps = 0, simT = 0, simAvg = 0;
 const hud = createHudStore();
 if (params.has('debug')) events.on(e => console.log('[event]', e));
 const minimap = createMinimap(district);
@@ -137,8 +138,11 @@ renderer.setAnimationLoop(() => {
   for (const c of split.perStep) {
     const player = playerState();
     signals.update(STEP);
+    const t0 = performance.now();
     traffic.step(STEP, player, peds);
     peds.step(STEP, player, traffic.agents, signals);
+    simMs += performance.now() - t0;
+    simSteps++;
     bodies.sync(traffic.agents);
     car.update(c, STEP);
     world.step(eventQueue);
@@ -175,6 +179,13 @@ renderer.setAnimationLoop(() => {
   minimap.draw(p.x, p.z, Math.atan2(fwd.x, fwd.z));
   frames++;
   hudT += dt;
+  simT += dt;
+  if (simT >= 1) {
+    simAvg = simSteps ? simMs / simSteps : 0;
+    simMs = 0;
+    simSteps = 0;
+    simT = 0;
+  }
   if (hudT >= HUD_INTERVAL) {
     const t = car.drivetrain;
     hud.set({
@@ -189,6 +200,7 @@ renderer.setAnimationLoop(() => {
       activeCars: traffic.agents.filter(a => a.active).length,
       activePeds: peds.peds.filter(q => q.active).length,
       controllers: district.controllers.length,
+      simMs: simAvg,
     });
     frames = 0;
     hudT = 0;

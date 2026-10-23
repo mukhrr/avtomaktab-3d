@@ -48,7 +48,7 @@ export function Hud({ store, minimap, debug }: { store: HudStore; minimap: HTMLC
           <b>G</b> auto/manual (when stopped) · <b>C</b> camera · <b>R</b> reset · <b>H</b> hide help
         </div>
       )}
-      {debug && <div className="panel stats">{s.fps} fps · {s.drawCalls} draw calls · {s.activeCars ?? 0} cars · {s.activePeds ?? 0} peds · {s.controllers ?? 0} controllers</div>}
+      {debug && <div className="panel stats">{s.fps} fps · {s.drawCalls} draw calls · {s.activeCars ?? 0} cars · {s.activePeds ?? 0} peds · {s.controllers ?? 0} controllers · sim {(s.simMs ?? 0).toFixed(2)} ms</div>}
       <div className="dash">
         <div className="speed">{s.speedKmh}<small> km/h</small></div>
         <div className="row">
