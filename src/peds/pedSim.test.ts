@@ -2,7 +2,7 @@ import type { DistrictData, Vec2 } from '../shared/district';
 import { SignalSystem } from '../sim/signals';
 import { testNetwork } from '../traffic/testNetwork';
 import type { AgentView, PlayerState } from '../traffic/trafficSim';
-import { PedSim } from './pedSim';
+import { canHitPedestrian, PedSim } from './pedSim';
 
 const DT = 1 / 30;
 const AWAY: PlayerState = { position: [-40, 60], heading: 0, speed: 0, length: 4.5, width: 1.8 };
@@ -97,6 +97,36 @@ test('an unmarked crosser waits for the player', () => {
   expect(c.sim.occupied('u1')).toBe(true);
 });
 
+/** Parks the player across the crossing at `centre` for 30 s, then moves it away for 30 s. */
+function parkOnCrossing(d: DistrictData, centre: Vec2, crossers: number) {
+  const c = setup(d, { crossers, walkers: 0 });
+  c.step();
+  const start = c.sim.peds.filter(p => p.active).map(p => ({ id: p.id, side: Math.sign(p.position[1]) }));
+  const parked: PlayerState = { position: [centre[0], 1.75], heading: Math.PI / 2, speed: 0, length: 4.5, width: 1.8 };
+  for (let i = 0; i < 30 * 30; i++) {
+    c.step(parked);
+    expect(c.sim.hitTest(parked)).toEqual([]);
+  }
+  const crossed = new Set<number>();
+  for (let i = 0; i < 30 * 30; i++) {
+    c.step();
+    for (const s of start) if (Math.sign(c.sim.peds[s.id].position[1]) === -s.side) crossed.add(s.id);
+  }
+  return { start, crossed };
+}
+
+test('zebra crossers pause while a stopped player blocks their way, then cross', () => {
+  const { start, crossed } = parkOnCrossing(testNetwork(), [-40, 0], 6);
+  expect(start.length).toBe(6);
+  expect(crossed.size).toBe(6);
+});
+
+test('signal crossers pause while a stopped player blocks their way, then cross', () => {
+  const { start, crossed } = parkOnCrossing(signalNetwork(), [40, 0], 6);
+  expect(start.length).toBe(6);
+  expect(crossed.size).toBe(6);
+});
+
 test('occupied is true only while the crosser is on the carriageway', () => {
   const c = setup(testNetwork(), { crossers: 1, walkers: 0 });
   c.step();
@@ -128,6 +158,10 @@ test('hitTest reports a pedestrian at the front bumper and not one 2 m to the si
   expect(c.sim.hitTest(place(0, 2))).toEqual([]);
   c.sim.remove(ped.id);
   expect(c.sim.hitTest(place(0, 0))).toEqual([]);
+});
+
+test('only a player moving faster than 1 m/s either way can hit a pedestrian', () => {
+  expect([0, 0.5, 1, -1, 1.5, -1.5].map(canHitPedestrian)).toEqual([false, false, false, false, true, true]);
 });
 
 test('walkers stay on footway polylines and walk at 1.1 to 1.5 m/s', () => {

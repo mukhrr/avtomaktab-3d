@@ -9,7 +9,7 @@ import { createHudStore, gearLabel } from './ui/hudStore';
 import { createMinimap } from './ui/minimap';
 import { mountHud } from './ui/mount';
 import { createPhysics } from './physics/world';
-import { PedSim } from './peds/pedSim';
+import { canHitPedestrian, PedSim } from './peds/pedSim';
 import { pedView } from './peds/pedView';
 import { EventBus } from './sim/events';
 import { SignalSystem } from './sim/signals';
@@ -154,9 +154,11 @@ renderer.setAnimationLoop(() => {
       const ai = bodies.agentFor(other);
       events.emit({ type: 'collision', with: ai ? 'car' : 'building', speed: ai ? closingSpeed(player, ai) : Math.abs(player.speed), time: signals.time });
     });
-    for (const id of peds.hitTest(player)) {
-      events.emit({ type: 'pedestrianHit', pedId: id, speed: Math.abs(player.speed), time: signals.time });
-      peds.remove(id);
+    if (canHitPedestrian(player.speed)) {
+      for (const id of peds.hitTest(player)) {
+        events.emit({ type: 'pedestrianHit', pedId: id, speed: Math.abs(player.speed), time: signals.time });
+        peds.remove(id);
+      }
     }
   }
   signalLamps.update(signals);

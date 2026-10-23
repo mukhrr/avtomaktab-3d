@@ -64,6 +64,7 @@ const UNMARKED_GAP = 4;
 const CAR_CORRIDOR = 5;
 const CAR_TAIL = 3;
 const HIT_MARGIN = 0.3;
+const HIT_SPEED = 1;
 const CROSS_SPEED: [number, number] = [1.2, 1.5];
 const WALK_SPEED: [number, number] = [1.1, 1.5];
 const COLOURS = [0x3b4a6b, 0x7a3b3b, 0x4f6b3b, 0x8a7a55, 0x2e2e33, 0xb0a79a, 0x5b3b6b, 0x9a4f2e];
@@ -84,6 +85,36 @@ function timeToArrival(position: Vec2, heading: number, speed: number, point: Ve
   const ahead = dx * fx + dz * fz;
   if (Math.abs(dx * fz - dz * fx) > CAR_CORRIDOR || ahead < -CAR_TAIL) return Infinity;
   return Math.max(ahead, 0) / Math.max(Math.abs(speed), 0.1);
+}
+
+/** A stopped or creeping car over a crosswalk is not hitting anyone; crossers wait for it instead. */
+export function canHitPedestrian(speed: number): boolean {
+  return Math.abs(speed) > HIT_SPEED;
+}
+
+/** Whether segment a-b passes through the player's box grown by `margin`. */
+function segmentHitsBox(a: Vec2, b: Vec2, player: PlayerState, margin: number): boolean {
+  const fx = Math.sin(player.heading), fz = Math.cos(player.heading);
+  const local = (p: Vec2): Vec2 => {
+    const dx = p[0] - player.position[0], dz = p[1] - player.position[1];
+    return [dx * fx + dz * fz, dx * fz - dz * fx];
+  };
+  const p0 = local(a), p1 = local(b);
+  const half: Vec2 = [player.length / 2 + margin, player.width / 2 + margin];
+  let t0 = 0, t1 = 1;
+  for (let k = 0; k < 2; k++) {
+    const d = p1[k] - p0[k];
+    for (const [num, den] of [[half[k] - p0[k], d], [half[k] + p0[k], -d]]) {
+      if (den === 0) {
+        if (num < 0) return false;
+      } else if (den > 0) {
+        t1 = Math.min(t1, num / den);
+      } else {
+        t0 = Math.max(t0, num / den);
+      }
+    }
+  }
+  return t0 <= t1;
 }
 
 const cellKey = (cx: number, cz: number) => `${cx},${cz}`;
@@ -226,12 +257,22 @@ export class PedSim implements CrossingOccupancy {
       p.active = false;
       return;
     }
+    if (p.state !== 'leaving') {
+      const far: Vec2 = [
+        x.centre[0] + x.normal[0] * p.dir * x.half + x.tangent[0] * p.along,
+        x.centre[1] + x.normal[1] * p.dir * x.half + x.tangent[1] * p.along,
+      ];
+      if (segmentHitsBox(p.position, far, player, HIT_MARGIN)) {
+        p.walking = false;
+        return;
+      }
+    }
     if (p.state === 'waiting') {
       if (!this.mayCross(p.crossing, player, cars, signals)) return;
       p.state = 'crossing';
-      p.walking = true;
     }
     if (p.state === 'crossing') {
+      p.walking = true;
       p.across += p.dir * p.speed * dt;
       if (p.dir * (p.across - p.dir * x.half) >= 0) {
         p.across = p.dir * x.half;
