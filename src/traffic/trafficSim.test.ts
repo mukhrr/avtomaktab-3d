@@ -393,6 +393,19 @@ test('a junction with an arriving arm that has no controller approach is reserva
   expect(reservesCross(d)).toBe(true);
 });
 
+test('a junction whose arms are split between two controllers is reservation-gated', () => {
+  const d = testNetwork();
+  const [ns, we] = d.controllers[0].phases;
+  d.controllers = [{ id: 'c1', offset: 0, phases: [ns, []] }, { id: 'c2', offset: 17, phases: [we, []] }];
+  expect(reservesCross(d)).toBe(true);
+});
+
+test('a junction covered only by a standalone pedestrian-light controller is reservation-gated', () => {
+  const d = testNetwork();
+  d.controllers[0].id = 'ped-c1';
+  expect(reservesCross(d)).toBe(true);
+});
+
 test('a same-approach stream over 10 s never shares a wide unsignalled T, and the cross approach still gets through', () => {
   const d = testNetwork();
   // Wide arms give 26 m connectors, long enough for a platoon to keep the reservation held without a break.

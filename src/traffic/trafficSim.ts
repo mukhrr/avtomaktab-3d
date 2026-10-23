@@ -81,6 +81,7 @@ const YIELD_TIME = 4;
 const WAIT_FRESH = 0.5;
 const MOVING = 0.5;
 const SIGNAL_REACH = 40;
+const PED_CONTROLLER = 'ped-';
 const SPAWN_SPACING = 2 * 4.5;
 const SPAWN_MAX = 300;
 const SPAWN_MIN = 120;
@@ -133,24 +134,32 @@ export class TrafficSim {
       list.push(c);
       this.crossingsByEdge.set(c.edgeId, list);
     }
-    const stopsNear = new Set<string>();
+    // Approach -> vehicle controllers with a stop line on it near the junction it arrives at.
+    const stopsNear = new Map<string, Set<string>>();
     for (const ctrl of d.controllers) {
+      // Standalone pedestrian lights run unrelated offsets, so together they never keep two arms apart.
+      if (ctrl.id.startsWith(PED_CONTROLLER)) continue;
       for (const a of ctrl.phases.flat()) {
         if (!this.edges.has(a.edgeId)) continue;
         const ref: LaneRef = { edgeId: a.edgeId, dir: a.dir, lane: 0 };
         const len = net.path(ref).length;
-        if (len - Math.min(len, Math.max(0, net.pathS(ref, a.stopAt))) <= SIGNAL_REACH) stopsNear.add(approachKey(ref));
+        if (len - Math.min(len, Math.max(0, net.pathS(ref, a.stopAt))) > SIGNAL_REACH) continue;
+        const k = approachKey(ref);
+        const set = stopsNear.get(k) ?? new Set<string>();
+        set.add(ctrl.id);
+        stopsNear.set(k, set);
       }
     }
     for (const n of d.graph.nodes) {
       if (n.edges.length < 3) continue;
-      // A junction is left to the lights only when every arm arriving at it stops for them close by.
-      const covered = n.edges.every(id => {
+      // A junction is left to the lights only when one controller stops every arm arriving at it close by.
+      const arms = n.edges.flatMap(id => {
         const e = this.edge(id);
-        return [[1, e.lanesForward, e.to], [-1, e.lanesBackward, e.from] as const].every(([dir, lanes, end]) =>
-          lanes === 0 || end !== n.id || stopsNear.has(`${id}|${dir}`));
+        return ([[1, e.lanesForward, e.to], [-1, e.lanesBackward, e.from]] as const)
+          .filter(([, lanes, end]) => lanes > 0 && end === n.id)
+          .map(([dir]) => stopsNear.get(`${id}|${dir}`) ?? new Set<string>());
       });
-      if (!covered) this.gated.add(n.id);
+      if (arms.length && ![...arms[0]].some(c => arms.every(set => set.has(c)))) this.gated.add(n.id);
     }
 
     let cum = 0;
