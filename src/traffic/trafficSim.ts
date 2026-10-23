@@ -250,7 +250,7 @@ export class TrafficSim {
       gatedNode: ref => this.gatedNode(ref),
       canEnter: (node, ref, next, length, committed) =>
         this.canEnter(node, approachKey(ref), !committed && net.path(ref).length >= length) && (!next || this.hasRoom(next, length)),
-      mustHold: (a, ref) => this.mustHold(a, ref),
+      mustHold: (a, ref, committed) => this.mustHold(a, ref, committed),
     };
   }
 
@@ -347,7 +347,9 @@ export class TrafficSim {
         this.despawn(a);
         return false;
       }
-      if (this.mustHold(a, a.ref)) {
+      // A car still moving at the line is one the lookahead found too close to stop; priority lets it through.
+      const moving = a.speed > MOVING;
+      if (this.mustHold(a, a.ref, moving)) {
         a.s = len;
         a.speed = 0;
         return true;
@@ -356,7 +358,7 @@ export class TrafficSim {
       if (node) {
         const approach = approachKey(a.ref);
         // The gate, not the obstacle, is what keeps two approaches out of the junction in the same step.
-        if (!this.canEnter(node, approach, len >= a.length) || !this.hasRoom(a.next, a.length)) {
+        if (!this.canEnter(node, approach, len >= a.length && !moving) || !this.hasRoom(a.next, a.length)) {
           a.s = len;
           a.speed = 0;
           return true;
@@ -456,10 +458,10 @@ export class TrafficSim {
   }
 
   /** Stop-sign stops, and left turns across a straight-bound oncoming car at a junction without a reservation gate. */
-  private mustHold(a: Agent, ref: LaneRef): boolean {
+  private mustHold(a: Agent, ref: LaneRef, committed: boolean): boolean {
     const current = !a.conn && laneKey(ref) === laneKey(a.ref);
     if (this.stopSigns.has(approachKey(ref)) && !(current && a.stopDone)) return true;
-    if (!current || a.nextConn?.kind !== 'left' || this.gated.has(this.endNode(ref))) return false;
+    if (committed || !current || a.nextConn?.kind !== 'left' || this.gated.has(this.endNode(ref))) return false;
     return (this.oncoming.get(approachKey(ref)) ?? []).some(k => this.threats.has(k));
   }
 
@@ -472,7 +474,7 @@ export class TrafficSim {
     for (const a of this.pool) {
       if (!a.active) continue;
       if (a.conn) {
-        if (a.conn.kind === 'straight' && !this.gated.has(a.conn.node)) this.threats.add(approachKey(a.conn.from));
+        if (a.conn.kind === 'straight' && a.speed > MOVING && !this.gated.has(a.conn.node)) this.threats.add(approachKey(a.conn.from));
         continue;
       }
       const list = this.byPiece.get(laneKey(a.ref))!;
@@ -489,9 +491,10 @@ export class TrafficSim {
     for (const [k, { a, tta }] of leads) {
       const info = this.approaches.get(k)!;
       if (!this.gated.has(info.node)) {
-        if (tta < PRIORITY_TTA && (!a.nextConn || a.nextConn.kind === 'straight')) this.threats.add(k);
+        // A car standing still, for a crossing or a light, is no threat until it moves off.
+        if (a.speed > MOVING && tta < PRIORITY_TTA && (!a.nextConn || a.nextConn.kind === 'straight')) this.threats.add(k);
       } else if (tta < PRIORITY_TTA || held(info.node, k)) {
-        const permitted = !this.yielding(info.node, k) && (!a.next || this.hasRoom(a.next, a.length, false));
+        const permitted = !this.yielding(info.node, k) && (!a.next || this.hasRoom(a.next, a.length));
         addContender(this.contenders, info.node, k, { info, since: since(info.node, k), permitted });
       }
     }

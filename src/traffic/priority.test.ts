@@ -1,4 +1,4 @@
-import type { DistrictData, Sign } from '../shared/district';
+import type { DistrictData, Sign, Vec2 } from '../shared/district';
 import { SignalSystem } from '../sim/signals';
 import { LaneNetwork, pointAt, type LaneRef } from './lanes';
 import { testNetwork } from './testNetwork';
@@ -35,9 +35,9 @@ function setup(edit: (d: DistrictData) => void = () => {}, seed = 1) {
   /** Places a nexia whose front is `front` metres short of the lane end. */
   const at = (ref: LaneRef, front: number, speed: number, route: LaneRef[] = []) =>
     sim.place(ref, len(ref) - front - HALF, { carClass: 'nexia', speed, route });
-  const step = (player = AWAY) => {
+  const step = (player = AWAY, crossings = FREE) => {
     signals.update(DT);
-    sim.step(DT, player, FREE);
+    sim.step(DT, player, crossings);
   };
   return { d, net, signals, sim, len, at, step };
 }
@@ -58,7 +58,7 @@ const giveWayOnStub = (d: DistrictData) => { d.signs = [sign('gw', 'giveWay', 't
 
 test('give way: the side arm waits for a main-road car 2 s out even though it reaches the line first', () => {
   const c = setup(giveWayOnStub);
-  const side = c.at(STUB_IN, 1, 3, [E_BACK]);
+  const side = c.at(STUB_IN, 4, 4, [E_BACK]);
   const main = c.at(E, 24, 12, [TE_OUT]);
   const [sideIn, mainIn] = entryTimes(c, 't', [side, main], 20);
   expect(mainIn).toBeLessThan(sideIn);
@@ -67,7 +67,7 @@ test('give way: the side arm waits for a main-road car 2 s out even though it re
 
 test('give way: the side arm goes when the main-road car is 5 s out', () => {
   const c = setup(giveWayOnStub);
-  const side = c.at(STUB_IN, 1, 3, [E_BACK]);
+  const side = c.at(STUB_IN, 4, 4, [E_BACK]);
   const main = c.at(E, 60, 12, [TE_OUT]);
   const [sideIn, mainIn] = entryTimes(c, 't', [side, main], 20);
   expect(sideIn).toBeLessThan(mainIn);
@@ -92,7 +92,7 @@ test('a priority road beats an unsigned arm that has it on its right', () => {
 
 test('a lower-priority car waits for the player approaching on the main road', () => {
   const c = setup(giveWayOnStub);
-  const side = c.at(STUB_IN, 1, 3, [E_BACK]);
+  const side = c.at(STUB_IN, 4, 4, [E_BACK]);
   const path = c.net.path(E);
   const player = (t: number): PlayerState => {
     const s = Math.min(path.length + 30, path.length - 26 + 12 * t);
@@ -108,7 +108,7 @@ test('a lower-priority car waits for the player approaching on the main road', (
 test('left turn on green waits for an oncoming straight car 2 s out', () => {
   const c = setup();
   expect(c.signals.approachState('s', 1, 100)!.state).toBe('green');
-  const left = c.at(S_IN, 0.5, 2, [W_OUT]);
+  const left = c.at(S_IN, 1.5, 2, [W_OUT]);
   const oncoming = c.at(N_IN, 24, 12, [S_OUT]);
   const [leftIn, oncomingIn] = entryTimes(c, 'cross', [left, oncoming], 15);
   expect(oncomingIn).toBeLessThan(leftIn);
@@ -117,7 +117,7 @@ test('left turn on green waits for an oncoming straight car 2 s out', () => {
 
 test('left turn on green goes when the oncoming straight car is 5 s out', () => {
   const c = setup();
-  const left = c.at(S_IN, 0.5, 2, [W_OUT]);
+  const left = c.at(S_IN, 1.5, 2, [W_OUT]);
   const oncoming = c.at(N_IN, 60, 12, [S_OUT]);
   const [leftIn, oncomingIn] = entryTimes(c, 'cross', [left, oncoming], 15);
   expect(leftIn).toBeLessThan(oncomingIn);
@@ -125,7 +125,7 @@ test('left turn on green goes when the oncoming straight car is 5 s out', () => 
 
 test('left turn on green waits for the oncoming player going straight', () => {
   const c = setup();
-  const left = c.at(S_IN, 0.5, 2, [W_OUT]);
+  const left = c.at(S_IN, 1.5, 2, [W_OUT]);
   const path = c.net.path(N_IN);
   const player = (t: number): PlayerState => {
     const s = Math.min(path.length - 3, path.length - 26 + 12 * t);
@@ -133,7 +133,7 @@ test('left turn on green waits for the oncoming player going straight', () => {
     return { position: p.position, heading: p.heading, speed: s < path.length - 3 ? 12 : 0, length: 4.5, width: 1.8 };
   };
   let entered = Infinity;
-  for (let t = 0; t < 1.5; t += DT) {
+  for (let t = 0; t < 2; t += DT) {
     c.step(player(t));
     if (c.sim.inspect(left)!.connectorNode === 'cross') entered = t;
   }
@@ -213,4 +213,93 @@ describe('route choice obeys signs', () => {
   it('never turns left past a no-left-turn sign or into a no-entry street', () => {
     expect([...destinations([sign('nl', 'noLeftTurn', 'w', -1, 10), sign('ne', 'noEntry', 'e', 1, 5)])]).toEqual(['s']);
   });
+});
+
+function corners(c: Vec2, heading: number, length: number, width: number): Vec2[] {
+  const fx = Math.sin(heading), fz = Math.cos(heading);
+  return [[1, 1], [1, -1], [-1, -1], [-1, 1]].map(([a, b]) => [
+    c[0] + fx * a * length / 2 - fz * b * width / 2,
+    c[1] + fz * a * length / 2 + fx * b * width / 2,
+  ]);
+}
+
+function boxesOverlap(a: Vec2[], b: Vec2[]): boolean {
+  for (const poly of [a, b]) {
+    for (let i = 0; i < 4; i++) {
+      const p = poly[i], q = poly[(i + 1) % 4];
+      const nx = -(q[1] - p[1]), nz = q[0] - p[0];
+      const pa = a.map(v => v[0] * nx + v[1] * nz), pb = b.map(v => v[0] * nx + v[1] * nz);
+      if (Math.max(...pa) < Math.min(...pb) || Math.max(...pb) < Math.min(...pa)) return false;
+    }
+  }
+  return true;
+}
+
+const box = (c: ReturnType<typeof setup>, id: number) => {
+  const a = c.sim.agents[id];
+  return corners(a.position, a.heading, CAR_CLASSES.nexia.length, CAR_CLASSES.nexia.width);
+};
+
+test('a higher-ranked car that cannot clear the next junction does not hold up a lower-ranked car with a free exit', () => {
+  // x pulled to 12 m from t, so tE is too short to wait on and its room depends on x being free.
+  const c = setup(d => {
+    const x: Vec2 = [252, 0];
+    d.graph.nodes.find(n => n.id === 'x')!.position = x;
+    for (const e of d.graph.edges) {
+      if (e.id === 'tE') e.points = [[240, 0], x];
+      if (e.id === 'o1') e.points = [x, [360, -80]];
+      if (e.id === 'o2') e.points = [[372, -80], [372, -10], x];
+    }
+    d.signs = [sign('pr', 'priorityRoad', 'e', 1, 230)];
+  });
+  const O1: LaneRef = { edgeId: 'o1', dir: 1, lane: 0 }, O2: LaneRef = { edgeId: 'o2', dir: 1, lane: 0 };
+  expect(c.len(TE_OUT)).toBeLessThan(CAR_CLASSES.nexia.length + 2.5);
+  // The player standing on o1 strands a car on x's connector, holding x for the o2 approach.
+  const p = pointAt(c.net.path(O1).points, 6);
+  const player: PlayerState = { position: p.position, heading: p.heading, speed: 0, length: 4.5, width: 1.8 };
+  const stuck = c.at(O2, 4, 5, [O1]);
+  for (let t = 0; t < 4; t += DT) c.step(player);
+  expect(c.sim.inspect(stuck)!.connectorNode).toBe('x');
+  const main = c.at(E, 3, 2, [TE_OUT]);
+  const side = c.at(STUB_IN, 3, 2, [E_BACK]);
+  const [sideIn, mainIn] = entryTimes(c, 't', [side, main], 8, () => player);
+  expect(sideIn).toBeLessThan(4);
+  expect(mainIn).toBe(Infinity);
+  expect(c.sim.inspect(stuck)!.connectorNode).toBe('x');
+});
+
+test('a side-road car too close to stop when a main-road car appears brakes no harder than 9 m/s² and never overlaps it', () => {
+  const c = setup(giveWayOnStub);
+  const side = c.at(STUB_IN, 1, 8, [E_BACK]);
+  const main = c.at(E, 24, 12, [TE_OUT]);
+  let prev = c.sim.agents[side].speed, hardest = 0;
+  for (let t = 0; t < 10; t += DT) {
+    c.step();
+    const v = c.sim.agents[side].speed;
+    hardest = Math.max(hardest, (prev - v) / DT);
+    prev = v;
+    expect(boxesOverlap(box(c, side), box(c, main))).toBe(false);
+  }
+  expect(hardest).toBeLessThanOrEqual(9 + 1e-6);
+});
+
+test('an oncoming straight car parked for 20 s does not hold a left-turner', () => {
+  // A zebra just inside s, past the cross, keeps the southbound car standing at the junction.
+  const c = setup(d => {
+    const s = d.graph.edges.find(e => e.id === 's')!;
+    const at = Math.hypot(s.points[1][0] - s.points[0][0], s.points[1][1] - s.points[0][1]) - 12;
+    d.crossings.push({ id: 'zs', position: [0, 12], kind: 'zebra', edgeId: 's', at, width: 3 });
+  });
+  const blocked: CrossingOccupancy = { occupied: id => id === 'zs' };
+  const oncoming = c.at(N_IN, 10, 4, [S_OUT]);
+  for (let t = 0; t < 10; t += DT) c.step(AWAY, blocked);
+  expect(c.sim.agents[oncoming].speed).toBeLessThan(0.1);
+  const left = c.at(S_IN, 1.5, 2, [W_OUT]);
+  let entered = Infinity;
+  for (let t = 0; t < 10 && entered === Infinity; t += DT) {
+    c.step(AWAY, blocked);
+    if (c.sim.inspect(left)!.connectorNode === 'cross') entered = t;
+  }
+  expect(c.sim.agents[oncoming].speed).toBeLessThan(0.1);
+  expect(entered).toBeLessThan(5);
 });

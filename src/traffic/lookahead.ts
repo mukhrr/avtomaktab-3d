@@ -7,6 +7,9 @@ import type { Agent, Conn, CrossingOccupancy, PlayerState } from './trafficSim';
 export const LOOKAHEAD = 80;
 const STOP_LINE_SETBACK = 1;
 const CROSSING_SETBACK = 3;
+/** Deceleration a driver accepts to give way; closer than that to the line a car is committed to the junction. */
+const COMFORT_DECEL = 3.5;
+const MOVING = 0.5;
 
 export const laneKey = (r: LaneRef) => `${r.edgeId}|${r.dir}|${r.lane}`;
 export const approachKey = (r: LaneRef) => `${r.edgeId}|${r.dir}`;
@@ -35,7 +38,7 @@ export interface LookaheadWorld {
    */
   canEnter(node: string, ref: LaneRef, next: LaneRef | null, length: number, committed: boolean): boolean;
   /** Whether the agent must wait at the end of this lane: a stop sign, or a left turn across oncoming traffic. */
-  mustHold(a: Agent, ref: LaneRef): boolean;
+  mustHold(a: Agent, ref: LaneRef, committed: boolean): boolean;
 }
 
 interface Piece {
@@ -117,9 +120,12 @@ export function nearestObstacle(a: Agent, w: LookaheadWorld, player: PlayerState
     }
 
     const node = w.gatedNode(ref);
-    const exit = p === route[0] && !a.conn ? a.next : null;
-    if (node && !w.canEnter(node, ref, exit, a.length, !!a.conn)) consider(p.length + p.base - half, 0, node);
-    else if (w.mustHold(a, ref)) consider(p.length + p.base - half, 0);
+    const current = p === route[0] && !a.conn;
+    const exit = current ? a.next : null;
+    const toEnd = p.length + p.base - half;
+    const late = current && a.speed > MOVING && (toEnd <= 0 || !canStopBefore(a.speed, toEnd, COMFORT_DECEL));
+    if (node && !w.canEnter(node, ref, exit, a.length, !!a.conn || late)) consider(toEnd, 0, node);
+    else if (w.mustHold(a, ref, late)) consider(toEnd, 0);
   }
 
   const reach = LOOKAHEAD + player.length;
