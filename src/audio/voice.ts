@@ -21,27 +21,39 @@ function subtitle(lang: Lang, p: Prompt): string {
   return `${t(lang, `penalty.${p.vars?.id}`, p.vars)}. ${t(lang, p.key, p.vars)}`;
 }
 
+const MIN_CLIP_WAIT_MS = 8000;
+const CLIP_SLACK_MS = 1000;
+
 export class HtmlAudioBackend implements AudioBackend {
-  private el: HTMLAudioElement | null = null;
-  private abort: (() => void) | null = null;
+  private release: (() => void) | null = null;
 
   play(url: string): Promise<void> {
     this.stop();
     return new Promise<void>((resolve, reject) => {
       const el = new Audio(url);
-      this.el = el;
-      this.abort = resolve;
-      el.onended = () => resolve();
-      el.onerror = () => reject(new Error(`audio: cannot load ${url}`));
-      el.play().catch(reject);
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const release = () => {
+        clearTimeout(timer);
+        el.onended = el.onerror = el.onloadedmetadata = null;
+        el.pause();
+        if (this.release === release) this.release = null;
+      };
+      const arm = () => {
+        clearTimeout(timer);
+        const known = Number.isFinite(el.duration) ? el.duration * 1000 + CLIP_SLACK_MS : 0;
+        timer = setTimeout(() => { release(); resolve(); }, Math.max(known, MIN_CLIP_WAIT_MS));
+      };
+      this.release = () => { release(); resolve(); };
+      el.onended = () => { release(); resolve(); };
+      el.onerror = () => { release(); reject(new Error(`audio: cannot load ${url}`)); };
+      el.onloadedmetadata = arm;
+      arm();
+      el.play().catch(e => { release(); reject(e); });
     });
   }
 
   stop(): void {
-    this.el?.pause();
-    this.el = null;
-    this.abort?.();
-    this.abort = null;
+    this.release?.();
   }
 }
 
@@ -50,11 +62,14 @@ export class VoicePlayer {
   private queue: Prompt[] = [];
   private busy = false;
   private epoch = 0;
+  private subtitleFailed = false;
 
   constructor(
     private readonly lang: Lang,
     private readonly baseUrl: string,
     private readonly backend: AudioBackend = new HtmlAudioBackend(),
+    /** Backstop for a backend that never settles. */
+    private readonly maxClipMs = 60000,
   ) {}
 
   say(prompt: Prompt): void {
@@ -78,6 +93,21 @@ export class VoicePlayer {
     return AHEAD_KEYS.has(p.key) && j !== undefined && this.queue.some(q => NOW_KEYS.has(q.key) && q.vars?.junction === j);
   }
 
+  private emit(text: string): void {
+    try {
+      this.onSubtitle?.(text);
+    } catch (e) {
+      if (!this.subtitleFailed) console.warn('voice: subtitle callback threw', e);
+      this.subtitleFailed = true;
+    }
+  }
+
+  private playWithBackstop(url: string): Promise<void> {
+    let timer: ReturnType<typeof setTimeout>;
+    const backstop = new Promise<void>(res => { timer = setTimeout(() => { try { this.backend.stop(); } catch { /* already gone */ } res(); }, this.maxClipMs); });
+    return Promise.race([this.backend.play(url), backstop]).finally(() => clearTimeout(timer));
+  }
+
   private async pump(): Promise<void> {
     const epoch = this.epoch;
     this.busy = true;
@@ -85,11 +115,11 @@ export class VoicePlayer {
       const p = this.queue.shift();
       if (!p) break;
       if (this.stale(p)) continue;
-      this.onSubtitle?.(subtitle(this.lang, p));
+      this.emit(subtitle(this.lang, p));
       const id = spokenLineId(p);
       if (!id) continue;
       try {
-        await this.backend.play(`${this.baseUrl}/${this.lang}/${id}.mp3`);
+        await this.playWithBackstop(`${this.baseUrl}/${this.lang}/${id}.mp3`);
       } catch {
         // blocked before the first gesture or file missing: the subtitle already went out
       }

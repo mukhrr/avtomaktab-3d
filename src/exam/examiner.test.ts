@@ -151,6 +151,21 @@ describe('directions', () => {
 });
 
 describe('progress', () => {
+  it('gives each route step its own junction id on direction prompts', () => {
+    const r = new Run(plan([[-100, 3], [3, -100], [-100, 3], [120, 3]]));
+    r.lane(W_IN, 20);
+    r.junction(W_IN, N_OUT);
+    r.lane(N_OUT, 0);
+    r.junction(N_OUT, N_BACK);
+    r.lane(N_BACK, 0);
+    r.junction(N_BACK, W_OUT);
+    r.lane(W_OUT, 0);
+    const dir = r.prompts.filter(p => p.key !== 'exam.brief' && p.key !== 'exam.start');
+    const ids = dir.map(p => `${p.key}@${p.vars?.junction}`);
+    expect(new Set(dir.map(p => p.vars?.junction)).size).toBeGreaterThanOrEqual(3);
+    expect(ids.length).toBe(new Set(ids).size);
+  });
+
   it('follows a route that revisits a lane forward only', () => {
     // w eastbound twice: out to the n arm, west to the dead end of w and back, then straight on to e.
     const route = plan([[-100, 3], [3, -100], [-100, 3], [120, 3]]);

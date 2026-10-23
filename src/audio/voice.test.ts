@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { t } from '../i18n';
 import { PENALTY_IDS, validatePenalties } from '../exam/penalties';
 import penaltyTable from '../../data/exam/penalties.json';
 import lines from '../../data/exam/voice-lines.json';
-import { VoicePlayer, spokenLineId, type AudioBackend } from './voice';
+import { HtmlAudioBackend, VoicePlayer, spokenLineId, type AudioBackend } from './voice';
 
 class FakeBackend implements AudioBackend {
   played: string[] = [];
@@ -95,6 +95,39 @@ describe('VoicePlayer', () => {
     expect(backend.played).toEqual(['/audio/uz/exam.brief.mp3', '/audio/uz/exam.start.mp3']);
   });
 
+  it('plays the ahead of the next junction while the previous now is still queued', async () => {
+    const { backend, player } = setup();
+    player.say({ key: 'exam.start' });
+    player.say({ key: 'exam.turnLeftNow', vars: { junction: 1 } });
+    player.say({ key: 'exam.turnRightAhead', vars: { junction: 2 } });
+    await tick();
+    for (let i = 0; i < 3; i++) {
+      backend.finish();
+      await tick();
+    }
+    expect(backend.played).toEqual(['/audio/uz/exam.start.mp3', '/audio/uz/exam.turnLeftNow.mp3', '/audio/uz/exam.turnRightAhead.mp3']);
+  });
+
+  it('keeps going when the subtitle callback throws', async () => {
+    const { backend, player } = setup();
+    player.onSubtitle = () => { throw new Error('ui gone'); };
+    player.say({ key: 'exam.brief' });
+    player.say({ key: 'exam.start' });
+    await tick();
+    backend.finish();
+    await tick();
+    expect(backend.played).toEqual(['/audio/uz/exam.brief.mp3', '/audio/uz/exam.start.mp3']);
+  });
+
+  it('moves on when a clip never ends', async () => {
+    const backend = new FakeBackend();
+    const player = new VoicePlayer('uz', '/audio', backend, 20);
+    player.say({ key: 'exam.brief' });
+    player.say({ key: 'exam.start' });
+    await new Promise(r => setTimeout(r, 60));
+    expect(backend.played).toEqual(['/audio/uz/exam.brief.mp3', '/audio/uz/exam.start.mp3']);
+  });
+
   it('treats a throwing backend as subtitle only', async () => {
     const subs: string[] = [];
     const player = new VoicePlayer('uz', '/audio', { play: () => { throw new Error('blocked'); }, stop: () => {} });
@@ -169,5 +202,48 @@ describe('voice lines', () => {
       expect(lineId !== null).toBe(spoken);
       if (lineId) expect(book[lineId]).toBeDefined();
     }
+  });
+});
+
+describe('HtmlAudioBackend', () => {
+  class StubAudio {
+    static last: StubAudio;
+    duration = NaN;
+    onended: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    onloadedmetadata: (() => void) | null = null;
+    paused = false;
+    constructor(public src: string) { StubAudio.last = this; }
+    play() { return Promise.resolve(); }
+    pause() { this.paused = true; }
+  }
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+
+  it('gives up on a clip that never fires ended and releases the element', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('Audio', StubAudio);
+    let done = false;
+    const p = new HtmlAudioBackend().play('/x.mp3').then(() => { done = true; });
+    await vi.advanceTimersByTimeAsync(7900);
+    expect(done).toBe(false);
+    await vi.advanceTimersByTimeAsync(200);
+    await p;
+    expect(done).toBe(true);
+    expect(StubAudio.last.onended).toBeNull();
+    expect(StubAudio.last.paused).toBe(true);
+  });
+
+  it('allows a long clip its duration plus a second', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('Audio', StubAudio);
+    let done = false;
+    const p = new HtmlAudioBackend().play('/x.mp3').then(() => { done = true; });
+    StubAudio.last.duration = 12;
+    StubAudio.last.onloadedmetadata?.();
+    await vi.advanceTimersByTimeAsync(12500);
+    expect(done).toBe(false);
+    await vi.advanceTimersByTimeAsync(800);
+    await p;
+    expect(done).toBe(true);
   });
 });
