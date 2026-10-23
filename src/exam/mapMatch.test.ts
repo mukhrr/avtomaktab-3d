@@ -1,4 +1,4 @@
-import type { DistrictData, GraphEdge, GraphNode } from '../shared/district';
+import type { DistrictData, GraphEdge, GraphNode, Vec2 } from '../shared/district';
 import { LaneNetwork } from '../traffic/lanes';
 import { testNetwork } from '../traffic/testNetwork';
 import { MapMatcher, type LaneMatch } from './mapMatch';
@@ -128,4 +128,44 @@ test('turning across the road keeps dir until the heading is well past perpendic
   for (const h of [EAST, EAST + 0.6, EAST + 1.2, EAST + 1.8]) {
     expect(m.update([-60, 1.75], h, DT).ref!.dir).toBe(-1);
   }
+});
+
+/** tE split at (300, 0) by a degree-2 node m. */
+function withDegree2(): DistrictData {
+  const d = testNetwork();
+  const tE = d.graph.edges.find(e => e.id === 'tE')!;
+  const mk = (id: string, from: string, to: string, a: Vec2, b: Vec2): GraphEdge =>
+    ({ ...tE, id, roadId: id, from, to, points: [a, b], nodeIds: [from, to] });
+  d.graph.edges = d.graph.edges.filter(e => e.id !== 'tE').concat(mk('tE1', 't', 'm', [240, 0], [300, 0]), mk('tE2', 'm', 'x', [300, 0], [360, 0]));
+  const t = d.graph.nodes.find(n => n.id === 't')!;
+  t.edges = t.edges.map(id => (id === 'tE' ? 'tE1' : id));
+  const x = d.graph.nodes.find(n => n.id === 'x')!;
+  x.edges = x.edges.map(id => (id === 'tE' ? 'tE2' : id));
+  d.graph.nodes.push({ id: 'm', position: [300, 0], edges: ['tE1', 'tE2'] });
+  return d;
+}
+
+test('reversing straight in its own lane keeps ref and the sign of lateral', () => {
+  const m = matcher();
+  const first = m.update([-100, 1.75], EAST, DT);
+  for (let i = 0; i <= 33; i++) {
+    const r = m.update([-100 - i * 0.3, 1.75], EAST, DT);
+    expect(r.ref).toEqual(first.ref);
+    expect(r.lateral).toBeCloseTo(1.75, 2);
+  }
+});
+
+test('passing a degree-2 node adopts the next edge on the first frame past it', () => {
+  const m = matcher(withDegree2());
+  let x = 280;
+  let r = m.update([x, 1.75], EAST, DT);
+  expect(r.ref!.edgeId).toBe('tE1');
+  const seen: string[] = [];
+  for (; x < 310; x += 0.5) seen.push(m.update([x, 1.75], EAST, DT).ref!.edgeId);
+  const at = seen.findIndex(e => e === 'tE2');
+  expect(at).toBeGreaterThanOrEqual(0);
+  expect(280 + (at + 1) * 0.5).toBeLessThanOrEqual(301);
+  expect(seen.slice(at).every(e => e === 'tE2')).toBe(true);
+  r = m.update([310, 1.75], EAST, DT);
+  expect(r.ref!.edgeId).toBe('tE2');
 });

@@ -70,7 +70,6 @@ const LEADER_ANGLE = Math.PI / 3;
 const ONCOMING = (150 * Math.PI) / 180;
 /** A crossing stays listed this far past its centre, while the car is still on it. */
 const CROSSING_DEPTH = 2;
-const REVERSING = -0.5;
 
 interface Topology {
   crossingsByEdge: Map<string, DistrictData['crossings']>;
@@ -102,8 +101,7 @@ function topology(d: DistrictData): Topology {
 export function buildSnapshot(ctx: SnapshotContext, f: SnapshotInput): DriveSnapshot {
   const { d, net, signals, signs, peds } = ctx;
   const topo = topology(d);
-  const travel = f.speed < REVERSING ? f.heading + Math.PI : f.heading;
-  const match = ctx.matcher.update(f.position, travel, f.dt);
+  const match = ctx.matcher.update(f.position, f.heading, f.dt);
   const ref = match.ref;
 
   let speedLimit = 0;

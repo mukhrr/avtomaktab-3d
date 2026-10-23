@@ -151,3 +151,34 @@ test('junctionConflicts still lists the arms while the player is inside the junc
   expect(s.junctionConflicts.map(x => x.agentId)).toEqual([right]);
   expect(s.junctionConflicts[0].fromRight).toBe(true);
 });
+
+test('a stop line 3 m into the edge after a degree-2 node shows in signalAhead before the car reaches it', () => {
+  const d = testNetwork();
+  const tE = d.graph.edges.find(e => e.id === 'tE')!;
+  const mk = (id: string, from: string, to: string, a: Vec2, b: Vec2) =>
+    ({ ...tE, id, roadId: id, from, to, points: [a, b], nodeIds: [from, to] });
+  d.graph.edges = d.graph.edges.filter(e => e.id !== 'tE').concat(mk('tE1', 't', 'm', [240, 0], [300, 0]), mk('tE2', 'm', 'x', [300, 0], [360, 0]));
+  d.graph.nodes.find(n => n.id === 't')!.edges = ['e', 'tStub', 'tE1'];
+  d.graph.nodes.find(n => n.id === 'x')!.edges = ['tE2', 'o1', 'o2'];
+  d.graph.nodes.push({ id: 'm', position: [300, 0], edges: ['tE1', 'tE2'] });
+  d.controllers.push({ id: 'c3', offset: 0, phases: [[{ edgeId: 'tE2', dir: 1, stopAt: 3 }]] });
+  const c = setup(d);
+  let seenAt: number | null = null;
+  for (let x = 285; x < 304; x += 14 * DT) {
+    const s = c.snap([x, 1.75], EAST);
+    if (s.signalAhead && seenAt === null) seenAt = x;
+  }
+  expect(seenAt).not.toBeNull();
+  expect(seenAt!).toBeLessThan(301);
+});
+
+test('reversing 10 m in the lane keeps ref and the sign of lateral through the speed threshold', () => {
+  const c = setup();
+  const first = c.snap([-100, 1.75], EAST, { speed: 0 });
+  for (let i = 0; i <= 33; i++) {
+    const speed = -2 * Math.sin((i / 33) * Math.PI) - (i % 2 ? 0.45 : 0.55);
+    const s = c.snap([-100 - i * 0.3, 1.75], EAST, { speed });
+    expect(s.match.ref).toEqual(first.match.ref);
+    expect(s.match.lateral).toBeCloseTo(1.75, 2);
+  }
+});

@@ -46,6 +46,7 @@ export class MapMatcher {
   private cur: { edgeId: string; dir: 1 | -1; lane: number } | null = null;
   private challenger: { edgeId: string; held: number } | null = null;
   private wasInJunction: string | null = null;
+  private readonly degree = new Map<string, number>();
 
   constructor(d: DistrictData, _net?: LaneNetwork) {
     const edges = new Map(d.graph.edges.map(e => [e.id, e]));
@@ -58,12 +59,13 @@ export class MapMatcher {
       }
     }
     for (const n of d.graph.nodes) {
+      this.degree.set(n.id, n.edges.length);
       if (n.edges.length < 3) continue;
       this.junctions.push({ id: n.id, poly: junctionPolygon(n, n.edges.map(id => edges.get(id)).filter((e): e is GraphEdge => !!e)) });
     }
   }
 
-  /** `heading` is the direction of travel, so a reversing car passes its heading turned half a circle. */
+  /** `heading` is the way the car faces; a reversing car keeps its lane, and callers gate on the sign of speed. */
   update(position: Vec2, heading: number, dt: number): LaneMatch {
     const inJunction = this.junctions.find(j => pointInPolygon(position[0], position[1], j.poly))?.id ?? null;
     const cands = this.candidates(position, heading);
@@ -87,8 +89,12 @@ export class MapMatcher {
     if (current && !this.wasInJunction) {
       chosen = current;
       rival = cands.find(c => c !== current && c.cost < Infinity);
+      const next = cands.find(c => c !== current && c.cost <= current.cost && this.continues(current, c));
       const challenger = cands.find(c => c !== current && c.cost < current.cost - MARGIN);
-      if (challenger) {
+      if (next) {
+        chosen = next;
+        this.challenger = null;
+      } else if (challenger) {
         const same = this.challenger?.edgeId === challenger.edge.id;
         const held = (same ? this.challenger!.held : 0) + dt;
         this.challenger = { edgeId: challenger.edge.id, held };
@@ -100,6 +106,17 @@ export class MapMatcher {
     } else this.challenger = null;
     this.wasInJunction = inJunction;
     return this.describe(chosen, position, inJunction, rival ? Math.max(0, 1 - Math.max(0, rival.cost - chosen.cost) / (2 * MARGIN)) : 0);
+  }
+
+  /** `next` carries on from the end of `from` through a node with no other road, and the car is past that end. */
+  private continues(from: Candidate, next: Candidate): boolean {
+    const e = from.edge, n = next.edge;
+    const node = from.dir === 1 ? e.to : e.from;
+    if (this.degree.get(node) !== 2 || n.id === e.id) return false;
+    if (next.dir === 1 ? n.from !== node : n.to !== node) return false;
+    const last = from.dir === 1;
+    const atEnd = last ? from.seg.b === e.points[e.points.length - 1] && from.t >= 1 : from.seg.a === e.points[0] && from.t <= 0;
+    return atEnd;
   }
 
   private candidates(position: Vec2, heading: number): Candidate[] {
