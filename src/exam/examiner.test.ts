@@ -87,6 +87,9 @@ describe('directions', () => {
     r.lane(W_IN, 20, len);
     const keys = r.keys.filter(k => k.startsWith('exam.turn'));
     expect(keys).toEqual(['exam.turnLeftAhead', 'exam.turnLeftNow']);
+    const junctions = r.prompts.filter(p => p.key.startsWith('exam.turn')).map(p => p.vars?.junction);
+    expect(junctions[0]).toBeDefined();
+    expect(junctions[1]).toBe(junctions[0]);
   });
 
   it('fires "ahead" within a metre of 50 m from the junction and "now" at 15 m', () => {

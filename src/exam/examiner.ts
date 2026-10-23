@@ -45,6 +45,8 @@ export class Examiner {
   private cur = 0;
   private distance: number;
   private directions = new DirectionTracker();
+  /** Pairs an "ahead" prompt with its "now" prompt; bumps whenever the tracker is replaced. */
+  private junction = 0;
   private pending: Prompt[] = [];
   private briefed = false;
   private all: Violation[] = [];
@@ -128,7 +130,7 @@ export class Examiner {
     if (onLane) {
       this.distance = this.alongToManeuver(this.net.pathS(lane, s.match.edgeS));
       const straight = s.signalAhead !== null && this.net.exits(lane).length > 1;
-      out.push(...this.directions.update(this.distance, this.maneuver(), straight));
+      for (const p of this.directions.update(this.distance, this.maneuver(), straight)) out.push({ ...p, vars: { junction: this.junction } });
     }
 
     if (this.cur === this.steps.length - 1 && this.atRest(s, lane)) return [...out, ...this.end('finished', s.t)];
@@ -186,6 +188,7 @@ export class Examiner {
         this.cur += k;
         this.failedReroute = null;
         this.directions = new DirectionTracker();
+        this.junction++;
         this.offSince = null;
         return;
       }
@@ -210,6 +213,7 @@ export class Examiner {
       this.failedReroute = null;
       this.cur = 0;
       this.directions = new DirectionTracker();
+      this.junction++;
       this.offSince = null;
       this.distance = this.alongToManeuver(at);
       out.push({ key: 'exam.reroute' });

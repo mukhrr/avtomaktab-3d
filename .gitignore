@@ -6,3 +6,4 @@ spike/osm.json
 .superpowers/
 .DS_Store
 .claude/
+tools/voice/.venv
