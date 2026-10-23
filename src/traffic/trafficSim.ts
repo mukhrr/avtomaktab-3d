@@ -129,7 +129,6 @@ export class TrafficSim {
     this.count = opts.count;
     for (const e of d.graph.edges) this.edges.set(e.id, e);
     for (const c of d.crossings) {
-      if (c.kind === 'unmarked') continue;
       const list = this.crossingsByEdge.get(c.edgeId) ?? [];
       list.push(c);
       this.crossingsByEdge.set(c.edgeId, list);
@@ -139,7 +138,8 @@ export class TrafficSim {
       for (const a of ctrl.phases.flat()) {
         if (!this.edges.has(a.edgeId)) continue;
         const ref: LaneRef = { edgeId: a.edgeId, dir: a.dir, lane: 0 };
-        if (net.path(ref).length - net.pathS(ref, a.stopAt) <= SIGNAL_REACH) stopsNear.add(approachKey(ref));
+        const len = net.path(ref).length;
+        if (len - Math.min(len, Math.max(0, net.pathS(ref, a.stopAt))) <= SIGNAL_REACH) stopsNear.add(approachKey(ref));
       }
     }
     for (const n of d.graph.nodes) {

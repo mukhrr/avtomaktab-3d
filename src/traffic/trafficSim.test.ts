@@ -156,6 +156,46 @@ test('three agents queued behind a red light keep 1.5 m gaps and their order', (
   expect(Math.max(...ids.map(id => c.sim.agents[id].speed))).toBeLessThan(0.1);
 });
 
+/** Test network plus a controller on e (dir 1) that is red for the first 15 s, its stop line at `stopAt(net)`. */
+function redOnE(stopAtFor: (net: LaneNetwork) => number) {
+  const d = testNetwork();
+  const net = new LaneNetwork(d);
+  d.controllers.push({ id: 'cE', offset: 0, phases: [[], [{ edgeId: 'e', dir: 1, stopAt: stopAtFor(net) }]] });
+  const signals = new SignalSystem(d);
+  const sim = new TrafficSim(d, net, signals, { count: 0, seed: 1 });
+  const step = () => {
+    signals.update(DT);
+    sim.step(DT, AWAY, FREE);
+  };
+  return { net, signals, sim, step };
+}
+
+test('a stop line before the lane start holds a turning car before it enters the lane', () => {
+  const c = redOnE(() => 0);
+  expect(c.net.path(E).startAt).toBeGreaterThan(0);
+  expect(c.signals.approachState('n', -1, 100)!.state).toBe('green');
+  const id = c.sim.place(N, c.net.path(N).length - 30, { carClass: 'nexia', speed: 8, route: [E] });
+  for (let t = 0; t < 12; t += DT) {
+    c.step();
+    const st = c.sim.inspect(id)!;
+    expect(st.ref.edgeId === 'e' && st.connectorNode === null).toBe(false);
+  }
+  expect(c.sim.agents[id].speed).toBeLessThan(0.1);
+});
+
+test('a stop line past the lane end holds the car before the junction', () => {
+  const c = redOnE(net => net.path(E).endAt + 6);
+  const id = c.sim.place(E, c.net.path(E).length - 40, { carClass: 'nexia', speed: 8, route: [{ edgeId: 'tE', dir: 1, lane: 0 }] });
+  const len = c.net.path(E).length;
+  for (let t = 0; t < 12; t += DT) {
+    c.step();
+    const st = c.sim.inspect(id)!;
+    expect(st.connectorNode).toBeNull();
+    expect(st.s + NEXIA / 2).toBeLessThan(len);
+  }
+  expect(c.sim.agents[id].speed).toBeLessThan(0.1);
+});
+
 /** Steps the sim, asserting that agents on connectors of `node` all come from one approach. */
 function runExclusive(c: ReturnType<typeof setup>, node: string, ids: number[], seconds: number) {
   const visited = new Set<number>(), passed = new Set<number>();
@@ -214,6 +254,33 @@ test('stops for an occupied zebra and goes once it clears', () => {
     t += DT;
   }
   expect(t).toBeLessThan(10);
+});
+
+test('stops for a person on an unmarked crossing', () => {
+  const d = testNetwork();
+  d.crossings = [{ ...d.crossings[0], id: 'u1', kind: 'unmarked' }];
+  const net = new LaneNetwork(d);
+  const signals = new SignalSystem(d);
+  const sim = new TrafficSim(d, net, signals, { count: 0, seed: 1 });
+  const occupied: CrossingOccupancy = { occupied: id => id === 'u1' };
+  const id = sim.place(W, 10, { carClass: 'nexia' });
+  for (let t = 0; t < 20; t += DT) {
+    signals.update(DT);
+    sim.step(DT, AWAY, occupied);
+    expect(net.edgeS(W, sim.inspect(id)!.s + NEXIA / 2)).toBeGreaterThan(40 + 1.5);
+  }
+  expect(sim.agents[id].speed).toBeLessThan(0.1);
+});
+
+test('a car already inside the 3 m setback of an occupied zebra still stops before it', () => {
+  const c = setup();
+  const occupied: CrossingOccupancy = { occupied: id => id === 'z1' };
+  const id = c.sim.place(W, c.net.pathS(W, 41.5) - NEXIA / 2, { carClass: 'nexia', speed: 3 });
+  for (let t = 0; t < 5; t += DT) {
+    c.step(AWAY, occupied);
+    expect(c.net.edgeS(W, c.sim.inspect(id)!.s + NEXIA / 2)).toBeGreaterThan(40);
+  }
+  expect(c.sim.agents[id].speed).toBeLessThan(0.1);
 });
 
 test('an agent driving into the dead-end stub U-turns and keeps moving', () => {

@@ -89,9 +89,11 @@ export function nearestObstacle(a: Agent, w: LookaheadWorld, player: PlayerState
     }
     if (!p.ref) continue;
     const ref = p.ref;
-    const frontX = Math.max(0, half - p.base);
+    const lane = w.net.path(ref);
+    // Not clamped to the piece: a car still short of the lane must see a line that acts at the lane start.
+    const front = half - p.base;
 
-    const light = w.signals.approachState(ref.edgeId, ref.dir, w.net.edgeS(ref, frontX));
+    const light = w.signals.approachState(ref.edgeId, ref.dir, w.net.edgeS(ref, front), [lane.startAt, lane.endAt]);
     if (light) {
       const toLine = w.net.pathS(ref, light.stopAt) + p.base - half;
       if (toLine > 0) {
@@ -104,8 +106,8 @@ export function nearestObstacle(a: Agent, w: LookaheadWorld, player: PlayerState
     for (const c of w.crossingsOn(ref.edgeId)) {
       const cx = w.net.pathS(ref, c.at);
       if (cx < 0 || cx > p.length) continue;
-      const gap = cx - CROSSING_SETBACK + p.base - half;
-      if (gap > 0 && crossings.occupied(c.id)) consider(gap, 0);
+      const toCrossing = cx + p.base - half;
+      if (toCrossing > 0 && crossings.occupied(c.id)) consider(Math.max(0, toCrossing - CROSSING_SETBACK), 0);
     }
 
     const node = w.gatedNode(ref);

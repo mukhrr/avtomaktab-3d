@@ -103,16 +103,22 @@ export class SignalSystem {
     return uPrev >= prevLen - ALL_RED && uPrev < prevLen ? 'redYellow' : 'red';
   }
 
-  approachState(edgeId: string, dir: 1 | -1, s: number): { state: LightState; stopAt: number } | null {
+  /** Nearest stop line ahead of edge distance `s`; with `within`, lines outside that edge range act at its nearer end. */
+  approachState(edgeId: string, dir: 1 | -1, s: number, within?: [number, number]): { state: LightState; stopAt: number } | null {
     const list = this.byEdge.get(key(edgeId, dir));
     if (!list) return null;
-    let best: Stop | null = null;
+    const lo = within ? Math.min(within[0], within[1]) : -Infinity, hi = within ? Math.max(within[0], within[1]) : Infinity;
+    let best: Stop | null = null, bestAt = 0;
     for (const st of list) {
-      const ahead = dir === 1 ? s < st.stopAt : s > st.stopAt;
+      const at = Math.min(hi, Math.max(lo, st.stopAt));
+      const ahead = dir === 1 ? s < at : s > at;
       if (!ahead) continue;
-      if (!best || Math.abs(st.stopAt - s) < Math.abs(best.stopAt - s)) best = st;
+      if (!best || Math.abs(at - s) < Math.abs(bestAt - s)) {
+        best = st;
+        bestAt = at;
+      }
     }
-    return best ? { state: this.phaseState(best.ctrl, best.phase), stopAt: best.stopAt } : null;
+    return best ? { state: this.phaseState(best.ctrl, best.phase), stopAt: bestAt } : null;
   }
 
   headState(signalId: string): LightState | null {
