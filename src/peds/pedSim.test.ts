@@ -70,6 +70,19 @@ test('a zebra crosser waits for a car 15 m away at 12 m/s and crosses when it is
   expect(c.sim.occupied('z1')).toBe(true);
 });
 
+test('curbWaiting is true while a crosser holds at the curb and false once it steps out', () => {
+  const c = setup(testNetwork(), { crossers: 1, walkers: 0 });
+  const near = car([-55, 0], Math.PI / 2, 12);
+  c.step();
+  for (let i = 0; i < 60; i++) c.step(AWAY, [near]);
+  expect(c.sim.curbWaiting('z1')).toBe(true);
+  expect(c.sim.occupied('z1')).toBe(false);
+  c.step(AWAY, [car([-100, 0], Math.PI / 2, 12)]);
+  expect(c.sim.curbWaiting('z1')).toBe(false);
+  expect(c.sim.occupied('z1')).toBe(true);
+  expect(c.sim.curbWaiting('nope')).toBe(false);
+});
+
 test('a car already past the crossing, or one stopped far away, does not block', () => {
   const c = setup(testNetwork(), { crossers: 1, walkers: 0 });
   c.step();

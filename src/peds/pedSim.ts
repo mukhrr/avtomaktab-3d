@@ -234,6 +234,12 @@ export class PedSim implements CrossingOccupancy {
     return k !== undefined && this.pool.some(p => p.active && p.kind === 'crosser' && p.crossing === k && p.state === 'crossing');
   }
 
+  /** A crosser stands at the curb of this crossing, about to step out. */
+  curbWaiting(crossingId: string): boolean {
+    const k = this.crossingIndex.get(crossingId);
+    return k !== undefined && this.pool.some(p => p.active && p.kind === 'crosser' && p.crossing === k && p.state === 'waiting');
+  }
+
   hitTest(player: PlayerState): number[] {
     const fx = Math.sin(player.heading), fz = Math.cos(player.heading);
     const halfL = player.length / 2 + HIT_MARGIN, halfW = player.width / 2 + HIT_MARGIN;
