@@ -5,3 +5,4 @@ spike/osm.xml
 spike/osm.json
 .superpowers/
 .DS_Store
+.claude/
