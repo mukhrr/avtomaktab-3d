@@ -1,0 +1,177 @@
+{
+  "redLight": {
+    "tier": "fail",
+    "points": 100,
+    "clause": "31",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "yellowEntry": {
+    "tier": "high",
+    "points": 20,
+    "clause": "31",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "stopLinePast": {
+    "tier": "high",
+    "points": 20,
+    "clause": "41",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "noFullStopAtStopSign": {
+    "tier": "high",
+    "points": 20,
+    "clause": "1-ilova, 2.5 belgisi",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "pedestrianNotYielded": {
+    "tier": "fail",
+    "points": 100,
+    "clause": "109",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "vehicleNotYielded": {
+    "tier": "fail",
+    "points": 100,
+    "clause": "104",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "oncomingLane": {
+    "tier": "fail",
+    "points": 100,
+    "clause": "64",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "wrongWayOneway": {
+    "tier": "fail",
+    "points": 100,
+    "clause": "1-ilova, 5.5 belgisi",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "noEntry": {
+    "tier": "fail",
+    "points": 100,
+    "clause": "1-ilova, 3.1 belgisi",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "turnRestriction": {
+    "tier": "high",
+    "points": 20,
+    "clause": "1-ilova, 3.18.1 va 3.18.2 belgilari",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "collisionCar": {
+    "tier": "fail",
+    "points": 100,
+    "clause": null,
+    "source": null,
+    "unverified": true
+  },
+  "collisionPedestrian": {
+    "tier": "fail",
+    "points": 100,
+    "clause": null,
+    "source": null,
+    "unverified": true
+  },
+  "collisionObstacle": {
+    "tier": "fail",
+    "points": 100,
+    "clause": null,
+    "source": null,
+    "unverified": true
+  },
+  "speeding": {
+    "tier": "low",
+    "points": 5,
+    "clause": "78",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "speedingSevere": {
+    "tier": "fail",
+    "points": 100,
+    "clause": "78",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "noIndicator": {
+    "tier": "high",
+    "points": 20,
+    "clause": "45",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "noMirrorCheck": {
+    "tier": "high",
+    "points": 20,
+    "clause": "47",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "wrongLaneForTurn": {
+    "tier": "high",
+    "points": 20,
+    "clause": "56",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "tailgating": {
+    "tier": "low",
+    "points": 5,
+    "clause": "73",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "harshBraking": {
+    "tier": "low",
+    "points": 5,
+    "clause": null,
+    "source": null,
+    "unverified": true
+  },
+  "stall": {
+    "tier": "low",
+    "points": 5,
+    "clause": null,
+    "source": null,
+    "unverified": true
+  },
+  "rollBack": {
+    "tier": "low",
+    "points": 5,
+    "clause": null,
+    "source": null,
+    "unverified": true
+  },
+  "noSeatBelt": {
+    "tier": "low",
+    "points": 5,
+    "clause": "9",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "stoppedOnCrossing": {
+    "tier": "high",
+    "points": 20,
+    "clause": "112",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  },
+  "noIndicatorPullOff": {
+    "tier": "low",
+    "points": 5,
+    "clause": "45",
+    "source": "https://lex.uz/mact/-5953883",
+    "unverified": false
+  }
+}
