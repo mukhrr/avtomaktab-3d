@@ -539,7 +539,7 @@
   "signalCrossings": 5,
   "multiLaneTurns": 2,
   "speedZones": 2,
-  "stopSigns": 0,
-  "giveWaySigns": 3
+  "stopSigns": 1,
+  "giveWaySigns": 2
  }
 }
