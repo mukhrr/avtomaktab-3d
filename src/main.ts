@@ -4,6 +4,9 @@ import type { DistrictData } from './shared/district';
 import { CameraRig, CAR_LAYER } from './camera/cameras';
 import { createMirrors } from './camera/mirrors';
 import { fixedSteps, STEP } from './physics/loop';
+import { createHudStore, gearLabel } from './ui/hudStore';
+import { createMinimap } from './ui/minimap';
+import { mountHud } from './ui/mount';
 import { createPhysics } from './physics/world';
 import { InputReader } from './vehicle/input';
 import { Vehicle } from './vehicle/vehicle';
@@ -16,6 +19,9 @@ const OUT_OF_BOUNDS = 20;
 const FLIPPED_UP_Y = 0.2;
 const FLIPPED_RESET_S = 2;
 // On the ring road around Amir Temur square; the origin itself is inside the park.
+const HUD_INTERVAL = 0.1;
+const STREET_RADIUS = 12;
+const STOPPED = 0.5;
 const SPAWN_POINT: [number, number] = [-53, 105];
 
 const district: DistrictData = await (await fetch(`/districts/${DISTRICT}/district.json`)).json();
@@ -26,6 +32,8 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
+// Mirrors render several times per frame; count draw calls for the whole frame.
+renderer.info.autoReset = false;
 document.body.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -78,13 +86,18 @@ function resetToLane() {
 }
 
 const clock = new THREE.Clock();
-let acc = 0, flippedFor = 0;
+let acc = 0, flippedFor = 0, frames = 0, hudT = 0;
+const hud = createHudStore();
+const minimap = createMinimap(district);
+mountHud(hud, minimap.canvas, params.has('debug'));
 
 renderer.setAnimationLoop(() => {
   const dt = clock.getDelta();
+  renderer.info.reset();
   const controls = input.read(held, pressed, navigator.getGamepads?.() ?? [], dt);
   if (pressed.has('KeyR')) resetToLane();
   if (pressed.has('KeyC')) rig.cycle();
+  if (pressed.has('KeyG') && Math.abs(car.speed) < STOPPED) car.gearbox = car.drivetrain.gearbox === 'auto' ? 'manual' : 'auto';
   pressed.clear();
 
   const r = fixedSteps(acc, dt);
@@ -106,6 +119,26 @@ renderer.setAnimationLoop(() => {
   mirrors.update(rig.mode);
   renderer.render(scene, camera);
   mirrors.overlay(rig.mode);
+
+  const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(car.object.quaternion);
+  minimap.draw(p.x, p.z, Math.atan2(fwd.x, fwd.z));
+  frames++;
+  hudT += dt;
+  if (hudT >= HUD_INTERVAL) {
+    const t = car.drivetrain;
+    hud.set({
+      speedKmh: Math.round(Math.abs(car.speed) * 3.6),
+      gear: gearLabel(t.gearbox, t.gear),
+      rpm: t.rpm,
+      running: t.running,
+      gearbox: t.gearbox,
+      street: nearestLane(district, p.x, p.z, STREET_RADIUS)?.edge.name ?? '',
+      fps: Math.round(frames / hudT),
+      drawCalls: renderer.info.render.calls,
+    });
+    frames = 0;
+    hudT = 0;
+  }
 });
 
-Object.assign(window, { __game: { car, held, pressed, rig } });
+Object.assign(window, { __game: { car, held, pressed, rig, renderer, scene, camera, mirrors } });
