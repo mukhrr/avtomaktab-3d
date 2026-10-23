@@ -35,3 +35,8 @@ test('edge end points equal their node positions', () => {
     expect(e.points.at(-1)).toEqual(byId.get(e.to)!.position);
   }
 });
+
+test('every edge has one OSM node id per point', () => {
+  for (const e of g.edges) expect(e.nodeIds).toHaveLength(e.points.length);
+  expect(g.edges.find(e => e.id === '100:0')!.nodeIds).toEqual(['1', '17', '2']);
+});

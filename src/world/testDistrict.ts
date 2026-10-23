@@ -7,6 +7,7 @@ export function testDistrict(): DistrictData {
   });
   const edge = (r: Road, lanesForward: number, lanesBackward: number): GraphEdge => ({
     id: `${r.id}:0`, from: `${r.id}a`, to: `${r.id}b`, roadId: r.id, points: r.points,
+    nodeIds: [`${r.id}a`, `${r.id}b`],
     lanesForward, lanesBackward, width: r.width, maxspeed: 60, name: r.name,
   });
   const avenue = road('avenue', 'primary', [[-100, 0], [100, 0]], 8, false);
@@ -16,7 +17,7 @@ export function testDistrict(): DistrictData {
     roads: [avenue, street],
     buildings: [{ id: 'b', height: 10, footprint: [[-40, 20], [-20, 20], [-20, 40], [-40, 40]] }],
     areas: [{ id: 'park', kind: 'green', outline: [[0, 30], [40, 30], [40, 70], [0, 70]] }],
-    waterways: [], signals: [],
+    waterways: [], signals: [], crossings: [],
     graph: { nodes: [], edges: [edge(avenue, 1, 1), edge(street, 2, 0)] },
   };
 }

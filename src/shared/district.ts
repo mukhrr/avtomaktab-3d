@@ -48,11 +48,27 @@ export interface GraphEdge {
   to: string;
   roadId: string;
   points: Vec2[];
+  /** OSM node ids, same length and order as `points`. */
+  nodeIds: string[];
   lanesForward: number;
   lanesBackward: number;
   width: number;
   maxspeed: number;
   name: string;
+}
+
+export type CrossingKind = 'signal' | 'zebra' | 'unmarked';
+
+export interface Crossing {
+  id: string;
+  position: Vec2;
+  kind: CrossingKind;
+  edgeId: string;
+  /** Metres along the edge from `edge.from`. */
+  at: number;
+  width: number;
+  controllerId?: string;
+  walkPhase?: number;
 }
 
 export interface DistrictData {
@@ -64,6 +80,7 @@ export interface DistrictData {
   areas: Area[];
   waterways: Waterway[];
   signals: Signal[];
+  crossings: Crossing[];
   graph: { nodes: GraphNode[]; edges: GraphEdge[] };
 }
 

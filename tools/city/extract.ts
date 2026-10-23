@@ -1,4 +1,4 @@
-import type { Area, Building, Road, Signal, Vec2, Waterway } from '../../src/shared/district';
+import type { Area, Building, CrossingKind, Road, Signal, Vec2, Waterway } from '../../src/shared/district';
 import type { OsmData, OsmWay } from './osm';
 
 export interface Overrides {
@@ -15,6 +15,8 @@ export interface ExtractResult {
   signals: Signal[];
   /** OSM node ids per road, in order, for the graph builder. */
   roadNodeIds: Map<string, string[]>;
+  /** Crossing nodes that lie on car roads. */
+  crossingNodes: { id: string; kind: CrossingKind }[];
 }
 
 const DEFAULT_WIDTH: Record<string, number> = {
@@ -31,6 +33,12 @@ const GREEN_LANDUSE = new Set(['grass', 'forest', 'recreation_ground']);
 const WATERWAY_WIDTH: Record<string, number> = { canal: 9, river: 9, stream: 3 };
 
 export const FOOT_KINDS = new Set(['footway', 'path', 'cycleway', 'pedestrian']);
+
+function crossingKind(tag: string | undefined): CrossingKind {
+  if (tag?.includes('traffic_signals')) return 'signal';
+  if (tag === 'zebra' || tag === 'marked' || tag === 'uncontrolled') return 'zebra';
+  return 'unmarked';
+}
 
 const leadingNumber = (v: string | undefined) => {
   const m = v?.match(/^\s*(\d+(?:\.\d+)?)/);
@@ -72,7 +80,7 @@ export function extractFeatures(
   overrides: Overrides,
 ): ExtractResult {
   const removed = new Set(overrides.removeWays);
-  const result: ExtractResult = { roads: [], buildings: [], areas: [], waterways: [], signals: [], roadNodeIds: new Map() };
+  const result: ExtractResult = { roads: [], buildings: [], areas: [], waterways: [], signals: [], roadNodeIds: new Map(), crossingNodes: [] };
 
   for (const n of osm.nodes.values()) {
     if (n.tags.highway === 'traffic_signals') result.signals.push({ id: n.id, position: project(n.lat, n.lon) });
@@ -133,6 +141,17 @@ export function extractFeatures(
 
     const ww = WATERWAY_WIDTH[t.waterway];
     if (ww) result.waterways.push({ id: w.id, width: ww, points: pts });
+  }
+
+  const onCarRoad = new Set<string>();
+  for (const r of result.roads) {
+    if (FOOT_KINDS.has(r.kind)) continue;
+    for (const id of result.roadNodeIds.get(r.id) ?? []) onCarRoad.add(id);
+  }
+  for (const n of osm.nodes.values()) {
+    if (n.tags.highway === 'crossing' && onCarRoad.has(n.id)) {
+      result.crossingNodes.push({ id: n.id, kind: crossingKind(n.tags.crossing) });
+    }
   }
   return result;
 }

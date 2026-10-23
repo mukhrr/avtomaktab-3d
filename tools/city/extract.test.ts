@@ -53,9 +53,28 @@ test('overrides change lanes, heights and remove ways', () => {
 test('green areas and signals are extracted', () => {
   const f = run();
   expect(f.areas).toEqual([expect.objectContaining({ id: '104', kind: 'green' })]);
-  expect(f.signals.map(s => s.id)).toEqual(['16']);
+  expect(f.signals.map(s => s.id)).toEqual(['16', '18']);
 });
 
 test('road node ids are kept in order for the graph builder', () => {
   expect(run().roadNodeIds.get('101')).toEqual(['4', '2', '5']);
+});
+
+test('crossing nodes on car roads are extracted with a kind', () => {
+  expect(run().crossingNodes).toEqual([{ id: '17', kind: 'zebra' }]);
+});
+
+test('crossing tags map to signal, zebra or unmarked; nodes off car roads are dropped', () => {
+  const osm = parseOsm(xml);
+  const cross = (id: string, tags: Record<string, string>) =>
+    osm.nodes.set(id, { id, lat: 41.311, lon: 69.2785, tags: { highway: 'crossing', ...tags } });
+  cross('17', { crossing: 'traffic_signals;marked' });
+  cross('20', { crossing: 'marked' });
+  cross('21', { crossing: 'uncontrolled' });
+  cross('22', { crossing: 'unmarked' });
+  cross('23', {});
+  cross('24', { crossing: 'zebra' });
+  osm.ways.find(w => w.id === '100')!.nodeIds.push('20', '21', '22', '23');
+  const kinds = Object.fromEntries(run(none, osm).crossingNodes.map(c => [c.id, c.kind]));
+  expect(kinds).toEqual({ '17': 'signal', '20': 'zebra', '21': 'zebra', '22': 'unmarked', '23': 'unmarked' });
 });

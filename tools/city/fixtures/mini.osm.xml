@@ -22,9 +22,11 @@
  <node id="14" lat="41.3111" lon="69.2806"/>
  <node id="15" lat="41.3111" lon="69.2802"/>
  <node id="16" lat="41.3110" lon="69.2795"><tag k="highway" v="traffic_signals"/></node>
- <way id="100"><nd ref="1"/><nd ref="2"/><nd ref="3"/><tag k="highway" v="residential"/><tag k="name" v="Test ko'chasi"/><tag k="lanes" v="2"/></way>
+ <node id="17" lat="41.3110" lon="69.2785"><tag k="highway" v="crossing"/><tag k="crossing" v="zebra"/></node>
+ <node id="18" lat="41.3119" lon="69.2795"><tag k="highway" v="traffic_signals"/></node>
+ <way id="100"><nd ref="1"/><nd ref="17"/><nd ref="2"/><nd ref="3"/><tag k="highway" v="residential"/><tag k="name" v="Test ko'chasi"/><tag k="lanes" v="2"/></way>
  <way id="101"><nd ref="4"/><nd ref="2"/><nd ref="5"/><tag k="highway" v="residential"/><tag k="lanes" v="2;3"/></way>
- <way id="102"><nd ref="6"/><nd ref="7"/><tag k="highway" v="primary"/><tag k="oneway" v="yes"/><tag k="name:uz" v="Bosh yo'l"/><tag k="name" v="Main road"/></way>
+ <way id="102"><nd ref="6"/><nd ref="18"/><nd ref="7"/><tag k="highway" v="primary"/><tag k="oneway" v="yes"/><tag k="name:uz" v="Bosh yo'l"/><tag k="name" v="Main road"/></way>
  <way id="103"><nd ref="8"/><nd ref="9"/><nd ref="10"/><nd ref="11"/><nd ref="8"/><tag k="building" v="yes"/><tag k="building:levels" v="4"/></way>
  <way id="104"><nd ref="12"/><nd ref="13"/><nd ref="14"/><nd ref="15"/><nd ref="12"/><tag k="leisure" v="park"/></way>
  <way id="105"><nd ref="1"/><nd ref="999"/><tag k="highway" v="service"/></way>

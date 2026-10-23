@@ -33,6 +33,7 @@ export function buildRoadGraph(
         to: ids[i],
         roadId: r.id,
         points: ids.slice(start, i + 1).map(project),
+        nodeIds: ids.slice(start, i + 1),
         lanesForward,
         lanesBackward,
         width: r.width,

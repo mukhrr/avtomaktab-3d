@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { edgeLength } from './attach';
 import { buildDistrict } from './build';
 
 const xml = readFileSync(new URL('./fixtures/mini.osm.xml', import.meta.url), 'utf8');
@@ -19,4 +20,13 @@ test('bounds are the bbox in metres', () => {
 
 test('survives a JSON round trip unchanged', () => {
   expect(JSON.parse(JSON.stringify(d))).toEqual(d);
+});
+
+test('zebra node on way 100 becomes a crossing on edge 100:0', () => {
+  const c = d.crossings.find(c => c.id === '17')!;
+  const e = d.graph.edges.find(e => e.id === '100:0')!;
+  expect(c).toMatchObject({ kind: 'zebra', edgeId: '100:0', width: 7 });
+  expect(c.at).toBeGreaterThan(0);
+  expect(c.at).toBeLessThan(edgeLength(e));
+  expect(c.position).toEqual(e.points[e.nodeIds.indexOf('17')]);
 });
