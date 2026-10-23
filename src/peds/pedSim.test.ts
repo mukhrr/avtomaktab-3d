@@ -175,3 +175,34 @@ test('crossers finish, despawn and are replaced', () => {
     expect(c.sim.peds.filter(p => p.active).length).toBe(4);
   }
 });
+
+function crossingFootwayNetwork(): DistrictData {
+  const d = testNetwork();
+  d.roads.push({ id: 'fw2', kind: 'footway', width: 2, lanes: 0, oneway: false, name: '', maxspeed: 0, points: [[-60, -20], [-60, 20]] });
+  return d;
+}
+
+test('walkers never stand on the carriageway of a road their footway crosses', () => {
+  const c = setup(crossingFootwayNetwork(), { crossers: 0, walkers: 40 });
+  let northSide = false, southSide = false;
+  for (let i = 0; i < 60 * 30; i++) {
+    c.step();
+    for (const p of c.sim.peds) {
+      if (!p.active || Math.abs(p.position[0] + 60) > 1) continue;
+      expect(Math.abs(p.position[1])).toBeGreaterThanOrEqual(3.5);
+      if (p.position[1] < 0) northSide = true;
+      else southSide = true;
+    }
+  }
+  expect(northSide && southSide).toBe(true);
+});
+
+test('spawning does nothing without footways in range and is capped per step', () => {
+  const c = setup(testNetwork(), { crossers: 0, walkers: 80 });
+  c.step({ ...AWAY, position: [300, 100] });
+  expect(c.sim.peds.filter(p => p.active).length).toBe(0);
+  expect(c.sim.spawnAttempts).toBe(0);
+  c.step({ ...AWAY, position: [-60, 30] });
+  expect(c.sim.spawnAttempts).toBeGreaterThan(0);
+  expect(c.sim.spawnAttempts).toBeLessThanOrEqual(20);
+});

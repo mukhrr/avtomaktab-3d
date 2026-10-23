@@ -45,6 +45,11 @@ interface Ped extends PedView {
   s: number;
 }
 
+const ROAD_MARGIN = 0.5;
+const MIN_RUN = 5;
+const SAMPLE_STEP = 1;
+const CELL = 100;
+const WALKER_ATTEMPTS_PER_STEP = 20;
 const CROSSER_RANGE = 150;
 const CROSSER_LEAVE = 200;
 const WALKER_RANGE = 200;
@@ -81,6 +86,60 @@ function timeToArrival(position: Vec2, heading: number, speed: number, point: Ve
   return Math.max(ahead, 0) / Math.max(Math.abs(speed), 0.1);
 }
 
+const cellKey = (cx: number, cz: number) => `${cx},${cz}`;
+
+/** Distance from p to segment a-b. */
+function segDist(p: Vec2, a: Vec2, b: Vec2): number {
+  const dx = b[0] - a[0], dz = b[1] - a[1];
+  const l2 = dx * dx + dz * dz;
+  const t = l2 ? Math.min(Math.max(((p[0] - a[0]) * dx + (p[1] - a[1]) * dz) / l2, 0), 1) : 0;
+  return Math.hypot(p[0] - a[0] - dx * t, p[1] - a[1] - dz * t);
+}
+
+/** Footway polylines cut into runs that stay off every car carriageway. */
+function offRoadRuns(d: DistrictData): Footway[] {
+  const grid = new Map<string, { a: Vec2; b: Vec2; reach: number }[]>();
+  for (const r of d.roads) {
+    if (FOOT_KINDS.has(r.kind)) continue;
+    const reach = r.width / 2 + ROAD_MARGIN;
+    for (let i = 1; i < r.points.length; i++) {
+      const a = r.points[i - 1], b = r.points[i];
+      const seg = { a, b, reach };
+      const x0 = Math.floor((Math.min(a[0], b[0]) - reach) / CELL), x1 = Math.floor((Math.max(a[0], b[0]) + reach) / CELL);
+      const z0 = Math.floor((Math.min(a[1], b[1]) - reach) / CELL), z1 = Math.floor((Math.max(a[1], b[1]) + reach) / CELL);
+      for (let cx = x0; cx <= x1; cx++) {
+        for (let cz = z0; cz <= z1; cz++) {
+          const k = cellKey(cx, cz);
+          const list = grid.get(k);
+          if (list) list.push(seg);
+          else grid.set(k, [seg]);
+        }
+      }
+    }
+  }
+  const onRoad = (p: Vec2) =>
+    (grid.get(cellKey(Math.floor(p[0] / CELL), Math.floor(p[1] / CELL))) ?? []).some(s => segDist(p, s.a, s.b) < s.reach);
+
+  const runs: Footway[] = [];
+  for (const r of d.roads) {
+    if (!FOOT_KINDS.has(r.kind) || r.points.length < 2) continue;
+    let run: Vec2[] = [];
+    const flush = () => {
+      if (run.length > 1 && polyLength(run) >= MIN_RUN) runs.push({ points: run, length: polyLength(run) });
+      run = [];
+    };
+    const visit = (p: Vec2) => (onRoad(p) ? flush() : run.push(p));
+    visit(r.points[0]);
+    for (let i = 1; i < r.points.length; i++) {
+      const a = r.points[i - 1], b = r.points[i];
+      const n = Math.max(1, Math.ceil(dist(a, b) / SAMPLE_STEP));
+      for (let k = 1; k <= n; k++) visit([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]);
+    }
+    flush();
+  }
+  return runs;
+}
+
 export class PedSim implements CrossingOccupancy {
   private readonly pool: Ped[] = [];
   readonly peds: readonly PedView[] = this.pool;
@@ -88,7 +147,9 @@ export class PedSim implements CrossingOccupancy {
   private readonly crossings: CrossingGeom[] = [];
   private readonly crossingIndex = new Map<string, number>();
   private readonly footways: Footway[] = [];
-  private readonly footwayTotal: number;
+  private readonly footwayCells = new Map<string, number[]>();
+  /** Walker spawn samples taken during the last step. */
+  spawnAttempts = 0;
   private readonly clear = new Map<number, boolean>();
 
   constructor(d: DistrictData, opts: { crossers: number; walkers: number; seed: number }) {
@@ -105,12 +166,18 @@ export class PedSim implements CrossingOccupancy {
         normal: [-tangent[1], tangent[0]], half: c.width / 2 + CURB_MARGIN,
       });
     }
-    for (const r of d.roads) {
-      if (!FOOT_KINDS.has(r.kind) || r.points.length < 2) continue;
-      const length = polyLength(r.points);
-      if (length > 0) this.footways.push({ points: r.points, length });
-    }
-    this.footwayTotal = this.footways.reduce((s, f) => s + f.length, 0);
+    this.footways.push(...offRoadRuns(d));
+    this.footways.forEach((f, k) => {
+      const xs = f.points.map(p => Math.floor(p[0] / CELL)), zs = f.points.map(p => Math.floor(p[1] / CELL));
+      for (let cx = Math.min(...xs); cx <= Math.max(...xs); cx++) {
+        for (let cz = Math.min(...zs); cz <= Math.max(...zs); cz++) {
+          const key = cellKey(cx, cz);
+          const list = this.footwayCells.get(key);
+          if (list) list.push(k);
+          else this.footwayCells.set(key, [k]);
+        }
+      }
+    });
     const total = opts.crossers + opts.walkers;
     for (let i = 0; i < total; i++) {
       this.pool.push({
@@ -232,12 +299,17 @@ export class PedSim implements CrossingOccupancy {
 
   private spawn(player: PlayerState): void {
     let near: number[] | null = null;
+    let runs: number[] | null = null;
+    this.spawnAttempts = 0;
     for (const p of this.pool) {
       if (p.active) continue;
       if (p.kind === 'crosser') {
         near ??= this.crossings.flatMap((x, k) => (dist(x.centre, player.position) <= CROSSER_RANGE ? [k] : []));
         if (near.length) this.spawnCrosser(p, near, player);
-      } else if (this.footwayTotal > 0) this.spawnWalker(p, player);
+      } else {
+        runs ??= this.runsNear(player);
+        if (runs.length && this.spawnAttempts < WALKER_ATTEMPTS_PER_STEP) this.spawnWalker(p, runs, player);
+      }
     }
   }
 
@@ -265,11 +337,25 @@ export class PedSim implements CrossingOccupancy {
     }
   }
 
-  private spawnWalker(p: Ped, player: PlayerState): void {
-    for (let i = 0; i < SPAWN_ATTEMPTS; i++) {
-      let pick = this.rand() * this.footwayTotal;
-      let k = 0;
-      while (k < this.footways.length - 1 && pick > this.footways[k].length) pick -= this.footways[k++].length;
+  private runsNear(player: PlayerState): number[] {
+    const found = new Set<number>();
+    const [px, pz] = player.position;
+    for (let cx = Math.floor((px - WALKER_RANGE) / CELL); cx <= Math.floor((px + WALKER_RANGE) / CELL); cx++) {
+      for (let cz = Math.floor((pz - WALKER_RANGE) / CELL); cz <= Math.floor((pz + WALKER_RANGE) / CELL); cz++) {
+        for (const k of this.footwayCells.get(cellKey(cx, cz)) ?? []) found.add(k);
+      }
+    }
+    return [...found];
+  }
+
+  private spawnWalker(p: Ped, runs: number[], player: PlayerState): void {
+    const total = runs.reduce((sum, k) => sum + this.footways[k].length, 0);
+    for (let i = 0; i < SPAWN_ATTEMPTS && this.spawnAttempts < WALKER_ATTEMPTS_PER_STEP; i++) {
+      this.spawnAttempts++;
+      let pick = this.rand() * total;
+      let n = 0;
+      while (n < runs.length - 1 && pick > this.footways[runs[n]].length) pick -= this.footways[runs[n++]].length;
+      const k = runs[n];
       const f = this.footways[k];
       const s = Math.min(pick, f.length);
       const at = pointAlong(f.points, s);
