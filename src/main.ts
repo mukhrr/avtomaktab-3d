@@ -19,7 +19,7 @@ import { pedView } from './peds/pedView';
 import { EventBus } from './sim/events';
 import { SignalSystem } from './sim/signals';
 import { LaneNetwork } from './traffic/lanes';
-import { closingSpeed, TrafficBodies } from './traffic/trafficBodies';
+import { approachSpeeds, closingSpeed, TrafficBodies } from './traffic/trafficBodies';
 import { TrafficSim, type PlayerState } from './traffic/trafficSim';
 import { trafficView } from './traffic/trafficView';
 import { newCabin, stepCabin } from './vehicle/cabin';
@@ -243,7 +243,8 @@ renderer.setAnimationLoop(() => {
       const other = a === car.collider.handle ? b : b === car.collider.handle ? a : null;
       if (other === null || other === ground.handle) return;
       const ai = bodies.agentFor(other);
-      events.emit({ type: 'collision', with: ai ? 'car' : 'building', speed: ai ? closingSpeed(player, ai) : Math.abs(player.speed), time: signals.time });
+      if (ai) events.emit({ type: 'collision', with: 'car', speed: closingSpeed(player, ai), time: signals.time, approach: approachSpeeds(player, ai) });
+      else events.emit({ type: 'collision', with: 'building', speed: Math.abs(player.speed), time: signals.time });
     });
     if (canHitPedestrian(player.speed)) {
       for (const id of peds.hitTest(player)) {

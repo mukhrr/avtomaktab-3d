@@ -6,7 +6,7 @@ import { SignSystem } from '../sim/signs';
 import { canHitPedestrian, PedSim } from '../peds/pedSim';
 import { canStopBefore, idmAccel, turnSpeed } from '../traffic/idm';
 import { LaneNetwork, pointAt, type LaneRef } from '../traffic/lanes';
-import { closingSpeed } from '../traffic/trafficBodies';
+import { approachSpeeds, closingSpeed } from '../traffic/trafficBodies';
 import { CAR_CLASSES, TrafficSim, type PlayerState } from '../traffic/trafficSim';
 import { endHeading, project, startHeading, turnBetween, wrapAngle } from '../traffic/turns';
 import { newCabin, stepCabin, type CabinState, type Indicator } from '../vehicle/cabin';
@@ -821,7 +821,7 @@ export class ScriptedDriver {
       const k = CAR_CLASSES[a.carClass];
       if (!boxesOverlap(mine, { p: a.position, h: a.heading, l: k.length, w: k.width })) continue;
       now.add(a.id);
-      if (!this.touching.has(a.id)) out.push({ type: 'collision', with: 'car', speed: closingSpeed(player, a), time: t });
+      if (!this.touching.has(a.id)) out.push({ type: 'collision', with: 'car', speed: closingSpeed(player, a), time: t, approach: approachSpeeds(player, a) });
     }
     this.touching = now;
     if (canHitPedestrian(player.speed)) {

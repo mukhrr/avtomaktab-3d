@@ -3,6 +3,8 @@ import { CollisionRule } from './collisions';
 import { drive, ids, repeat, type SnapOver } from './testSnap';
 
 const car = (speed: number): GameEvent => ({ type: 'collision', with: 'car', speed, time: 0 });
+/** A car contact where each side moves toward the other at the given m/s (negative: away). */
+const carFrom = (player: number, other: number): GameEvent => ({ type: 'collision', with: 'car', speed: Math.abs(other - player), time: 0, approach: { player, other } });
 const wall = (speed: number): GameEvent => ({ type: 'collision', with: 'building', speed, time: 0 });
 const ped = (pedId: number, speed = 4): GameEvent => ({ type: 'pedestrianHit', pedId, speed, time: 0 });
 /** `speed` throughout, with `events` arriving on the listed frames. */
@@ -13,6 +15,19 @@ describe('collisions', () => {
   test('an AI car rear-ending the stationary player gives nothing, even with the push in the same step', () => {
     const frames = [...repeat(10, { speed: 0 }), { speed: 1.8, events: [car(5)] }, ...repeat(10, { speed: 1 })];
     expect(drive(new CollisionRule(), frames)).toEqual([]);
+  });
+
+  test('creeping in a queue and rear-ended by an AI car is not the player\'s fault', () => {
+    expect(drive(new CollisionRule(), run(1.5, { 10: [carFrom(-1.5, 5)] }))).toEqual([]);
+  });
+
+  test('creeping into a car standing ahead is', () => {
+    expect(ids(drive(new CollisionRule(), run(1.5, { 10: [carFrom(1.5, 0)] })))).toEqual(['collisionCar']);
+  });
+
+  test('both closing, the player faster, is the player\'s fault; an AI car cutting across a steady player is not', () => {
+    expect(ids(drive(new CollisionRule(), run(8, { 10: [carFrom(3, 2)] })))).toEqual(['collisionCar']);
+    expect(drive(new CollisionRule(), run(8, { 10: [carFrom(0.2, 2)] }))).toEqual([]);
   });
 
   test('driving into a car gives one; three contacts within 1 s are still one', () => {

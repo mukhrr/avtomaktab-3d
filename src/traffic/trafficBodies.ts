@@ -63,3 +63,14 @@ export function closingSpeed(player: PlayerState, agent: AgentView): number {
   const vz = Math.cos(player.heading) * player.speed - Math.cos(agent.heading) * agent.speed;
   return Math.hypot(vx, vz);
 }
+
+/** Speed of each car toward the other's centre, m/s: who drove into whom. */
+export function approachSpeeds(player: PlayerState, agent: AgentView): { player: number; other: number } {
+  const dx = agent.position[0] - player.position[0], dz = agent.position[1] - player.position[1];
+  const d = Math.hypot(dx, dz) || 1;
+  const ux = dx / d, uz = dz / d;
+  return {
+    player: (Math.sin(player.heading) * ux + Math.cos(player.heading) * uz) * player.speed,
+    other: -(Math.sin(agent.heading) * ux + Math.cos(agent.heading) * uz) * agent.speed,
+  };
+}

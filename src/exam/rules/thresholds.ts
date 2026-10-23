@@ -79,6 +79,8 @@ export const COLLISION_DEBOUNCE = 3;
 export const COLLISION_DEDUPE = 3;
 /** m/s: below this the player counts as standing when a car hits it. */
 export const COLLISION_STANDING = 1;
+/** m/s: a player moving toward the other car slower than this, and slower than it moves toward the player, was hit. */
+export const COLLISION_NOT_AT_FAULT = 0.5;
 export const OBSTACLE_MIN_SPEED = 2;
 
 export const HARSH_DECEL = 6;
