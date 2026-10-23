@@ -63,6 +63,24 @@ describe('noIndicator', () => {
   });
 });
 
+describe('after a junction exit', () => {
+  const twoLaneN = testRoad([], d => { const n = d.graph.edges.find(e => e.id === 'n')!; n.lanesForward = 2; n.width = 10.5; });
+  const nLane = (k: number) => ({ ...N_OUT, lane: k });
+  const signalled = { indicator: 'left' as const, lastGlance: { ...NEVER, left: 1.5 } };
+  const exit = (lanes: number[]) => [...transit(W_IN, N_OUT, { cabin: signalled }, { before: 20, inside: 15, after: 0 }), ...lanes.map(k => ({ speed: 5, ref: nLane(k) }))];
+
+  test('a wide turn reading the far lane briefly is not a lane change', () => {
+    const frames = exit([...Array(3).fill(1), ...Array(15).fill(0)]);
+    expect(drive(new IndicatorRule(twoLaneN), frames)).toEqual([]);
+    expect(drive(new MirrorCheckRule(twoLaneN), frames)).toEqual([]);
+  });
+
+  test('a real lane change once the exit lane has settled still counts', () => {
+    const frames = exit([...Array(15).fill(0), ...Array(12).fill(1)]);
+    expect(ids(drive(new IndicatorRule(twoLaneN), frames))).toEqual(['noIndicator']);
+  });
+});
+
 describe('noMirrorCheck', () => {
   const lit = { indicator: 'left' as const };
   test('a glance 7 s before gives noMirrorCheck, 5 s before gives none', () => {

@@ -15,6 +15,8 @@ interface Line {
   couldStop: boolean | null;
   /** Front bumper past the line, metres. */
   past: number;
+  /** The light when the front went PAST_LINE over, null if it never did while watched. */
+  atLine: LightState | null;
 }
 
 /** Remembers the current approach's stop line after the snapshot stops listing it. */
@@ -36,7 +38,7 @@ class LineWatch {
     if (seen) {
       const key = `${ref.edgeId}|${ref.dir}|${Math.round(seen.stopAt * 10) / 10}`;
       if (this.line?.key !== key) {
-        this.line = { key, edgeId: ref.edgeId, dir: ref.dir, stopAt: seen.stopAt, state: seen.state, couldStop: null, past: past(seen.stopAt) };
+        this.line = { key, edgeId: ref.edgeId, dir: ref.dir, stopAt: seen.stopAt, state: seen.state, couldStop: null, past: past(seen.stopAt), atLine: null };
       }
       if (seen.state === 'yellow' && this.line.couldStop === null) this.line.couldStop = couldStop(s.speed, seen.distance);
       if (seen.state !== 'yellow') this.line.couldStop = null;
@@ -45,7 +47,7 @@ class LineWatch {
     const line = this.line;
     if (!line) return;
     const now = past(line.stopAt);
-    if (line.past <= PAST_LINE && now > PAST_LINE) this.crossed = line.state;
+    if (line.past <= PAST_LINE && now > PAST_LINE) this.crossed = line.atLine = line.state;
     if (line.past <= REDLIGHT_ENTRY && now > REDLIGHT_ENTRY) this.entered = line.state;
     line.past = now;
   }
@@ -88,8 +90,9 @@ abstract class LineRule implements Rule {
 
 export class RedLightRule extends LineRule {
   readonly id = 'redLight';
-  protected judge(): 'redLight' | null {
-    return isRed(this.watch.entered) ? 'redLight' : null;
+  /** Red both at the line and at REDLIGHT_ENTRY: a car that crossed legally may clear after the light changes. */
+  protected judge(_s: DriveSnapshot, line: Line): 'redLight' | null {
+    return isRed(this.watch.entered) && isRed(line.atLine) ? 'redLight' : null;
   }
 }
 

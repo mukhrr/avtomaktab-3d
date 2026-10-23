@@ -44,3 +44,8 @@ test('the approach lane is the one held before the junction, not one read inside
 test('a turn made in reverse is not judged', () => {
   expect(drive(new WrongLaneForTurnRule(road), transit(from(0), N_OUT, { speed: -2 }))).toEqual([]);
 });
+
+test('a late move into the left lane under 1 s before the junction is judged from the new lane', () => {
+  const frames = transit(from(0), N_OUT).map((f, i) => (i >= 14 && i < 20 ? { ...f, ref: from(1) } : f));
+  expect(drive(new WrongLaneForTurnRule(road), frames)).toEqual([]);
+});

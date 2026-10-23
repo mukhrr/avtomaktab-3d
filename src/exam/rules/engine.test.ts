@@ -47,13 +47,37 @@ test('redLight hides stopLinePast and yellowEntry from the same line within 3 s'
     scripted([v('redLight', 1, line)]),
     scripted([v('stopLinePast', 2.5, line), v('yellowEntry', 1, line), v('stopLinePast', 3, other), v('stopLinePast', 4.2, line)]),
   ]);
-  expect(runTo(engine, 5).map(x => `${x.id}@${x.t}`)).toEqual(['redLight@1', 'stopLinePast@3', 'stopLinePast@4.2']);
+  expect(runTo(engine, 8).map(x => `${x.id}@${x.t}`)).toEqual(['redLight@1', 'stopLinePast@3', 'stopLinePast@4.2']);
+});
+
+test('a lower-tier same-line violation is held back 3 s, so a later redLight still hides it', () => {
+  const line = { line: 'a|1|100' };
+  const engine = new RuleEngine([scripted([v('stopLinePast', 1, line), v('redLight', 3.5, line)])]);
+  const out: string[] = [];
+  for (let i = 0; i <= 80; i++) out.push(...engine.update(snap({ t: i / 10 })).map(x => `${x.id}@${x.t}`));
+  expect(out).toEqual(['redLight@3.5']);
+});
+
+test('a held violation is released, with its own time and place, once 3 s pass without a redLight', () => {
+  const engine = new RuleEngine([scripted([{ ...v('stopLinePast', 1, { line: 'x' }), position: [5, 6] }])]);
+  const seen: [number, Violation][] = [];
+  for (let i = 0; i <= 50; i++) for (const x of engine.update(snap({ t: i / 10 }))) seen.push([i / 10, x]);
+  expect(seen).toHaveLength(1);
+  expect(seen[0][0]).toBeCloseTo(4.1, 5);
+  expect(seen[0][1]).toMatchObject({ id: 'stopLinePast', t: 1, position: [5, 6] });
+});
+
+test('flush returns what is still held, once', () => {
+  const engine = new RuleEngine([scripted([v('yellowEntry', 1, { line: 'x' })])]);
+  expect(runTo(engine, 2)).toEqual([]);
+  expect(engine.flush().map(x => x.id)).toEqual(['yellowEntry']);
+  expect(engine.flush()).toEqual([]);
 });
 
 test('a suppressor later in the same step still hides an earlier rule', () => {
   const line = { line: 'a|1|100' };
   const engine = new RuleEngine([scripted([v('stopLinePast', 1, line)]), scripted([v('redLight', 1, line)])]);
-  expect(runTo(engine, 2).map(x => x.id)).toEqual(['redLight']);
+  expect(runTo(engine, 6).map(x => x.id)).toEqual(['redLight']);
 });
 
 test('noEntry hides wrongWayOneway on the same edge and direction', () => {
@@ -70,7 +94,8 @@ test('reset resets every rule and forgets suppressors', () => {
   engine.reset();
   expect(a.resets).toBe(1);
   expect(b.resets).toBe(1);
-  expect(engine.update(snap({ t: 1.5 })).map(x => x.id)).toEqual(['stopLinePast']);
+  engine.update(snap({ t: 1.5 }));
+  expect(engine.flush().map(x => x.id)).toEqual(['stopLinePast']);
 });
 
 describe('end to end through the real matcher and snapshot', () => {

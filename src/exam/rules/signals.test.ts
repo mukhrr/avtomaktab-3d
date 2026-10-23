@@ -56,12 +56,57 @@ describe('redLight', () => {
     const frames = [...run(85, 3, 40, () => 'red').filter(f => f.match!.edgeS! < STOP_AT - FRONT_OFFSET + 1.5), ...stopFrontPast(1.5, 'red', 20)];
     expect(ids(rulesAlone(frames))).toEqual(['stopLinePast']);
     const engine = new RuleEngine(all());
-    expect(ids(frames.flatMap((f, i) => engine.update(snapAt(f, i))))).toEqual(['stopLinePast']);
+    expect(ids([...frames.flatMap((f, i) => engine.update(snapAt(f, i))), ...engine.flush()])).toEqual(['stopLinePast']);
   });
 
   test('carrying on to 2.5 m on red is redLight', () => {
     const frames = run(85, 3, 60, () => 'red').filter(f => f.match!.edgeS! < STOP_AT - FRONT_OFFSET + 2.5);
     expect(ids(rulesAlone([...frames, ...stopFrontPast(2.5, 'red', 20)]))).toEqual(['redLight']);
+  });
+});
+
+describe('a legal entry that the light turns red behind', () => {
+  /** Green for 1 s, yellow from the front `onsetFront` short of the line, red once the front is 1 m over. */
+  function yellowThenRed(onsetFront: number, speed: number): SnapOver[] {
+    const from = STOP_AT - FRONT_OFFSET - onsetFront - speed;
+    return repeat(60, i => {
+      const edgeS = from + speed * DT * i;
+      const front = edgeS - STOP_AT + FRONT_OFFSET;
+      return at(edgeS, i < 10 ? 'green' : front < 1 ? 'yellow' : 'red', speed);
+    });
+  }
+  const engineIds = (frames: SnapOver[]) => {
+    const engine = new RuleEngine(all());
+    return ids([...frames.flatMap((f, i) => engine.update(snapAt(f, i))), ...engine.flush()]);
+  };
+
+  test('yellow at the line, red at 1 m, carrying on: only yellowEntry when it could have stopped', () => {
+    const could = yellowThenRed(29.3, 10);
+    expect(ids(rulesAlone(could))).toEqual(['yellowEntry']);
+    expect(engineIds(could)).toEqual(['yellowEntry']);
+    const couldNot = yellowThenRed(12, 14);
+    expect(rulesAlone(couldNot)).toEqual([]);
+    expect(engineIds(couldNot)).toEqual([]);
+  });
+
+  test('stopped 1 m over on green, the light goes red, then driving on: nothing', () => {
+    const away = repeat(40, i => at(STOP_AT - FRONT_OFFSET + 1 + 0.3 * i, 'red', 3));
+    const frames = [...stopFrontPast(1, 'green', 20), ...stopFrontPast(1, 'red', 20), ...away];
+    expect(rulesAlone(frames)).toEqual([]);
+    expect(engineIds(frames)).toEqual([]);
+  });
+
+  test('front over on red and carrying on past 2 m is exactly one redLight', () => {
+    const frames = run(80, 3, 80, () => 'red');
+    expect(ids(rulesAlone(frames))).toEqual(['redLight']);
+    expect(engineIds(frames)).toEqual(['redLight']);
+  });
+
+  test('stopping 1.5 m over on red then running it is one redLight through the engine', () => {
+    const frames = [...run(85, 3, 40, () => 'red').filter(f => f.match!.edgeS! < STOP_AT - FRONT_OFFSET + 1.5), ...stopFrontPast(1.5, 'red', 12),
+      ...repeat(20, i => at(STOP_AT - FRONT_OFFSET + 1.5 + 0.3 * i, 'red', 3))];
+    expect(ids(rulesAlone(frames)).sort()).toEqual(['redLight', 'stopLinePast']);
+    expect(engineIds(frames)).toEqual(['redLight']);
   });
 });
 

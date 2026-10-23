@@ -4,7 +4,7 @@ import type { Indicator } from '../../vehicle/cabin';
 import type { Glance } from '../../vehicle/drivetrain';
 import type { DriveSnapshot } from '../snapshot';
 import type { RoadInfo } from './road';
-import { EPS, LANE_CHANGE_HOLD } from './thresholds';
+import { EPS, EXIT_SETTLE_DISTANCE, LANE_CHANGE_HOLD } from './thresholds';
 
 export interface Maneuver {
   kind: 'turn' | 'laneChange';
@@ -35,6 +35,8 @@ export class ManeuverWatch {
   private settled: LaneRef | null = null;
   private transit: (Captured & { from: LaneRef | null; reversed: boolean }) | null = null;
   private pending: (Captured & { to: LaneRef; held: number }) | null = null;
+  /** After a junction exit, lane readings settle before lane changes are watched again. */
+  private settling: { held: number; travelled: number } | null = null;
 
   constructor(private readonly road: RoadInfo) {}
 
@@ -47,8 +49,8 @@ export class ManeuverWatch {
     const ref = s.match.ref;
 
     if (s.match.inJunction !== null || s.match.onConnector) {
+      this.transit ??= { from: this.pending?.to ?? this.settled, reversed: false, ...this.capture(s) };
       this.pending = null;
-      this.transit ??= { from: this.settled, reversed: false, ...this.capture(s) };
       if (s.speed < 0) this.transit.reversed = true;
       return null;
     }
@@ -61,6 +63,17 @@ export class ManeuverWatch {
       const turn = this.road.turn(from, ref);
       const side = turn === 'straight' ? null : turn === 'right' ? 'right' : 'left';
       out = { kind: 'turn', turn, side, from, to: ref, start, indicator, indicatorSince, lastGlance };
+    }
+    if (transit) this.settling = { held: 0, travelled: 0 };
+
+    if (this.settling && ref) {
+      const st = this.settling;
+      st.held = this.settled && sameRoad(this.settled, ref) && this.settled.lane === ref.lane ? st.held + s.dt : 0;
+      st.travelled += Math.abs(s.speed) * s.dt;
+      this.settled = ref;
+      this.pending = null;
+      if (st.held >= LANE_CHANGE_HOLD - EPS || st.travelled >= EXIT_SETTLE_DISTANCE) this.settling = null;
+      return out;
     }
 
     if (!ref || s.speed < 0 || !this.settled || !sameRoad(this.settled, ref) || ref.lane === this.settled.lane) {
@@ -84,6 +97,7 @@ export class ManeuverWatch {
     this.settled = null;
     this.transit = null;
     this.pending = null;
+    this.settling = null;
   }
 
   private capture(s: DriveSnapshot): Captured {
