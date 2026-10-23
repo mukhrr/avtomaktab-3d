@@ -2,7 +2,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { DistrictData } from './shared/district';
-import { CameraRig, CAR_LAYER } from './camera/cameras';
+import { CameraRig, CAR_LAYER, lookGlance } from './camera/cameras';
 import { createMirrors } from './camera/mirrors';
 import { fixedSteps, NO_EDGES, splitControls, STEP } from './physics/loop';
 import { createHudStore, gearLabel } from './ui/hudStore';
@@ -17,6 +17,7 @@ import { LaneNetwork } from './traffic/lanes';
 import { closingSpeed, TrafficBodies } from './traffic/trafficBodies';
 import { TrafficSim, type PlayerState } from './traffic/trafficSim';
 import { trafficView } from './traffic/trafficView';
+import { newCabin, stepCabin } from './vehicle/cabin';
 import { InputReader } from './vehicle/input';
 import { Vehicle } from './vehicle/vehicle';
 import { buildWorld } from './world/buildWorld';
@@ -117,6 +118,7 @@ function resetToLane() {
 const clock = new THREE.Clock();
 let acc = 0, pendingEdges = NO_EDGES, flippedFor = 0, frames = 0, hudT = 0;
 let simMs = 0, simSteps = 0, simT = 0, simAvg = 0;
+let cabin = newCabin(), simClock = 0;
 const hud = createHudStore();
 if (params.has('debug')) events.on(e => console.log('[event]', e));
 const minimap = createMinimap(district);
@@ -125,7 +127,9 @@ mountHud(hud, minimap.canvas, params.has('debug'));
 renderer.setAnimationLoop(() => {
   const dt = clock.getDelta();
   renderer.info.reset();
-  const controls = input.read(held, pressed, navigator.getGamepads?.() ?? [], dt);
+  const read = input.read(held, pressed, navigator.getGamepads?.() ?? [], dt);
+  rig.glance = read.glance;
+  const controls = { ...read, glance: read.glance ?? (rig.mode === 'cockpit' ? lookGlance(rig.headYaw, rig.headPitch) : null) };
   if (pressed.has('KeyR')) resetToLane();
   if (pressed.has('KeyC')) rig.cycle();
   if (pressed.has('KeyG') && Math.abs(car.speed) < STOPPED) car.gearbox = car.drivetrain.gearbox === 'auto' ? 'manual' : 'auto';
@@ -147,6 +151,8 @@ renderer.setAnimationLoop(() => {
     car.update(c, STEP);
     world.step(eventQueue);
     car.sync();
+    simClock += STEP;
+    cabin = stepCabin(cabin, c, car.steerAngle, simClock);
     eventQueue.drainCollisionEvents((a, b, started) => {
       if (!started) return;
       const other = a === car.collider.handle ? b : b === car.collider.handle ? a : null;
@@ -203,10 +209,14 @@ renderer.setAnimationLoop(() => {
       activePeds: peds.peds.filter(q => q.active).length,
       controllers: district.controllers.length,
       simMs: simAvg,
+      indicator: cabin.indicator,
+      hazard: cabin.hazard,
+      belt: cabin.belt,
+      glance: cabin.glance,
     });
     frames = 0;
     hudT = 0;
   }
 });
 
-Object.assign(window, { __game: { car, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events } });
+Object.assign(window, { __game: { car, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, cabin: () => cabin } });

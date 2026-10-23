@@ -31,6 +31,7 @@ export class Vehicle {
   private controller: RAPIER.DynamicRayCastVehicleController;
   private wheels: THREE.Object3D[];
   private state: DrivetrainState;
+  private steerRad = 0;
 
   constructor(world: RAPIER.World, spawn: Spawn, gearbox: Gearbox = 'auto') {
     const model = createCarModel();
@@ -69,6 +70,11 @@ export class Vehicle {
     return this.controller.currentVehicleSpeed();
   }
 
+  /** Front-wheel steer angle in radians as last applied, positive = right (same sign as Controls.steer). */
+  get steerAngle(): number {
+    return this.steerRad;
+  }
+
   get drivetrain(): DrivetrainState {
     return this.state;
   }
@@ -99,6 +105,7 @@ export class Vehicle {
 
     // Rapier steers positive to the left; our steer input is positive to the right.
     const steer = (-c.steer * MAX_STEER) / (1 + Math.abs(speed) / STEER_FALLOFF_SPEED);
+    this.steerRad = -steer;
     for (const i of FRONT) {
       this.controller.setWheelSteering(i, steer);
       this.controller.setWheelEngineForce(i, step.wheelForce / FRONT.length);

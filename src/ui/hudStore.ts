@@ -13,6 +13,10 @@ export interface HudState {
   activePeds?: number;
   controllers?: number;
   simMs?: number;
+  indicator: 'left' | 'right' | null;
+  hazard: boolean;
+  belt: boolean;
+  glance: 'left' | 'rear' | 'right' | null;
 }
 
 export interface HudStore {
@@ -25,7 +29,7 @@ export const gearLabel = (gearbox: Gearbox, gear: number): string =>
   gear === -1 ? 'R' : gear === 0 ? 'N' : gearbox === 'auto' ? `D${gear}` : String(gear);
 
 export function createHudStore(): HudStore {
-  let state: HudState = { speedKmh: 0, gear: 'N', rpm: 0, running: true, gearbox: 'auto', street: '', fps: 0, drawCalls: 0 };
+  let state: HudState = { speedKmh: 0, gear: 'N', rpm: 0, running: true, gearbox: 'auto', street: '', fps: 0, drawCalls: 0, indicator: null, hazard: false, belt: false, glance: null };
   const listeners = new Set<() => void>();
   return {
     set(p) {

@@ -45,6 +45,7 @@ export function Hud({ store, minimap, debug }: { store: HudStore; minimap: HTMLC
         <div className="panel help">
           <b>W/S</b> gas / brake · <b>A/D</b> steer · <b>Space</b> handbrake<br />
           <b>E/Q</b> gear up/down (auto: D/R when stopped) · Manual: <b>Shift</b> clutch · <b>I</b> ignition<br />
+          <b>Z/X</b> left/right indicator · <b>V</b> hazard · <b>B</b> seat belt · hold <b>1/2/3</b> look left mirror / rear-view / right mirror<br />
           <b>G</b> auto/manual (when stopped) · <b>C</b> camera · <b>R</b> reset · <b>H</b> hide help
         </div>
       )}
@@ -60,6 +61,15 @@ export function Hud({ store, minimap, debug }: { store: HudStore; minimap: HTMLC
           <span className="box">{s.gearbox === 'auto' ? 'AUTO' : 'MANUAL'}</span>
         </div>
         {!s.running && <div className="stalled">STALLED: clutch down (Shift) or neutral, then I</div>}
+        <div className="cabin">
+          <span className={`arrow${s.indicator === 'left' || s.hazard ? ' blink' : ''}`}>{'\u25C0'}</span>
+          <span className={`hazard${s.hazard ? ' blink' : ''}`}>{'\u26A0'}</span>
+          <span className={`arrow${s.indicator === 'right' || s.hazard ? ' blink' : ''}`}>{'\u25B6'}</span>
+          <span className={`belt${s.belt ? '' : ' off'}`} title={s.belt ? 'Belt fastened' : 'Belt unfastened (B)'}>{'\u{1F9CD}'}</span>
+          <span className="mirrors">
+            {(['left', 'rear', 'right'] as const).map(g => <i key={g} className={s.glance === g ? 'on' : ''} />)}
+          </span>
+        </div>
         <div className="street">{s.street}</div>
       </div>
       <div className="minimap" ref={mapHost} />

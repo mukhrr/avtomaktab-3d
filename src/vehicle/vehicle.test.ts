@@ -4,7 +4,7 @@ import { DRIVE_SURFACE_Y } from '../physics/world';
 import type { Controls } from './drivetrain';
 import { Vehicle } from './vehicle';
 
-const idle: Controls = { throttle: 0, brake: 0, clutch: 0, steer: 0, handbrake: false, shiftUp: false, shiftDown: false, ignition: false };
+const idle: Controls = { throttle: 0, brake: 0, clutch: 0, steer: 0, handbrake: false, shiftUp: false, shiftDown: false, ignition: false, toggleLeft: false, toggleRight: false, toggleHazard: false, toggleBelt: false, glance: null };
 
 async function flatWorld() {
   await RAPIER.init();

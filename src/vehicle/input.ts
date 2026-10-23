@@ -1,4 +1,4 @@
-import type { Controls } from './drivetrain';
+import type { Controls, Glance } from './drivetrain';
 
 const STEER_IN = 3;
 const STEER_OUT = 5;
@@ -7,6 +7,10 @@ const DEADZONE = 0.08;
 
 // Standard gamepad mapping.
 const PAD = { throttle: 7, brake: 6, clutch: 4, handbrake: 5, shiftUp: 3, shiftDown: 2, ignition: 9 } as const;
+
+const PAD_CABIN = { left: 14, right: 15, hazard: 13, belt: 10 } as const;
+const GLANCE_AXIS = 0.6;
+const GLANCE_KEYS: [string, Glance][] = [['Digit1', 'left'], ['Digit2', 'rear'], ['Digit3', 'right']];
 
 const any = (held: ReadonlySet<string>, ...codes: string[]) => codes.some(c => held.has(c));
 
@@ -34,6 +38,13 @@ export class InputReader {
 
     const keyClutch = any(held, 'ShiftLeft', 'ShiftRight');
     this.clutch = keyClutch ? 1 : Math.max(0, this.clutch - CLUTCH_RELEASE * dt);
+    // Pad edges are read unconditionally so every press updates its held state.
+    const padLeft = padEdge(PAD_CABIN.left), padRight = padEdge(PAD_CABIN.right);
+    const padHazard = padEdge(PAD_CABIN.hazard), padBelt = padEdge(PAD_CABIN.belt);
+    const sx = pad?.axes[2] ?? 0, sy = pad?.axes[3] ?? 0;
+    const stickGlance: Glance | null = sx < -GLANCE_AXIS ? 'left' : sx > GLANCE_AXIS ? 'right' : sy < -GLANCE_AXIS ? 'rear' : null;
+    const keyGlance = GLANCE_KEYS.find(([code]) => held.has(code))?.[1] ?? null;
+
     const padClutch = btn(PAD.clutch);
 
     const keyOr = (padValue: number, keyValue: number) => (padValue > 0 ? padValue : keyValue);
@@ -46,6 +57,11 @@ export class InputReader {
       shiftUp: padEdge(PAD.shiftUp) || pressed.has('KeyE'),
       shiftDown: padEdge(PAD.shiftDown) || pressed.has('KeyQ'),
       ignition: padEdge(PAD.ignition) || pressed.has('KeyI'),
+      toggleLeft: padLeft || pressed.has('KeyZ'),
+      toggleRight: padRight || pressed.has('KeyX'),
+      toggleHazard: padHazard || pressed.has('KeyV'),
+      toggleBelt: padBelt || pressed.has('KeyB'),
+      glance: keyGlance ?? stickGlance,
     };
   }
 }

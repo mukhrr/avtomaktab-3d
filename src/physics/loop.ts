@@ -11,11 +11,11 @@ export function fixedSteps(accumulator: number, dt: number, step = STEP, maxStep
   return { steps, accumulator: Math.max(0, total - steps * step) };
 }
 
-export type Edges = Pick<Controls, 'shiftUp' | 'shiftDown' | 'ignition'>;
-export const NO_EDGES: Edges = { shiftUp: false, shiftDown: false, ignition: false };
+export type Edges = Pick<Controls, 'shiftUp' | 'shiftDown' | 'ignition' | 'toggleLeft' | 'toggleRight' | 'toggleHazard' | 'toggleBelt'>;
+export const NO_EDGES: Edges = { shiftUp: false, shiftDown: false, ignition: false, toggleLeft: false, toggleRight: false, toggleHazard: false, toggleBelt: false };
 
 /**
- * One frame's controls spread over its physics substeps: one-shot presses (gear, ignition) reach only the
+ * One frame's controls spread over its physics substeps: one-shot presses (gear, ignition, indicators, hazard, belt) reach only the
  * first substep, and a press in a frame with no substeps (high refresh rates) waits for the next one.
  */
 export function splitControls(c: Controls, pending: Edges, steps: number): { perStep: Controls[]; pending: Edges } {
@@ -23,6 +23,10 @@ export function splitControls(c: Controls, pending: Edges, steps: number): { per
     shiftUp: c.shiftUp || pending.shiftUp,
     shiftDown: c.shiftDown || pending.shiftDown,
     ignition: c.ignition || pending.ignition,
+    toggleLeft: c.toggleLeft || pending.toggleLeft,
+    toggleRight: c.toggleRight || pending.toggleRight,
+    toggleHazard: c.toggleHazard || pending.toggleHazard,
+    toggleBelt: c.toggleBelt || pending.toggleBelt,
   };
   if (steps === 0) return { perStep: [], pending: edges };
   const perStep = Array.from({ length: steps }, (_, i) => ({ ...c, ...(i === 0 ? edges : NO_EDGES) }));

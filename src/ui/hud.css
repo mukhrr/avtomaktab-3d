@@ -16,3 +16,14 @@
 .hud .minimap { position: absolute; right: 16px; bottom: 16px; width: 200px; height: 200px; }
 .hud .minimap canvas { width: 100%; height: 100%; border-radius: 50%; border: 2px solid #fff8; }
 @media (max-width: 600px) { .hud .minimap { width: 120px; height: 120px; } .hud .tach { width: 110px; } }
+.hud .cabin { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 22px; }
+.hud .cabin .arrow { color: #fff3; text-shadow: none; }
+.hud .cabin .arrow.blink { color: #3ddc5a; animation: hud-blink 0.667s steps(1) infinite; }
+.hud .cabin .hazard { color: #fff3; text-shadow: none; }
+.hud .cabin .hazard.blink { color: #ff4d3a; animation: hud-blink 0.667s steps(1) infinite; }
+.hud .cabin .belt { font-size: 18px; padding: 0 4px; border-radius: 4px; }
+.hud .cabin .belt.off { background: #ff4d3a; }
+.hud .cabin .mirrors { display: flex; gap: 4px; }
+.hud .cabin .mirrors i { width: 14px; height: 8px; border-radius: 2px; background: #fff3; }
+.hud .cabin .mirrors i.on { background: #fff; }
+@keyframes hud-blink { 0% { opacity: 1; } 50% { opacity: 0.15; } }
