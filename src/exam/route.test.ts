@@ -53,6 +53,12 @@ describe('planRoute', () => {
     expect(steps[1]).toMatchObject({ maneuver: 'right', nodeId: 't' });
   });
 
+  it('names the junction at the end of the start lane and leaves the finish without one', () => {
+    const { route } = plan();
+    expect(route.steps[0]).toMatchObject({ maneuver: 'start', nodeId: 'cross' });
+    expect(route.steps.at(-1)!.nodeId).toBeNull();
+  });
+
   it('records which waypoint each step leads toward', () => {
     const { route } = plan();
     expect(route.waypoints).toHaveLength(3);

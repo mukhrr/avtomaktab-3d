@@ -5,10 +5,11 @@ import { nearestLane } from '../world/spawn';
 export type Maneuver = 'start' | 'straight' | 'left' | 'right' | 'uturn' | 'finish';
 
 export interface RouteStep {
+  /** Lane is always 0 and not prescriptive: lane choice is judged from the player's real lane. */
   ref: LaneRef;
   /** What happens at the end of this lane: the turn into the next step. */
   maneuver: Maneuver;
-  /** Junction at the end of this lane; null on the start and finish steps. */
+  /** Junction at the end of this lane; null only on the finish step. */
   nodeId: string | null;
   /** Index into `ExamRoute.waypoints` of the next waypoint this step leads toward. */
   waypointIndex: number;
@@ -38,6 +39,7 @@ export interface ExamRoute {
   waypoints: Vec2[];
   start: Pose;
   finish: Pose;
+  /** Can revisit the same edge and direction (route-1 does), so progress must use a forward-only cursor. */
   steps: RouteStep[];
   lengthM: number;
   features: RouteFeatures;
@@ -183,7 +185,7 @@ export function planRoute(net: LaneNetwork, d: DistrictData, waypoints: Vec2[], 
   const steps: RouteStep[] = refs.map((ref, i) => ({
     ref,
     maneuver: i === 0 ? 'start' : i === last ? 'finish' : turnBetween(net, ref, refs[i + 1]),
-    nodeId: i === 0 || i === last ? null : endNode(ref),
+    nodeId: i === last ? null : endNode(ref),
     waypointIndex: leadsTo[i],
   }));
 
