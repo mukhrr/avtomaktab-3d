@@ -152,7 +152,7 @@ renderer.setAnimationLoop(() => {
     world.step(eventQueue);
     car.sync();
     simClock += STEP;
-    cabin = stepCabin(cabin, c, car.steerAngle, simClock);
+    cabin = stepCabin(cabin, c, simClock);
     eventQueue.drainCollisionEvents((a, b, started) => {
       if (!started) return;
       const other = a === car.collider.handle ? b : b === car.collider.handle ? a : null;
