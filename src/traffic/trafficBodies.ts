@@ -1,6 +1,6 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import { DRIVE_SURFACE_Y } from '../physics/world';
-import { CAR_CLASSES, type AgentView, type CarClass } from './trafficSim';
+import { CAR_CLASSES, type AgentView, type CarClass, type PlayerState } from './trafficSim';
 
 const CAR_HEIGHT = 1.5;
 const PARKED_Y = -100;
@@ -14,14 +14,16 @@ interface Slot {
 /** One kinematic cuboid per traffic pool slot so the player collides with AI cars. */
 export class TrafficBodies {
   private slots: Slot[] = [];
-  private handles = new Set<number>();
+  private handles = new Map<number, number>();
+  private latest: (AgentView | null)[] = [];
 
   constructor(world: RAPIER.World, count: number) {
     for (let i = 0; i < count; i++) {
       const body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, PARKED_Y, 0));
       const collider = world.createCollider(RAPIER.ColliderDesc.cuboid(1, CAR_HEIGHT / 2, 2).setFriction(0.3), body);
       this.slots.push({ body, collider, carClass: null });
-      this.handles.add(collider.handle);
+      this.handles.set(collider.handle, i);
+      this.latest.push(null);
     }
   }
 
@@ -29,6 +31,7 @@ export class TrafficBodies {
     for (const a of agents) {
       const s = this.slots[a.id];
       if (!s) continue;
+      this.latest[a.id] = a.active ? a : null;
       if (!a.active) {
         s.body.setNextKinematicTranslation({ x: 0, y: PARKED_Y, z: 0 });
         continue;
@@ -46,4 +49,17 @@ export class TrafficBodies {
   isTrafficCollider(handle: number): boolean {
     return this.handles.has(handle);
   }
+
+  /** The active agent behind a traffic collider, as of the last sync. */
+  agentFor(handle: number): AgentView | null {
+    const i = this.handles.get(handle);
+    return i === undefined ? null : this.latest[i];
+  }
+}
+
+/** Magnitude of the velocity difference between the player and an AI car, m/s. */
+export function closingSpeed(player: PlayerState, agent: AgentView): number {
+  const vx = Math.sin(player.heading) * player.speed - Math.sin(agent.heading) * agent.speed;
+  const vz = Math.cos(player.heading) * player.speed - Math.cos(agent.heading) * agent.speed;
+  return Math.hypot(vx, vz);
 }

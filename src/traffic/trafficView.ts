@@ -1,77 +1,61 @@
 import * as THREE from 'three';
-import { CAR_CLASSES, type AgentView, type CarClass } from './trafficSim';
+import { CAR_CLASSES, type AgentView } from './trafficSim';
 
 const TAIL_DIM = new THREE.Color(0x4a0d0d);
 const TAIL_BRAKE = new THREE.Color(0xff2a1a);
 const BODY_HEIGHT = 0.7;
 const BODY_Y = 0.2;
 const TAIL_Y = 0.75;
+const TAIL_HEIGHT = 0.14;
+const BUS_CABIN = 1.1;
+const CAR_CABIN = 0.55;
 
-interface Parts {
-  body: THREE.InstancedMesh;
-  cabin: THREE.InstancedMesh;
-  tail: THREE.InstancedMesh;
-}
+/** Unit box with its base on y = 0, so a y scale grows it upward. */
+const unitBox = () => new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
 
-function classParts(carClass: CarClass, capacity: number): Parts {
-  const { length, width } = CAR_CLASSES[carClass];
-  const bus = carClass === 'bus';
-  const lit = new THREE.MeshLambertMaterial();
-  const cabinH = bus ? 1.1 : 0.55;
-  const cabinLength = bus ? length * 0.96 : length * 0.55;
-  const body = new THREE.InstancedMesh(new THREE.BoxGeometry(width, BODY_HEIGHT, length).translate(0, BODY_Y + BODY_HEIGHT / 2, 0), lit, capacity);
-  const cabin = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(width * 0.9, cabinH, cabinLength).translate(0, BODY_Y + BODY_HEIGHT + cabinH / 2, bus ? 0 : -length * 0.05),
-    new THREE.MeshLambertMaterial({ color: 0x9fb4c4 }),
-    capacity,
-  );
-  const tail = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(width * 0.85, 0.14, 0.06).translate(0, TAIL_Y, -length / 2 - 0.02),
-    new THREE.MeshBasicMaterial(),
-    capacity,
-  );
-  body.castShadow = true;
-  for (const m of [body, cabin, tail]) {
-    m.frustumCulled = false;
-    m.count = 0;
-  }
-  return { body, cabin, tail };
-}
-
-/** Draws the traffic pool as instanced boxes; call `update` once per frame. */
+/** Draws the traffic pool as three instanced meshes (body, cabin, brake lights) shared by every car class; call `update` once per frame. */
 export function trafficView(scene: THREE.Scene, count: number): { update(agents: readonly AgentView[]): void } {
-  const parts = new Map<CarClass, Parts>();
-  for (const c of Object.keys(CAR_CLASSES) as CarClass[]) {
-    const p = classParts(c, count);
-    parts.set(c, p);
-    scene.add(p.body, p.cabin, p.tail);
+  const body = new THREE.InstancedMesh(unitBox(), new THREE.MeshLambertMaterial(), count);
+  const cabin = new THREE.InstancedMesh(unitBox(), new THREE.MeshLambertMaterial({ color: 0x9fb4c4 }), count);
+  const tail = new THREE.InstancedMesh(unitBox(), new THREE.MeshBasicMaterial(), count);
+  const meshes = [body, cabin, tail];
+  body.castShadow = true;
+  for (const mesh of meshes) {
+    mesh.frustumCulled = false;
+    mesh.count = 0;
   }
-  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), pos = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0);
+  scene.add(...meshes);
+
+  const base = new THREE.Matrix4(), local = new THREE.Matrix4(), m = new THREE.Matrix4();
+  const q = new THREE.Quaternion(), noRot = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
+  const pos = new THREE.Vector3(), off = new THREE.Vector3(), size = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
   const colour = new THREE.Color();
-  const used = new Map<CarClass, number>();
+
+  const place = (mesh: THREE.InstancedMesh, i: number, x: number, y: number, z: number, sx: number, sy: number, sz: number) => {
+    local.compose(off.set(x, y, z), noRot, size.set(sx, sy, sz));
+    mesh.setMatrixAt(i, m.multiplyMatrices(base, local));
+  };
 
   return {
     update(agents) {
-      used.clear();
-      for (const a of agents) {
+      let n = 0;
+      for (let k = 0; k < agents.length; k++) {
+        const a = agents[k];
         if (!a.active) continue;
-        const p = parts.get(a.carClass)!;
-        const i = used.get(a.carClass) ?? 0;
-        used.set(a.carClass, i + 1);
-        m.compose(pos.set(a.position[0], 0.09, a.position[1]), q.setFromAxisAngle(up, a.heading), one);
-        p.body.setMatrixAt(i, m);
-        p.cabin.setMatrixAt(i, m);
-        p.tail.setMatrixAt(i, m);
-        p.body.setColorAt(i, colour.setHex(a.colour));
-        p.tail.setColorAt(i, a.braking ? TAIL_BRAKE : TAIL_DIM);
+        const { length, width } = CAR_CLASSES[a.carClass];
+        const bus = a.carClass === 'bus';
+        base.compose(pos.set(a.position[0], 0.09, a.position[1]), q.setFromAxisAngle(up, a.heading), one);
+        place(body, n, 0, BODY_Y, 0, width, BODY_HEIGHT, length);
+        place(cabin, n, 0, BODY_Y + BODY_HEIGHT, bus ? 0 : -length * 0.05, width * 0.9, bus ? BUS_CABIN : CAR_CABIN, bus ? length * 0.96 : length * 0.55);
+        place(tail, n, 0, TAIL_Y - TAIL_HEIGHT / 2, -length / 2 - 0.02, width * 0.85, TAIL_HEIGHT, 0.06);
+        body.setColorAt(n, colour.setHex(a.colour));
+        tail.setColorAt(n, a.braking ? TAIL_BRAKE : TAIL_DIM);
+        n++;
       }
-      for (const [c, p] of parts) {
-        const n = used.get(c) ?? 0;
-        for (const mesh of [p.body, p.cabin, p.tail]) {
-          mesh.count = n;
-          mesh.instanceMatrix.needsUpdate = true;
-          if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-        }
+      for (const mesh of meshes) {
+        mesh.count = n;
+        mesh.instanceMatrix.needsUpdate = true;
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       }
     },
   };

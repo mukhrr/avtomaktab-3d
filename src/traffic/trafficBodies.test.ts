@@ -4,7 +4,7 @@ import { DRIVE_SURFACE_Y } from '../physics/world';
 import type { Controls } from '../vehicle/drivetrain';
 import { Vehicle } from '../vehicle/vehicle';
 import type { AgentView } from './trafficSim';
-import { TrafficBodies } from './trafficBodies';
+import { closingSpeed, TrafficBodies } from './trafficBodies';
 
 const idle: Controls = { throttle: 0, brake: 0, clutch: 0, steer: 0, handbrake: false, shiftUp: false, shiftDown: false, ignition: false };
 
@@ -43,4 +43,30 @@ test('a car driven at 30 km/h into a stationary traffic body is reported and sto
   expect(bodies.isTrafficCollider(car.collider.handle)).toBe(false);
   // Cobalt rear is at 25 - 2.25; the chassis front is 2.24 ahead of its centre.
   expect(car.object.position.x).toBeLessThan(21);
+});
+
+test('an AI car at 10 m/s hitting a stationary player reports a closing speed near 10', async () => {
+  const world = await flatWorld();
+  const car = new Vehicle(world, { position: [0, 0], heading: Math.PI / 2 });
+  const bodies = new TrafficBodies(world, 1);
+  const queue = new RAPIER.EventQueue(true);
+  const ai = agent({ position: [-30, 0], heading: Math.PI / 2, speed: 10 });
+  let reported: number | null = null;
+
+  for (let i = 0; i < 6 / STEP && reported === null; i++) {
+    ai.position = [ai.position[0] + 10 * STEP, 0];
+    bodies.sync([ai]);
+    car.update(idle, STEP);
+    world.step(queue);
+    queue.drainCollisionEvents((a, b, s) => {
+      const other = a === car.collider.handle ? b : b === car.collider.handle ? a : null;
+      const hitAgent = other === null || !s ? null : bodies.agentFor(other);
+      if (!hitAgent) return;
+      const player = { position: [0, 0] as [number, number], heading: Math.PI / 2, speed: 0, length: 4.48, width: 1.74 };
+      reported = closingSpeed(player, hitAgent);
+    });
+  }
+  expect(reported).not.toBeNull();
+  expect(reported!).toBeGreaterThan(8);
+  expect(reported!).toBeLessThan(12);
 });

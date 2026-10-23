@@ -11,16 +11,11 @@ const WALK_OFFSETS = [2.75, 2.4];
 const WALK_COLOURS = [new THREE.Color(0xff2a1a), new THREE.Color(0x2aff5a)];
 const WALK_SIDE_GAP = 0.8;
 
-/** Lamps lit (red, yellow, green) for a state; a flashing green is dark during its off half. */
-function lit(state: LightState | null, on: boolean): [boolean, boolean, boolean] {
-  switch (state) {
-    case 'red': return [true, false, false];
-    case 'redYellow': return [true, true, false];
-    case 'yellow': return [false, true, false];
-    case 'green': return [false, false, true];
-    case 'flashingGreen': return [false, false, on];
-    default: return [false, false, false];
-  }
+/** Writes which lamps (red, yellow, green) are lit for a state; a flashing green is dark during its off half. */
+function lit(state: LightState | null, on: boolean, out: boolean[]): void {
+  out[0] = state === 'red' || state === 'redYellow';
+  out[1] = state === 'yellow' || state === 'redYellow';
+  out[2] = state === 'green' || (state === 'flashingGreen' && on);
 }
 
 export interface SignalLamps {
@@ -84,22 +79,27 @@ export function addSignals(scene: THREE.Scene, d: DistrictData): SignalLamps {
   });
   scene.add(walkPoles, walkBoxes, ...walkLamps);
 
-  const colour = new THREE.Color();
+  const flags = [false, false, false], walkFlags = [false, false];
+  const colouredMeshes = [...lamps, ...walkLamps];
   return {
     update(signals) {
       const on = signals.lampOn('flashingGreen');
-      d.signals.forEach((s, i) => {
-        const flags = lit(signals.headState(s.id), on);
-        lamps.forEach((mesh, k) => mesh.setColorAt(i, flags[k] ? LAMP_COLOURS[k] : LAMP_OFF));
-      });
-      walks.forEach((c, k) => {
-        const walk = signals.walkState(c.id);
-        const flags = [walk === 'dontWalk', walk === 'walk' || (walk === 'flashingWalk' && on)];
+      for (let i = 0; i < d.signals.length; i++) {
+        lit(signals.headState(d.signals[i].id), on, flags);
+        for (let k = 0; k < lamps.length; k++) lamps[k].setColorAt(i, flags[k] ? LAMP_COLOURS[k] : LAMP_OFF);
+      }
+      for (let k = 0; k < walks.length; k++) {
+        const walk = signals.walkState(walks[k].id);
+        walkFlags[0] = walk === 'dontWalk';
+        walkFlags[1] = walk === 'walk' || (walk === 'flashingWalk' && on);
         for (let side = 0; side < 2; side++) {
-          walkLamps.forEach((mesh, j) => mesh.setColorAt(k * 2 + side, flags[j] ? colour.copy(WALK_COLOURS[j]) : LAMP_OFF));
+          for (let j = 0; j < walkLamps.length; j++) walkLamps[j].setColorAt(k * 2 + side, walkFlags[j] ? WALK_COLOURS[j] : LAMP_OFF);
         }
-      });
-      for (const mesh of [...lamps, ...walkLamps]) if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      }
+      for (let k = 0; k < colouredMeshes.length; k++) {
+        const c = colouredMeshes[k].instanceColor;
+        if (c) c.needsUpdate = true;
+      }
     },
   };
 }

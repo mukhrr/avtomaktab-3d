@@ -11,7 +11,6 @@ export function pedView(scene: THREE.Scene, count: number): { update(peds: reado
     m.frustumCulled = false;
     m.count = 0;
   }
-  body.castShadow = true;
   scene.add(body, head);
 
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), pos = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0);
