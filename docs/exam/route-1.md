@@ -29,11 +29,20 @@ Generated route: `public/districts/tashkent-center/routes/route-1.json` (rebuild
 | Signalled pedestrian crossings | 5 | along the route |
 | Turns from a multi-lane approach | 2 | both turns at (83, -439) |
 | Speed zone changes | 2 | into and out of the 50 km/h part of Istiqlol |
-| Stop signs, give-way signs | 0 | added by the sign layer |
+| Stop signs, give-way signs | 0, 3 | give way at (-392, -9), (370, -220) and where Mustaqillik merges at (114, -107) |
 
 ## Notes
 
 - The route passes the junction at (83, -439) twice, once turning right and once turning left. It was kept because it covers every feature in 3.8 km; the other candidates from a waypoint search that covered them all were 5.2 to 5.5 km with 7 to 11 turns.
 - Speed zones only come from OSM `maxspeed` tags. Untagged roads default to 60 (20 on service roads and living streets), so the 50 km/h stretch of Istiqlol is the one tagged change near the route.
-- Priority to the right is only counted where the road arriving from the right is of the same OSM class as the road being driven and is not a yard exit. The right turn from Istiqlol onto Mustaqillik (370, -220) is unsignalled but onto a major road, so it is a give-way spot for the sign layer rather than a priority-to-the-right junction.
+- Priority to the right is only counted where the road arriving from the right is of the same OSM class as the road being driven and is not a yard exit. The right turn from Istiqlol onto Mustaqillik (370, -220) is unsignalled but onto a major road, so it carries a give-way sign rather than counting as a priority-to-the-right junction.
 - `multiLaneTurns` counts turns from an approach with two or more lanes in that direction. The planner keeps the car in lane 0, so the rule engine decides whether the lane used was the right one.
+
+## Signs
+
+`data/districts/tashkent-center/signs.json`, merged into `district.json` by `npm run city:build` (rebuild the route afterwards, its sign counts come from it). 41 signs, all hand-placed from the route and junction data, not from OSM:
+
+- Give way (13) and stop (3) on side and yard arms joining the route roads, stop on the arms of the two four-way junctions on Istiqlol and Buyuk Turon. Priority road (4) on the main approach of the merges that have a give-way arm.
+- Speed limit 50 after (247, -361) and 60 after (370, -220), the two zone changes the route counts. School zone (30 km/h for 150 m) at the start of the Istiqlol stretch east of Amir Temur.
+- No left turn on Istiqlol at (66, -442), no U-turn on Amir Temur before (83, -439). OSM has no turn restrictions here, so these two are invented for the exam.
+- Pedestrian crossing, one per direction, 3 to 5 m before each of the zebras along the route (16 signs).

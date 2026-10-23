@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import type { Sign } from '../../src/shared/district';
 import { edgeLength } from './attach';
 import { buildDistrict } from './build';
 
@@ -29,4 +30,37 @@ test('zebra node on way 100 becomes a crossing on edge 100:0', () => {
   expect(c.at).toBeGreaterThan(0);
   expect(c.at).toBeLessThan(edgeLength(e));
   expect(c.position).toEqual(e.points[e.nodeIds.indexOf('17')]);
+});
+
+describe('signs', () => {
+  const edge = d.graph.edges.find(e => e.lanesBackward === 0)!;
+  const len = edgeLength(edge);
+  const build = (...signs: Sign[]) => buildDistrict(xml, config, { removeWays: [], roads: {}, buildingHeights: {} }, signs);
+  const sign = (extra: Partial<Sign>): Sign => ({ id: 's1', type: 'giveWay', edgeId: edge.id, dir: 1, at: 5, ...extra });
+
+  it('defaults to no signs', () => {
+    expect(d.signs).toEqual([]);
+  });
+
+  it('keeps valid signs in the district', () => {
+    expect(build(sign({}), sign({ id: 's2', at: len })).signs.map(s => s.id)).toEqual(['s1', 's2']);
+  });
+
+  it('rejects a sign on a missing edge', () => {
+    expect(() => build(sign({ edgeId: 'nope:0' }))).toThrow(/s1.*nope:0/);
+  });
+
+  it('rejects a sign placed beyond the edge', () => {
+    expect(() => build(sign({ at: len + 1 }))).toThrow(/s1.*along/);
+    expect(() => build(sign({ at: -1 }))).toThrow(/s1.*along/);
+  });
+
+  it('rejects a sign for a direction without lanes', () => {
+    expect(() => build(sign({ dir: -1 }))).toThrow(/s1.*direction/);
+  });
+
+  it('rejects duplicate ids and a speed limit without a value', () => {
+    expect(() => build(sign({}), sign({ at: 6 }))).toThrow(/duplicate/);
+    expect(() => build(sign({ type: 'speedLimit' }))).toThrow(/s1.*value/);
+  });
 });

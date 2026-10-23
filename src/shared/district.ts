@@ -87,6 +87,21 @@ export interface Crossing {
   walkPhase?: number;
 }
 
+export type SignType =
+  | 'stop' | 'giveWay' | 'priorityRoad' | 'noEntry' | 'noLeftTurn' | 'noRightTurn' | 'noUTurn'
+  | 'speedLimit' | 'pedestrianCrossing' | 'school';
+
+/** Stands beside the lane travelling `dir` on `edgeId`, `at` metres from `edge.from`, facing that traffic. */
+export interface Sign {
+  id: string;
+  type: SignType;
+  edgeId: string;
+  dir: 1 | -1;
+  at: number;
+  /** km/h, for speedLimit only. */
+  value?: number;
+}
+
 export interface DistrictData {
   name: string;
   origin: { lat: number; lon: number };
@@ -98,6 +113,7 @@ export interface DistrictData {
   signals: Signal[];
   crossings: Crossing[];
   controllers: SignalController[];
+  signs: Sign[];
   graph: { nodes: GraphNode[]; edges: GraphEdge[] };
 }
 

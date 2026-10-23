@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { LaneNetwork, type LaneRef } from '../traffic/lanes';
 import { testNetwork } from '../traffic/testNetwork';
-import type { DistrictData } from '../shared/district';
+import type { DistrictData, Sign } from '../shared/district';
 import { classifyTurn, planRoute, snapWaypoint, type ExamRoute } from './route';
 
 const deg = (d: number) => (d * Math.PI) / 180;
@@ -120,5 +120,21 @@ describe('planRoute', () => {
     const net = new LaneNetwork(d);
     const route = planRoute(net, d, [[-100, 3], [120, 4], [237, 30]]);
     expect(route.features).toMatchObject({ signalCrossings: 1, multiLaneTurns: 1, speedZones: 1 });
+  });
+
+  it('counts stop and give-way signs passed on the route lanes only', () => {
+    const d = testNetwork();
+    const sign = (id: string, type: Sign['type'], edgeId: string, dir: 1 | -1, at: number): Sign => ({ id, type, edgeId, dir, at });
+    d.signs = [
+      sign('ok-stop', 'stop', 'w', -1, 10),
+      sign('behind-start', 'stop', 'w', -1, 150),
+      sign('ok-give', 'giveWay', 'e', 1, 230),
+      sign('ok-give2', 'giveWay', 'tStub', 1, 20),
+      sign('wrong-way', 'giveWay', 'e', -1, 10),
+      sign('past-finish', 'giveWay', 'tStub', 1, 36),
+      sign('other-type', 'speedLimit', 'e', 1, 100),
+    ];
+    const route = planRoute(new LaneNetwork(d), d, [[-100, 3], [120, 3], [237, 30]]);
+    expect(route.features).toMatchObject({ stopSigns: 1, giveWaySigns: 2 });
   });
 });

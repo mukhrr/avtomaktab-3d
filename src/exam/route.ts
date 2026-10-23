@@ -207,7 +207,7 @@ export function planRoute(net: LaneNetwork, d: DistrictData, waypoints: Vec2[], 
   };
 }
 
-/** Counts what the route exercises; signs are left at zero for the sign layer to fill in. */
+/** Counts what the route exercises, including stop and give-way signs passed on its lanes. */
 export function countFeatures(net: LaneNetwork, d: DistrictData, steps: RouteStep[], startS: number, finishS: number): RouteFeatures {
   const f: RouteFeatures = {
     signalledLeft: 0, signalledRight: 0, signalledStraight: 0, unsignalledPriorityRight: 0, zebras: 0,
@@ -247,15 +247,20 @@ export function countFeatures(net: LaneNetwork, d: DistrictData, steps: RouteSte
 
   const seen = new Set<string>();
   steps.forEach((step, i) => {
-    const len = net.path(step.ref).length;
-    const a = net.edgeS(step.ref, i === 0 ? startS : 0);
-    const b = net.edgeS(step.ref, i === steps.length - 1 ? finishS : len);
+    const path = net.path(step.ref);
+    const a = i === 0 ? net.edgeS(step.ref, startS) : path.startAt;
+    const b = i === steps.length - 1 ? net.edgeS(step.ref, finishS) : path.endAt;
     const lo = Math.min(a, b), hi = Math.max(a, b);
     for (const c of d.crossings) {
       if (c.edgeId !== step.ref.edgeId || c.at < lo || c.at > hi || seen.has(c.id)) continue;
       seen.add(c.id);
       if (c.kind === 'zebra') f.zebras++;
       else if (c.kind === 'signal') f.signalCrossings++;
+    }
+    for (const g of d.signs) {
+      if (g.edgeId !== step.ref.edgeId || g.dir !== step.ref.dir || g.at < lo || g.at > hi) continue;
+      if (g.type === 'stop') f.stopSigns++;
+      else if (g.type === 'giveWay') f.giveWaySigns++;
     }
   });
   return f;
