@@ -29,8 +29,13 @@ export interface LookaheadWorld {
   leaving(laneKey: string): readonly Agent[] | undefined;
   /** Unsignalled junction at the end of this lane, or null. */
   gatedNode(ref: LaneRef): string | null;
-  /** With `next`, also whether that exit lane has room for a car of `length` to clear the junction. */
-  canEnter(node: string, approach: string, next: LaneRef | null, length: number): boolean;
+  /**
+   * With `next`, also whether that exit lane has room for a car of `length` to clear the junction. A `committed` car is
+   * already inside the junction before this lane, so priority at the next one waits until it reaches the lane end.
+   */
+  canEnter(node: string, ref: LaneRef, next: LaneRef | null, length: number, committed: boolean): boolean;
+  /** Whether the agent must wait at the end of this lane: a stop sign, or a left turn across oncoming traffic. */
+  mustHold(a: Agent, ref: LaneRef): boolean;
 }
 
 interface Piece {
@@ -113,7 +118,8 @@ export function nearestObstacle(a: Agent, w: LookaheadWorld, player: PlayerState
 
     const node = w.gatedNode(ref);
     const exit = p === route[0] && !a.conn ? a.next : null;
-    if (node && !w.canEnter(node, approachKey(ref), exit, a.length)) consider(p.length + p.base - half, 0, node);
+    if (node && !w.canEnter(node, ref, exit, a.length, !!a.conn)) consider(p.length + p.base - half, 0, node);
+    else if (w.mustHold(a, ref)) consider(p.length + p.base - half, 0);
   }
 
   const reach = LOOKAHEAD + player.length;
