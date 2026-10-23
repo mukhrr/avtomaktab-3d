@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "city:fetch": "tsx tools/city/fetch.ts",
+    "bench:sim": "tsx tools/bench/sim.ts",
     "city:build": "tsx tools/city/build.ts"
   },
   "keywords": [],

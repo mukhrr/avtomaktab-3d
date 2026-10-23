@@ -40,10 +40,16 @@ Load: 60 AI cars, 120 pedestrians (40 crossers, 80 walkers), 105 signal controll
 |---|---|---|---|
 | Draw calls, chase view, main pass only | 56 (M1: 45) | 60 | Production build via `vite preview`, `renderer.render` called once with `renderer.info` reset |
 | Triangles, main pass | ~487k (M1: ~385k) | none | same |
-| Sim step, `traffic.step` + `peds.step` | mean 0.23 ms, p99 0.46 ms, max 4.3 ms (one outlier in 7,000 steps) | 2 ms | Headless `tsx` script on the real district.json, 60 cars + 120 peds, 7,000 steps at 1/60 s, first 300 skipped. Traffic alone mean 0.11 ms, peds alone mean 0.12 ms |
+| Sim step, `traffic.step` + `peds.step`, headless | mean 0.17 to 0.24 ms, p99 0.27 to 0.42 ms per step; single-step max 2.1 to 3.1 ms | 2 ms | `npm run bench:sim` (`tools/bench/sim.ts`), see below |
 | Production download | 3.62 MB raw: JS 2.79 MB (0.97 MB gzipped), district.json 0.83 MB (0.20 MB gzipped), css and html under 2 KB | 30 MB | `npm run build`, file sizes summed from `dist/` |
 
-All budgets pass, so none of the cuts (walkers to 60, cars to 40, lookahead 80 to 60 m) were applied.
+Headless sim budget passes (mean and p99 are far under 2 ms); in-browser sim time was not measured. Draw calls and download size pass. None of the cuts (walkers to 60, cars to 40, lookahead 80 to 60 m) were applied.
+
+### Sim benchmark method and limits
+
+`npm run bench:sim` runs 7,200 fixed steps (1/60 s) of 60 cars and 40 crossers + 80 walkers on the real `district.json`, skips the first 300, and prints mean, p99 and max of `traffic.step` + `peds.step` per step. Two runs: the player parked at the spawn point, and the player driven along a roughly 1.4 km lane path at 12 m/s so cars follow and yield to it. Three consecutive runs gave parked mean 0.17 to 0.24 ms and driving mean 0.17 to 0.19 ms, with the run-to-run spread coming from machine noise.
+
+Limits: Node only, no rendering, no browser, no physics step, no view updates. The player follows a scripted path and never collides or brakes, so player-triggered edge cases are not covered. Single-step maxes of 2 to 3 ms appear in every run (likely JIT or garbage collection) and would show as an occasional dropped frame, which has not been checked in a browser.
 
 ### Reading the HUD draw-call number
 
@@ -52,8 +58,8 @@ The `?debug` panel shows `renderer.info.render.calls` for the whole frame, which
 ### Not measured
 
 - Real frame rate. The in-app browser pane was throttled again (the panel read 1 fps), so no FPS is reported. The laptop check from M1 still applies: `npm run build && npx vite preview`, open `/?debug` on an integrated-graphics laptop at 1080p, drive for two minutes and read fps.
-- In-browser sim time. The new `sim` figure in the debug panel (1 second average of `traffic.step` + `peds.step` per fixed step) read 0.93 ms in the throttled pane, which includes cold JIT and throttling, so it is not used. The headless numbers above are the ones to trust until the laptop check.
+- In-browser sim time (`sim` in the debug panel). The new `sim` figure in the debug panel (1 second average of `traffic.step` + `peds.step` per fixed step) read 0.93 ms in the throttled pane, which includes cold JIT and throttling, so it is not used. Re-check it on the laptop.
 
 ### If the laptop check misses 60 fps
 
-M1's order still applies (shadow map size, tree crown triangles, mirror targets). Sim cost is not the bottleneck at 0.23 ms; if needed, cut walkers to 60, then cars to 40, then lookahead 80 to 60 m.
+M1's order still applies (shadow map size, tree crown triangles, mirror targets). Headless sim cost is small next to a 16.7 ms frame, but the in-browser figure is unmeasured; if the laptop check misses, cut walkers to 60, then cars to 40, then lookahead 80 to 60 m.
