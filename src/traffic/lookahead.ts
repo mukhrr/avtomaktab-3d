@@ -14,6 +14,8 @@ export const approachKey = (r: LaneRef) => `${r.edgeId}|${r.dir}`;
 export interface Obstacle {
   gap: number;
   speed: number;
+  /** Unsignalled junction the agent is held at, when that is the nearest obstacle. */
+  gate?: string;
 }
 
 export interface LookaheadWorld {
@@ -70,8 +72,8 @@ function pieces(a: Agent, w: LookaheadWorld): Piece[] {
 /** Nearest thing the agent must not drive into, as a bumper-to-bumper gap and its speed along the lane. */
 export function nearestObstacle(a: Agent, w: LookaheadWorld, player: PlayerState, crossings: CrossingOccupancy): Obstacle | null {
   let best: Obstacle | null = null;
-  const consider = (gap: number, speed: number) => {
-    if (gap <= LOOKAHEAD && (!best || gap < best.gap)) best = { gap, speed };
+  const consider = (gap: number, speed: number, gate?: string) => {
+    if (gap <= LOOKAHEAD && (!best || gap < best.gap)) best = { gap, speed, gate };
   };
   const half = a.length / 2;
   const route = pieces(a, w);
@@ -107,7 +109,7 @@ export function nearestObstacle(a: Agent, w: LookaheadWorld, player: PlayerState
     }
 
     const node = w.gatedNode(ref);
-    if (node && !w.canEnter(node, approachKey(ref))) consider(p.length + p.base - half, 0);
+    if (node && !w.canEnter(node, approachKey(ref))) consider(p.length + p.base - half, 0, node);
   }
 
   const reach = LOOKAHEAD + player.length;

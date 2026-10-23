@@ -68,13 +68,19 @@ interface Reservation {
   approach: string;
   holders: Set<number>;
   since: number;
+  /** Last time a car joined or a holder was moving through the junction. */
+  lastActive: number;
 }
 
 const CHOOSE_AT = 40;
 const TURN_ZONE = 25;
 const TURN_DECEL = 3;
 const RESERVATION_TTL = 6;
-const YIELD_AFTER_EXPIRY = 3;
+const PLATOON_WINDOW = 3;
+const YIELD_TIME = 4;
+const WAIT_FRESH = 0.5;
+const MOVING = 0.5;
+const SIGNAL_REACH = 40;
 const SPAWN_SPACING = 2 * 4.5;
 const SPAWN_MAX = 300;
 const SPAWN_MIN = 120;
@@ -112,6 +118,8 @@ export class TrafficSim {
   private readonly byLeaving = new Map<string, Agent[]>();
   private readonly reservations = new Map<string, Reservation>();
   private readonly yields = new Map<string, { approach: string; until: number }>();
+  /** Per gated node, approaches whose lead car is held at it, with the time it was last seen waiting. */
+  private readonly waiting = new Map<string, Map<string, number>>();
   private readonly world: LookaheadWorld;
   private time = 0;
   private started = false;
@@ -126,14 +134,24 @@ export class TrafficSim {
       list.push(c);
       this.crossingsByEdge.set(c.edgeId, list);
     }
-    const signalled = new Set<string>();
+    const stopsNear = new Set<string>();
     for (const ctrl of d.controllers) {
       for (const a of ctrl.phases.flat()) {
-        const e = this.edges.get(a.edgeId);
-        if (e) signalled.add(a.dir === 1 ? e.to : e.from);
+        if (!this.edges.has(a.edgeId)) continue;
+        const ref: LaneRef = { edgeId: a.edgeId, dir: a.dir, lane: 0 };
+        if (net.path(ref).length - net.pathS(ref, a.stopAt) <= SIGNAL_REACH) stopsNear.add(approachKey(ref));
       }
     }
-    for (const n of d.graph.nodes) if (n.edges.length >= 3 && !signalled.has(n.id)) this.gated.add(n.id);
+    for (const n of d.graph.nodes) {
+      if (n.edges.length < 3) continue;
+      // A junction is left to the lights only when every arm arriving at it stops for them close by.
+      const covered = n.edges.every(id => {
+        const e = this.edge(id);
+        return [[1, e.lanesForward, e.to], [-1, e.lanesBackward, e.from] as const].every(([dir, lanes, end]) =>
+          lanes === 0 || end !== n.id || stopsNear.has(`${id}|${dir}`));
+      });
+      if (!covered) this.gated.add(n.id);
+    }
 
     let cum = 0;
     for (const e of d.graph.edges) {
@@ -164,9 +182,9 @@ export class TrafficSim {
   step(dt: number, player: PlayerState, crossings: CrossingOccupancy): void {
     this.time += dt;
     for (const [node, r] of this.reservations) {
-      if (this.time - r.since <= RESERVATION_TTL) continue;
+      if (this.time - r.lastActive <= RESERVATION_TTL) continue;
       this.reservations.delete(node);
-      this.yields.set(node, { approach: r.approach, until: this.time + YIELD_AFTER_EXPIRY });
+      this.yields.set(node, { approach: r.approach, until: this.time + YIELD_TIME });
     }
     for (const a of this.pool) {
       if (a.active && dist(a.position, player.position) > DESPAWN_AT) this.despawn(a);
@@ -201,6 +219,16 @@ export class TrafficSim {
     if (!a.conn && !a.next && !a.trapped && this.net.path(a.ref).length - a.s <= CHOOSE_AT) this.chooseNext(a);
     const v0 = Math.max(1, this.desiredSpeed(a));
     const ob = nearestObstacle(a, this.world, player, crossings);
+    if (a.conn && a.speed > MOVING) {
+      const r = this.reservations.get(a.conn.node);
+      if (r?.holders.has(a.id)) r.lastActive = this.time;
+    }
+    if (ob?.gate) {
+      const node = ob.gate;
+      const m = this.waiting.get(node) ?? new Map<string, number>();
+      m.set(approachKey(a.conn ? a.conn.to : a.ref), this.time);
+      this.waiting.set(node, m);
+    }
     const acc = idmAccel(a.speed, ob ? ob.gap : null, ob ? ob.speed : 0, { v0, ...DEFAULT_DRIVER });
     a.speed = Math.max(0, a.speed + acc * dt);
     a.braking = acc < BRAKING;
@@ -292,7 +320,7 @@ export class TrafficSim {
 
   private canEnter(node: string, approach: string): boolean {
     const r = this.reservations.get(node);
-    if (r) return r.approach === approach;
+    if (r) return r.approach === approach && this.time - r.since < PLATOON_WINDOW;
     const y = this.yields.get(node);
     return !(y && y.approach === approach && this.time < y.until);
   }
@@ -301,17 +329,27 @@ export class TrafficSim {
     const r = this.reservations.get(node);
     if (r) {
       r.holders.add(id);
+      r.lastActive = this.time;
       return;
     }
-    this.reservations.set(node, { approach, holders: new Set([id]), since: this.time });
+    this.reservations.set(node, { approach, holders: new Set([id]), since: this.time, lastActive: this.time });
     if (this.yields.get(node)?.approach !== approach) this.yields.delete(node);
+    this.waiting.get(node)?.delete(approach);
   }
 
   private release(node: string, id: number): void {
     const r = this.reservations.get(node);
     if (!r) return;
     r.holders.delete(id);
-    if (!r.holders.size) this.reservations.delete(node);
+    if (r.holders.size) return;
+    this.reservations.delete(node);
+    // Without this the stream that just drained re-takes the node before a car waiting from rest can reach it.
+    for (const [approach, seen] of this.waiting.get(node) ?? []) {
+      if (approach !== r.approach && this.time - seen <= WAIT_FRESH) {
+        this.yields.set(node, { approach: r.approach, until: this.time + YIELD_TIME });
+        break;
+      }
+    }
   }
 
   private despawn(a: Agent): void {

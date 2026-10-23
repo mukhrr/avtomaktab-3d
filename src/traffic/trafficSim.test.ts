@@ -267,7 +267,7 @@ test('spawns keep 100 m from the player and 9 m from other agents, holding the c
   expect(spawns).toBeGreaterThan(0);
 });
 
-test('a reservation held over 6 s by a car stuck on the connector is released and the next car goes', () => {
+test('a reservation whose holder has been stuck on the connector for 6 s is released and the next car goes', () => {
   const c = setup();
   const tE: LaneRef = { edgeId: 'tE', dir: 1, lane: 0 };
   const stub: LaneRef = { edgeId: 'tStub', dir: -1, lane: 0 };
@@ -281,12 +281,76 @@ test('a reservation held over 6 s by a car stuck on the connector is released an
   }
   expect(held).toBeGreaterThan(0);
   const next = c.sim.place(stub, c.net.path(stub).length - 15, { carClass: 'nexia', speed: 6, route: [{ edgeId: 'e', dir: -1, lane: 0 }] });
-  let entered = 0;
-  for (let t = 0; t < 12 && !entered; t += DT) {
+  let entered = 0, stopped = 0;
+  for (let t = 0; t < 20 && !entered; t += DT) {
     c.step(player);
     expect(c.sim.inspect(stuck)!.connectorNode).toBe('t');
+    if (!stopped && c.sim.agents[stuck].speed < 0.5) stopped = c.signals.time;
     if (c.sim.inspect(next)!.connectorNode === 't') entered = c.signals.time;
   }
-  expect(entered - held).toBeGreaterThan(6);
-  expect(entered - held).toBeLessThan(10);
+  expect(stopped).toBeGreaterThan(0);
+  expect(entered - stopped).toBeGreaterThan(6);
+  expect(entered - stopped).toBeLessThan(10);
+});
+
+/** Drives one agent from w into the cross and reports whether it took a reservation there. */
+function reservesCross(d: DistrictData): boolean {
+  const net = new LaneNetwork(d);
+  const signals = new SignalSystem(d);
+  const sim = new TrafficSim(d, net, signals, { count: 0, seed: 1 });
+  signals.update(26);
+  const id = sim.place(W, net.path(W).length - 10, { carClass: 'nexia', speed: 6, route: [E] });
+  let reserved = false;
+  for (let t = 0; t < 5; t += DT) {
+    signals.update(DT);
+    sim.step(DT, AWAY, FREE);
+    if (sim.reservationHolder('cross') === id) reserved = true;
+  }
+  return reserved;
+}
+
+test('a junction whose every arriving arm has a stop line within 40 m is not reservation-gated', () => {
+  expect(reservesCross(testNetwork())).toBe(false);
+});
+
+test('a junction with an arm whose stop line is 100 m back is reservation-gated', () => {
+  const d = testNetwork();
+  const n = d.controllers[0].phases.flat().find(a => a.edgeId === 'n')!;
+  n.stopAt = 100;
+  expect(reservesCross(d)).toBe(true);
+});
+
+test('a junction with an arriving arm that has no controller approach is reservation-gated', () => {
+  const d = testNetwork();
+  d.controllers[0].phases[0] = d.controllers[0].phases[0].filter(a => a.edgeId !== 's');
+  expect(reservesCross(d)).toBe(true);
+});
+
+test('a same-approach stream over 10 s never shares a wide unsignalled T, and the cross approach still gets through', () => {
+  const d = testNetwork();
+  // Wide arms give 26 m connectors, long enough for a platoon to keep the reservation held without a break.
+  for (const e of d.graph.edges) if (['e', 'tE', 'tStub'].includes(e.id)) e.width = 20;
+  const net = new LaneNetwork(d);
+  const signals = new SignalSystem(d);
+  const sim = new TrafficSim(d, net, signals, { count: 0, seed: 1 });
+  const westbound: LaneRef = { edgeId: 'tE', dir: -1, lane: 0 };
+  const intoStub: LaneRef = { edgeId: 'tStub', dir: 1, lane: 0 };
+  const len = net.path(westbound).length;
+  const stream = Array.from({ length: 12 }, (_, i) =>
+    sim.place(westbound, len - 4.5 - i * 7, { carClass: 'nexia', speed: 4, route: [intoStub] }));
+  const cross = sim.place(E, net.path(E).length - 30, { carClass: 'nexia', speed: 6, route: [{ edgeId: 'tE', dir: 1, lane: 0 }] });
+  const ids = [...stream, cross];
+  let streamOnNode = 0, crossEntered = -1;
+  for (let t = 0; t < 40; t += DT) {
+    signals.update(DT);
+    sim.step(DT, AWAY, FREE);
+    const on = ids.filter(id => sim.inspect(id)?.connectorNode === 't');
+    const approaches = new Set(on.map(id => { const r = sim.inspect(id)!.ref; return `${r.edgeId}|${r.dir}`; }));
+    expect(approaches.size).toBeLessThanOrEqual(1);
+    if (on.some(id => id !== cross)) streamOnNode += DT;
+    if (crossEntered < 0 && on.includes(cross)) crossEntered = t;
+  }
+  expect(streamOnNode).toBeGreaterThan(10);
+  expect(crossEntered).toBeGreaterThanOrEqual(0);
+  expect(crossEntered).toBeLessThan(15);
 });
