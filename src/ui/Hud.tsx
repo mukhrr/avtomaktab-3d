@@ -44,7 +44,7 @@ export function Hud({ store, minimap, debug }: { store: HudStore; minimap: HTMLC
       {help && (
         <div className="panel help">
           <b>W/S</b> gas / brake · <b>A/D</b> steer · <b>Space</b> handbrake<br />
-          Manual: <b>Shift</b> clutch · <b>E/Q</b> gear up/down · <b>I</b> ignition<br />
+          <b>E/Q</b> gear up/down (auto: D/R when stopped) · Manual: <b>Shift</b> clutch · <b>I</b> ignition<br />
           <b>G</b> auto/manual (when stopped) · <b>C</b> camera · <b>R</b> reset · <b>H</b> hide help
         </div>
       )}
@@ -59,7 +59,7 @@ export function Hud({ store, minimap, debug }: { store: HudStore; minimap: HTMLC
           </div>
           <span className="box">{s.gearbox === 'auto' ? 'AUTO' : 'MANUAL'}</span>
         </div>
-        {!s.running && <div className="stalled">STALLED, press I</div>}
+        {!s.running && <div className="stalled">STALLED: clutch down (Shift) or neutral, then I</div>}
         <div className="street">{s.street}</div>
       </div>
       <div className="minimap" ref={mapHost} />

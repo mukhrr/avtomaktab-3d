@@ -63,3 +63,35 @@ test('hitting a building at 50 km/h stops the car instead of passing through', a
   drive(world, car, { ...idle, throttle: 1 }, 4);
   expect(car.object.position.x).toBeLessThan(30);
 });
+
+async function at60(gearbox: 'auto' | 'manual' = 'auto') {
+  const world = await flatWorld();
+  const car = new Vehicle(world, { position: [0, 0], heading: Math.PI / 2 }, gearbox);
+  drive(world, car, idle, 0.5);
+  while (car.speed * 3.6 < 60) drive(world, car, { ...idle, throttle: 1 }, STEP);
+  return { world, car };
+}
+
+test('lifting off at 60 km/h coasts gently (0.2 to 1.2 m/s^2)', async () => {
+  const { world, car } = await at60();
+  const v0 = car.speed;
+  drive(world, car, idle, 1);
+  const decel = v0 - car.speed;
+  expect(decel).toBeGreaterThan(0.2);
+  expect(decel).toBeLessThan(1.2);
+});
+
+test('full brake stops hard but a light brake is gentle', async () => {
+  const full = await at60();
+  let v0 = full.car.speed;
+  drive(full.world, full.car, { ...idle, brake: 1 }, 0.5);
+  const fullDecel = (v0 - full.car.speed) / 0.5;
+  expect(fullDecel).toBeGreaterThan(6);
+  expect(fullDecel).toBeLessThan(11);
+
+  const light = await at60();
+  v0 = light.car.speed;
+  drive(light.world, light.car, { ...idle, brake: 0.2 }, 0.5);
+  const lightDecel = (v0 - light.car.speed) / 0.5;
+  expect(lightDecel).toBeLessThan(fullDecel / 2);
+});

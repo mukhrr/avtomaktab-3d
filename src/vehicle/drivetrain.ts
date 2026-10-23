@@ -18,8 +18,6 @@ export interface DrivetrainState {
   gear: number;
   rpm: number;
   running: boolean;
-  /** Seconds the brake has been held at a standstill (auto reverse selection). */
-  reverseHold?: number;
 }
 
 // Chevrolet Cobalt 1.5 (B15D2), approximate figures.
@@ -39,7 +37,6 @@ const UPSHIFT_FULL = 5500;
 const FULL_THROTTLE = 0.9;
 const DOWNSHIFT = 1300;
 const STANDSTILL = 0.3;
-const REVERSE_HOLD_S = 0.4;
 const FREE_REV_RATE = 4;
 
 export function engineTorque(rpm: number): number {
@@ -65,7 +62,7 @@ export interface DrivetrainStep {
   state: DrivetrainState;
   /** Newtons at the contact patches, summed over the driven wheels; negative drives backwards. */
   wheelForce: number;
-  /** Service brake 0-1 after auto-reverse pedal swap. */
+  /** Service brake 0-1. */
   brake: number;
 }
 
@@ -89,7 +86,9 @@ function stepManual(s: DrivetrainState, c: Controls, wheelSpeed: number, dt: num
   let wheelForce = 0;
   if (engaged > LOCKED_ENGAGEMENT) {
     rpm = wheelRpmFor(gear, wheelSpeed);
-    if (rpm < STALL_RPM) return { state: { ...s, gear, rpm: 0, running: false }, wheelForce: 0, brake: c.brake };
+    // Rolling against the selected gear with the clutch out drags the engine backwards.
+    const againstGear = Math.sign(gear) * wheelSpeed < -STANDSTILL;
+    if (rpm < STALL_RPM || againstGear) return { state: { ...s, gear, rpm: 0, running: false }, wheelForce: 0, brake: c.brake };
   } else {
     const target = freeRev + (wheelRpmFor(gear, wheelSpeed) - freeRev) * engaged;
     rpm += (target - rpm) * Math.min(1, dt * FREE_REV_RATE);
@@ -98,28 +97,22 @@ function stepManual(s: DrivetrainState, c: Controls, wheelSpeed: number, dt: num
   return { state: { ...s, gear, rpm, running }, wheelForce, brake: c.brake };
 }
 
-function stepAuto(s: DrivetrainState, c: Controls, wheelSpeed: number, dt: number): DrivetrainStep {
+function stepAuto(s: DrivetrainState, c: Controls, wheelSpeed: number, _dt: number): DrivetrainStep {
   let gear = s.gear === 0 ? 1 : s.gear;
-  let hold = s.reverseHold ?? 0;
-  const stopped = Math.abs(wheelSpeed) < STANDSTILL;
-
-  if (stopped && gear >= 1 && c.brake > 0.5 && c.throttle === 0) {
-    hold += dt;
-    if (hold >= REVERSE_HOLD_S) { gear = -1; hold = 0; }
-  } else hold = 0;
-  if (stopped && gear === -1 && c.throttle > 0.5) gear = 1;
-
-  const reverse = gear === -1;
-  const throttle = reverse ? c.brake : c.throttle;
-  const brake = reverse ? c.throttle : c.brake;
+  // The selector (E/Q) only moves between D and R at a standstill, like a real P-R-N-D lever.
+  if (Math.abs(wheelSpeed) < STANDSTILL) {
+    if (c.shiftDown && gear >= 1) gear = -1;
+    if (c.shiftUp && gear === -1) gear = 1;
+  }
 
   if (gear >= 1) {
     const wheelRpm = wheelRpmFor(gear, wheelSpeed);
-    if (gear < 5 && wheelRpm > (throttle > FULL_THROTTLE ? UPSHIFT_FULL : UPSHIFT_PART)) gear++;
+    if (gear < 5 && wheelRpm > (c.throttle > FULL_THROTTLE ? UPSHIFT_FULL : UPSHIFT_PART)) gear++;
     else if (gear > 1 && wheelRpm < DOWNSHIFT) gear--;
   }
+  const wheelRpm = wheelRpmFor(gear, wheelSpeed);
   // Torque converter: the engine can rev above wheel speed, so it never stalls.
-  const rpm = Math.min(REDLINE_RPM, Math.max(wheelRpmFor(gear, wheelSpeed), IDLE_RPM + throttle * 2200));
-  const wheelForce = forceFor(gear, engineTorque(rpm) * throttle);
-  return { state: { ...s, gear, rpm, running: true, reverseHold: hold }, wheelForce, brake };
+  const rpm = Math.min(REDLINE_RPM, Math.max(wheelRpm, IDLE_RPM + c.throttle * 2200));
+  const wheelForce = wheelRpm >= REDLINE_RPM ? 0 : forceFor(gear, engineTorque(rpm) * c.throttle);
+  return { state: { ...s, gear, rpm, running: true }, wheelForce, brake: c.brake };
 }

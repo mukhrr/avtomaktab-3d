@@ -11,9 +11,11 @@ const SPAWN_HEIGHT = 0.75;
 const REST_LENGTH = 0.3;
 const MAX_STEER = 0.6;
 const STEER_FALLOFF_SPEED = 12;
-const BRAKE_FORCE = 4500;
-const HANDBRAKE_FORCE = 6000;
-const ROLLING_BRAKE = 30;
+// Newtons per wheel; Rapier's setWheelBrake takes an impulse per step, so these are multiplied by dt.
+const BRAKE_FORCE = 2500;
+const HANDBRAKE_FORCE = 3500;
+/** Engine braking when off the throttle, total across the wheels. */
+const COAST_FORCE = 250;
 // 0.5 * air density 1.2 * Cd 0.33 * frontal area 2.2 m^2.
 const AERO_DRAG = 0.436;
 const ROLLING_RESISTANCE = 0.012 * MASS * 9.81;
@@ -82,7 +84,7 @@ export class Vehicle {
     this.body.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }, true);
     this.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     this.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
-    this.state = { ...this.state, gear: this.state.gearbox === 'auto' ? 1 : 0, rpm: IDLE_RPM, running: true, reverseHold: 0 };
+    this.state = { ...this.state, gear: this.state.gearbox === 'auto' ? 1 : 0, rpm: IDLE_RPM, running: true };
   }
 
   /** One fixed physics step; call before world.step(). */
@@ -97,9 +99,9 @@ export class Vehicle {
       this.controller.setWheelSteering(i, steer);
       this.controller.setWheelEngineForce(i, step.wheelForce / FRONT.length);
     }
-    const service = step.brake * BRAKE_FORCE + (step.wheelForce === 0 ? ROLLING_BRAKE : 0);
-    for (const i of FRONT) this.controller.setWheelBrake(i, service);
-    for (const i of REAR) this.controller.setWheelBrake(i, service + (c.handbrake ? HANDBRAKE_FORCE : 0));
+    const service = step.brake * BRAKE_FORCE + (step.wheelForce === 0 ? COAST_FORCE / 4 : 0);
+    for (const i of FRONT) this.controller.setWheelBrake(i, service * dt);
+    for (const i of REAR) this.controller.setWheelBrake(i, (service + (c.handbrake ? HANDBRAKE_FORCE : 0)) * dt);
     this.applyResistance();
     this.controller.updateVehicle(dt);
   }

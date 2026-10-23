@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { DistrictData } from './shared/district';
 import { CameraRig, CAR_LAYER } from './camera/cameras';
 import { createMirrors } from './camera/mirrors';
-import { fixedSteps, STEP } from './physics/loop';
+import { fixedSteps, NO_EDGES, splitControls, STEP } from './physics/loop';
 import { createHudStore, gearLabel } from './ui/hudStore';
 import { createMinimap } from './ui/minimap';
 import { mountHud } from './ui/mount';
@@ -86,7 +86,7 @@ function resetToLane() {
 }
 
 const clock = new THREE.Clock();
-let acc = 0, flippedFor = 0, frames = 0, hudT = 0;
+let acc = 0, pendingEdges = NO_EDGES, flippedFor = 0, frames = 0, hudT = 0;
 const hud = createHudStore();
 const minimap = createMinimap(district);
 mountHud(hud, minimap.canvas, params.has('debug'));
@@ -102,8 +102,10 @@ renderer.setAnimationLoop(() => {
 
   const r = fixedSteps(acc, dt);
   acc = r.accumulator;
-  for (let i = 0; i < r.steps; i++) {
-    car.update(controls, STEP);
+  const split = splitControls(controls, pendingEdges, r.steps);
+  pendingEdges = split.pending;
+  for (const c of split.perStep) {
+    car.update(c, STEP);
     world.step();
   }
   car.sync();
