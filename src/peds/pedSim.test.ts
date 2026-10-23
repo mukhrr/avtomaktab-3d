@@ -287,3 +287,20 @@ describe('clearNear', () => {
     expect(sim.peds.some(p => p.active)).toBe(active.some(p => dist(p.position, centre) >= 15));
   });
 });
+
+test('crossers leaving a crossing next to a junction stay off every carriageway', () => {
+  const d = testNetwork();
+  d.crossings = [{ id: 'j1', position: [-8, 0], kind: 'zebra', edgeId: 'w', at: 8, width: 7 }];
+  const c = setup(d, { crossers: 20, walkers: 0 });
+  const roads = d.roads.filter(r => r.kind !== 'footway');
+  let leftBand = 0;
+  for (let i = 0; i < 60 * 30; i++) {
+    c.step();
+    for (const p of c.sim.peds) {
+      if (!p.active || Math.abs(p.position[0] + 8) <= 2.5) continue;
+      leftBand++;
+      for (const r of roads) expect(distToPolyline(p.position, r.points)).toBeGreaterThan(r.width / 2);
+    }
+  }
+  expect(leftBand).toBeGreaterThan(0);
+});

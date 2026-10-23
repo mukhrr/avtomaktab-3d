@@ -18,7 +18,10 @@ describe('exam runs on route-1 with M2 traffic (headless)', () => {
     const { result } = runExam(world(), { indicators: true, obeyLights: false });
     expect(result.phase).toBe('failed');
     expect(result.passed).toBe(false);
-    expect(result.violations.map(v => v.id)).toEqual(['redLight']);
+    // Ignoring lights it may also queue across a crossing on its way; the exam ends on the first red it runs.
+    const ids = result.violations.map(v => v.id);
+    expect(ids.at(-1)).toBe('redLight');
+    expect(ids.filter(id => id === 'redLight')).toHaveLength(1);
   }, RUN_TIMEOUT);
 
   it('a driver who never indicates gets one noIndicator per signalled maneuver', () => {
@@ -26,11 +29,11 @@ describe('exam runs on route-1 with M2 traffic (headless)', () => {
     const { result, signalling, driver } = runExam(w, { indicators: false, obeyLights: true }, { driveOn: true });
 
     // Turns are the route's left, right and U-turn steps; straight-through steps carry no indicator duty
-    // (ManeuverWatch gives them side null). Lane changes are maneuvers too: the driver makes them on the
-    // 304 m approach to the second pass's left turn, where the rule wants the leftmost lane.
+    // (ManeuverWatch gives them side null). Lane changes are maneuvers too: on 22813507:0, 2 to reach the rightmost
+    // lane for the first pass's right turn and 3 to reach the leftmost for the second pass's left turn.
     const turns = w.route.steps.filter(s => s.maneuver === 'left' || s.maneuver === 'right' || s.maneuver === 'uturn').length;
     expect(turns).toBe(6);
-    expect(driver.laneChanges).toBe(3);
+    expect(driver.laneChanges).toBe(5);
     const missed = signalling.filter(v => v.id === 'noIndicator');
     const kinds = missed.map(v => String(v.detail?.maneuver));
     expect(kinds.filter(k => !k.startsWith('lane-'))).toHaveLength(turns);

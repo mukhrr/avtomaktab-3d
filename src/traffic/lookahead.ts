@@ -2,7 +2,7 @@ import type { Crossing, Vec2 } from '../shared/district';
 import type { SignalSystem } from '../sim/signals';
 import { canStopBefore } from './idm';
 import type { LaneNetwork, LaneRef } from './lanes';
-import type { Agent, Conn, CrossingOccupancy, PlayerState } from './trafficSim';
+import { CAR_CLASSES, type Agent, type Conn, type CrossingOccupancy, type PlayerState } from './trafficSim';
 
 export const LOOKAHEAD = 80;
 const STOP_LINE_SETBACK = 1;
@@ -10,6 +10,9 @@ const CROSSING_SETBACK = 3;
 /** Deceleration a driver accepts to give way; closer than that to the line a car is committed to the junction. */
 const COMFORT_DECEL = 3.5;
 const MOVING = 0.5;
+/** Clearance kept around a standing player's box. */
+const PLAYER_MARGIN = 0.3;
+const SWEEP_STEP = 0.5;
 
 export const laneKey = (r: LaneRef) => `${r.edgeId}|${r.dir}|${r.lane}`;
 export const approachKey = (r: LaneRef) => `${r.edgeId}|${r.dir}`;
@@ -137,9 +140,11 @@ export function nearestObstacle(a: Agent, w: LookaheadWorld, player: PlayerState
       const c = Math.abs(Math.cos(rel)), s = Math.abs(Math.sin(rel));
       const along = (player.length * c + player.width * s) / 2;
       const across = (player.length * s + player.width * c) / 2;
-      if (hit.lateral < p.laneWidth / 2 + across) {
-        consider(hit.d - half - along, Math.max(0, player.speed * Math.cos(rel)));
-      }
+      if (hit.lateral >= p.laneWidth / 2 + across) continue;
+      // The lane-wide corridor is a margin for a player who may move; one standing still is judged by its real box,
+      // or a player angled just beside the path and a car waiting for it hold each other forever.
+      if (Math.abs(player.speed) < MOVING && !sweepHitsPlayer(p, a, player, hit.d)) continue;
+      consider(hit.d - half - along, Math.max(0, player.speed * Math.cos(rel)));
     }
   }
   return best;
@@ -165,4 +170,36 @@ function projectPlayer(p: Piece, player: PlayerState, minX: number): { d: number
     x += seg;
   }
   return best;
+}
+
+/** Whether the agent's box, slid along the piece through the stretch nearest the player, touches the player's box. */
+function sweepHitsPlayer(p: Piece, a: Agent, player: PlayerState, d: number): boolean {
+  const reach = a.length / 2 + player.length / 2 + PLAYER_MARGIN;
+  const width = CAR_CLASSES[a.carClass].width;
+  const u0 = d - reach - p.base, u1 = d + reach - p.base;
+  let run = 0;
+  for (let i = 1; i < p.points.length && run <= u1; i++) {
+    const [ax, az] = p.points[i - 1], [bx, bz] = p.points[i];
+    const seg = Math.hypot(bx - ax, bz - az);
+    if (seg > 0 && run + seg >= u0) {
+      const h = Math.atan2(bx - ax, bz - az);
+      for (let u = Math.max(u0, run); u <= Math.min(u1, run + seg); u += SWEEP_STEP) {
+        const t = (u - run) / seg;
+        if (boxesTouch([ax + (bx - ax) * t, az + (bz - az) * t], h, a.length, width, player)) return true;
+      }
+    }
+    run += seg;
+  }
+  return false;
+}
+
+function boxesTouch(c: Vec2, h: number, length: number, width: number, player: PlayerState): boolean {
+  const pl = player.length + 2 * PLAYER_MARGIN, pw = player.width + 2 * PLAYER_MARGIN;
+  const dx = player.position[0] - c[0], dz = player.position[1] - c[1];
+  const ext = (bh: number, l: number, w: number, ax: number, az: number) =>
+    (l / 2) * Math.abs(Math.sin(bh) * ax + Math.cos(bh) * az) + (w / 2) * Math.abs(Math.cos(bh) * ax - Math.sin(bh) * az);
+  return [h, h + Math.PI / 2, player.heading, player.heading + Math.PI / 2].every(axis => {
+    const ax = Math.sin(axis), az = Math.cos(axis);
+    return Math.abs(dx * ax + dz * az) <= ext(h, length, width, ax, az) + ext(player.heading, pl, pw, ax, az);
+  });
 }

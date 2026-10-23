@@ -58,11 +58,11 @@ Rules that see the same mistake twice charge it once: redLight hides stopLinePas
 
 | driver | result |
 |---|---|
-| careful | finished, 0 points, about 620 s of sim time |
-| runs red lights | failed on redLight at the light on 138601201:0 |
-| never indicates | 9 noIndicator over the whole route (6 turns, 3 lane changes) and 1 noIndicatorPullOff; the exam fails on the fifth noIndicator |
+| careful | finished, 0 points, about 760 s of sim time |
+| runs red lights | failed on redLight; queueing with lights ignored it may also collect a stoppedOnCrossing first |
+| never indicates | 11 noIndicator over the whole route (6 turns, 5 lane changes on 22813507:0) and 1 noIndicatorPullOff; the exam fails on the fifth noIndicator |
 
-The three runs take about 32 s together.
+The three runs take about 45 s together. Other seeds (3, 7, 9) also finish with 0 points; seed 11 finishes with 20 (stoppedOnCrossing, see the Task 11 report).
 
 ## Tuning log
 
@@ -75,3 +75,5 @@ No threshold was changed. Every false positive the careful driver showed in play
 - collisionCar with an AI car turning right from a middle lane, and with a car alongside during a lane change: the driver now watches for crossing courses and waits for a gap.
 - collisionPedestrian and stoppedOnCrossing with crossers walking off along the kerb line: the driver now gives way to anyone on its path and does not enter a crossing it cannot clear.
 - pedestrianNotYielded at a zebra drawn past the lane end, in the junction mouth: the driver now looks for crossings up to 15 m past the lane end.
+
+Fix round 1 changed M2 code, not exam thresholds: AI cars turn right only from the rightmost lane and left only from the leftmost, a car stuck for 60 s is cleared unless it stands within 15 m in front of the player, an AI car no longer waits for a standing player whose box it would not touch, and crossers leaving a crossing walk off the carriageway instead of along the kerb line. The driver workarounds for walking-off crossers were removed.

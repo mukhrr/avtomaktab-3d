@@ -40,6 +40,9 @@ interface Ped extends PedView {
   dir: 1 | -1;
   leaveDir: 1 | -1;
   left: number;
+  /** Crosser: the walk off the crossing, kept clear of every carriageway. */
+  leavePath: Vec2[];
+  leaveLength: number;
   /** Walker: footway index and distance along it. */
   footway: number;
   s: number;
@@ -57,6 +60,9 @@ const WALKER_LEAVE = 250;
 const MIN_SPAWN_DIST = 40;
 const CURB_MARGIN = 1.5;
 const LEAVE_DISTANCE = 15;
+/** How far a leaving crosser may step out from the kerb to get clear of the carriageway. */
+const LEAVE_OUT_MAX = 6;
+const LEAVE_SAMPLE = 0.5;
 const SPAWN_JITTER = 1;
 const SPAWN_ATTEMPTS = 10;
 const ZEBRA_GAP = 2;
@@ -127,8 +133,8 @@ function segDist(p: Vec2, a: Vec2, b: Vec2): number {
   return Math.hypot(p[0] - a[0] - dx * t, p[1] - a[1] - dz * t);
 }
 
-/** Footway polylines cut into runs that stay off every car carriageway. */
-function offRoadRuns(d: DistrictData): Footway[] {
+/** Whether a point lies on (or within ROAD_MARGIN of) any car carriageway. */
+function carriagewayTest(d: DistrictData): (p: Vec2) => boolean {
   const grid = new Map<string, { a: Vec2; b: Vec2; reach: number }[]>();
   for (const r of d.roads) {
     if (FOOT_KINDS.has(r.kind)) continue;
@@ -148,9 +154,12 @@ function offRoadRuns(d: DistrictData): Footway[] {
       }
     }
   }
-  const onRoad = (p: Vec2) =>
+  return (p: Vec2) =>
     (grid.get(cellKey(Math.floor(p[0] / CELL), Math.floor(p[1] / CELL))) ?? []).some(s => segDist(p, s.a, s.b) < s.reach);
+}
 
+/** Footway polylines cut into runs that stay off every car carriageway. */
+function offRoadRuns(d: DistrictData, onRoad: (p: Vec2) => boolean): Footway[] {
   const runs: Footway[] = [];
   for (const r of d.roads) {
     if (!FOOT_KINDS.has(r.kind) || r.points.length < 2) continue;
@@ -182,6 +191,7 @@ export class PedSim implements CrossingOccupancy {
   /** Walker spawn samples taken during the last step. */
   spawnAttempts = 0;
   private readonly clear = new Map<number, boolean>();
+  private readonly onRoad: (p: Vec2) => boolean;
 
   constructor(d: DistrictData, opts: { crossers: number; walkers: number; seed: number }) {
     this.rand = rng(opts.seed);
@@ -197,7 +207,8 @@ export class PedSim implements CrossingOccupancy {
         normal: [-tangent[1], tangent[0]], half: c.width / 2 + CURB_MARGIN,
       });
     }
-    this.footways.push(...offRoadRuns(d));
+    this.onRoad = carriagewayTest(d);
+    this.footways.push(...offRoadRuns(d, this.onRoad));
     this.footways.forEach((f, k) => {
       const xs = f.points.map(p => Math.floor(p[0] / CELL)), zs = f.points.map(p => Math.floor(p[1] / CELL));
       for (let cx = Math.min(...xs); cx <= Math.max(...xs); cx++) {
@@ -214,7 +225,7 @@ export class PedSim implements CrossingOccupancy {
       this.pool.push({
         id: i, active: false, position: [0, 0], heading: 0, colour: COLOURS[0], walking: false,
         kind: i < opts.crossers ? 'crosser' : 'walker', speed: 0,
-        crossing: 0, across: 0, along: 0, state: 'waiting', dir: 1, leaveDir: 1, left: 0, footway: 0, s: 0,
+        crossing: 0, across: 0, along: 0, state: 'waiting', dir: 1, leaveDir: 1, left: 0, leavePath: [], leaveLength: 0, footway: 0, s: 0,
       });
     }
   }
@@ -288,10 +299,11 @@ export class PedSim implements CrossingOccupancy {
       if (p.dir * (p.across - p.dir * x.half) >= 0) {
         p.across = p.dir * x.half;
         p.state = 'leaving';
+        this.planLeave(p, x);
       }
     } else {
       p.left += p.speed * dt;
-      if (p.left >= LEAVE_DISTANCE) {
+      if (p.left >= p.leaveLength) {
         p.active = false;
         return;
       }
@@ -299,13 +311,45 @@ export class PedSim implements CrossingOccupancy {
     this.placeCrosser(p, x);
   }
 
+  /**
+   * Out from the kerb until off every carriageway, then along the pavement the chosen way for as long as that stays
+   * off the roads too. Near a junction the pavement line would otherwise lead straight across the other road.
+   */
+  private planLeave(p: Ped, x: CrossingGeom): void {
+    const at = (across: number, along: number): Vec2 => [
+      x.centre[0] + x.normal[0] * across + x.tangent[0] * along,
+      x.centre[1] + x.normal[1] * across + x.tangent[1] * along,
+    ];
+    let out = 0;
+    while (out < LEAVE_OUT_MAX && this.onRoad(at(p.across + p.dir * out, p.along))) out += LEAVE_SAMPLE;
+    const across = p.across + p.dir * out;
+    const clear = (dir: 1 | -1) => {
+      let run = 0;
+      while (run < LEAVE_DISTANCE && !this.onRoad(at(across, p.along + dir * (run + LEAVE_SAMPLE)))) run += LEAVE_SAMPLE;
+      return run;
+    };
+    const back = -p.leaveDir as 1 | -1;
+    let run = clear(p.leaveDir);
+    const other = clear(back);
+    if (other > run) [p.leaveDir, run] = [back, other];
+    p.leavePath = [at(p.across, p.along)];
+    if (out > 0) p.leavePath.push(at(across, p.along));
+    if (run > 0) p.leavePath.push(at(across, p.along + p.leaveDir * run));
+    p.leaveLength = polyLength(p.leavePath);
+    p.left = 0;
+  }
+
   private placeCrosser(p: Ped, x: CrossingGeom): void {
-    const along = p.along + (p.state === 'leaving' ? p.left * p.leaveDir : 0);
-    p.position[0] = x.centre[0] + x.normal[0] * p.across + x.tangent[0] * along;
-    p.position[1] = x.centre[1] + x.normal[1] * p.across + x.tangent[1] * along;
-    const hx = p.state === 'leaving' ? x.tangent[0] * p.leaveDir : x.normal[0] * p.dir;
-    const hz = p.state === 'leaving' ? x.tangent[1] * p.leaveDir : x.normal[1] * p.dir;
-    p.heading = Math.atan2(hx, hz);
+    if (p.state === 'leaving' && p.leavePath.length > 1) {
+      const at = pointAlong(p.leavePath, Math.min(p.left, p.leaveLength));
+      p.position[0] = at.x;
+      p.position[1] = at.z;
+      p.heading = at.heading;
+      return;
+    }
+    p.position[0] = x.centre[0] + x.normal[0] * p.across + x.tangent[0] * p.along;
+    p.position[1] = x.centre[1] + x.normal[1] * p.across + x.tangent[1] * p.along;
+    p.heading = Math.atan2(x.normal[0] * p.dir, x.normal[1] * p.dir);
   }
 
   private mayCross(k: number, player: PlayerState, cars: readonly AgentView[], signals: SignalSystem): boolean {

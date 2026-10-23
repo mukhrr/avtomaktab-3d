@@ -71,11 +71,17 @@ const PULL_OFF_CANCEL = 10;
 const STOP_SIGN_HOLD = 1.2;
 const CURB_RELEASE = 1.2;
 const PED_CLEARANCE = 1;
-const PED_SPEED = 1.4;
 const SHORT_LANE = 8;
 const WAITING_AT_LINE = 8;
 const YIELD_PATIENCE = 8;
 const CRAWL = 2;
+/** A car ahead slower than this may stop before the player has cleared a crossing behind it. */
+const QUEUE_SPEED = 3;
+const BUSY_TTA = 4;
+/** Patience with a car standing at its line counts only while the player waits this close to its own line. */
+const WAIT_NEAR_LINE = 3;
+/** Inside the junction a left turner may still wait until its heading has turned this far, short of the rule's commit. */
+const LEFT_WAIT_ANGLE = Math.PI / 6;
 /** Crossings drawn across the junction mouth sit past the lane end but still on its edge. */
 const JUNCTION_CROSSING = 15;
 const LANE_GAP_BEHIND = 12;
@@ -199,6 +205,8 @@ export class ScriptedDriver {
   private snap: DriveSnapshot | null = null;
   private readonly yellow = new Map<string, boolean>();
   private readonly alongCache = new Map<string, number>();
+  /** Per step: conflicts at each approach's junction. */
+  private readonly conflictCache = new Map<string, DriveSnapshot['junctionConflicts']>();
   private readonly edgePts = new Map<string, Vec2[]>();
   private readonly curbStill = new Map<string, number>();
   private readonly stopSignDone = new Set<number>();
@@ -324,9 +332,8 @@ export class ScriptedDriver {
       entry[i] = enter;
       exit[i] = want;
       if (i < n - 1) {
-        const p = lastPt({ ...ref, lane: want });
-        const next = laneRefs(route.steps[i + 1].ref);
-        entry[i + 1] = next.reduce((b, k) => (dist(p, firstPt(k)) < dist(p, firstPt(b)) ? k : b)).lane;
+        // The lane index carries over as it does for AI cars, so both use the same connectors through a junction.
+        entry[i + 1] = Math.min(want, this.road.lanes(route.steps[i + 1].ref) - 1);
       }
     }
     return { entry, exit };
@@ -398,6 +405,7 @@ export class ScriptedDriver {
   }
 
   private decide(t: number, dt: number): number {
+    this.conflictCache.clear();
     const front = this.s + FRONT_OFFSET;
     const v = this.v;
     let acc = MAX_ACCEL;
@@ -456,18 +464,11 @@ export class ScriptedDriver {
       this.junction(p, front, dt, target);
     }
 
-    // Anyone on or walking onto the path, including crossers who walk on along the kerb line into a junction.
+    // Anyone standing or walking on the path.
     for (const q of this.w.peds.peds) {
       if (!q.active || Math.abs(q.position[0] - this.pose.position[0]) > 30 || Math.abs(q.position[1] - this.pose.position[1]) > 30) continue;
-      for (const tau of q.walking ? [0, 1, 2] : [0]) {
-        const at: Vec2 = [q.position[0] + Math.sin(q.heading) * PED_SPEED * tau, q.position[1] + Math.cos(q.heading) * PED_SPEED * tau];
-        const hit = this.line.project(at, this.s - PLAYER_LENGTH / 2 - 0.5, front + 20);
-        if (!hit || hit.lateral >= PLAYER_WIDTH / 2 + PED_CLEARANCE) continue;
-        const gap = hit.s - front - STOP_GAP;
-        // A forecast only earns a gentle stop; braking hard for it would leave the car standing on a zebra.
-        if (tau === 0 || (gap > 0 && (v * v) / (2 * gap) <= COMFORT_DECEL)) target(gap, 0, `pedestrian ${q.id} in the way`);
-        break;
-      }
+      const hit = this.line.project(q.position, this.s - PLAYER_LENGTH / 2 - 0.5, front + 20);
+      if (hit && hit.lateral < PLAYER_WIDTH / 2 + PED_CLEARANCE) target(hit.s - front - STOP_GAP, 0, `pedestrian ${q.id} in the way`);
     }
 
     const cut = this.cutIn();
@@ -550,8 +551,10 @@ export class ScriptedDriver {
       // Never enter a marked crossing without room to clear it: a car standing just beyond, or someone walking there.
       if (c.kind !== 'unmarked' && band > 0) {
         const beyond = front + band + 2 * CROSSING_HALF_DEPTH;
-        const blocked = (lead && lead.speed < 1 && lead.gap - (band + 2 * CROSSING_HALF_DEPTH) - 1 < PLAYER_LENGTH)
-          || this.pedNear(beyond, beyond + PLAYER_LENGTH + 2);
+        const blocked = (lead && lead.speed < QUEUE_SPEED && lead.gap - (band + 2 * CROSSING_HALF_DEPTH) - 1 < PLAYER_LENGTH)
+          || this.pedNear(beyond, beyond + PLAYER_LENGTH + 2)
+          // Too close to the junction to wait between them: cross only once nobody is turning through it.
+          || (p.s1 - beyond < PLAYER_LENGTH + 1 && p.step < this.steps.length - 1 && this.junctionBusy(p));
         if (blocked) target(band - STOP_GAP, 0, `keep ${c.id} clear`);
       }
     }
@@ -560,6 +563,7 @@ export class ScriptedDriver {
   private junction(p: Piece, front: number, dt: number, target: (gap: number, vMax: number, reason: string) => void): void {
     const i = p.step;
     if (i === this.steps.length - 1) return;
+    if (this.greenLeft(p, dt, target)) return;
     const gap = p.s1 - front;
     // The yield rule judges when the centre enters the junction, so a crawling car may still wait until then.
     if (gap > LOOKAHEAD || this.s > p.s1 - 0.2 || (gap < -0.3 && this.v > CRAWL)) return;
@@ -572,16 +576,10 @@ export class ScriptedDriver {
     if (gap > SIGNAL_REACH) return;
     const conflicts = this.conflictsAt(ref);
     const mine = this.road.rank(ref);
-    const turn = turnBetween(this.w.net, ref, this.pieces.find(q => q.kind === 'conn' && q.step === i)!.endRef);
-    const threat = this.signalledApproach[i]
-      ? turn === 'left' || turn === 'uturn'
-        ? conflicts.find(c => c.oncoming && (c.turn === 'straight' || c.turn === null) && c.speed > YIELD_MOVING && c.tta < YIELD_MARGIN_TTA)
-        : undefined
-      : conflicts.find(c => !c.onConnector && (c.rank > mine || (c.rank === mine && c.fromRight)) && (c.speed > YIELD_MOVING
-        ? c.tta < YIELD_MARGIN_TTA
-        // Standing at its line it may move off as the player enters; after a long wait it is waiting for the player.
-        : c.tta * Math.max(c.speed, 0.1) < WAITING_AT_LINE && this.yieldWait < YIELD_PATIENCE));
-    this.yieldWait = this.v < STOP_SPEED ? this.yieldWait + dt : 0;
+    if (this.signalledApproach[i]) return;
+    const priority = conflicts.filter(c => !c.onConnector && (c.rank > mine || (c.rank === mine && c.fromRight)));
+    // Standing at its line it may move off as the player enters; after a long wait it is waiting for the player.
+    const threat = this.pickThreat(priority, gap < WAIT_NEAR_LINE, dt);
     if (!threat) return;
     // Lanes a few metres long join two junctions into one; the wait belongs before the first of them.
     let stop = p;
@@ -593,8 +591,52 @@ export class ScriptedDriver {
     target(stop.s1 - front - 0.5, 0, `yield to ${threat.agentId} at ${i}`);
   }
 
+  /**
+   * A left turn at lights waits at the junction mouth while oncoming traffic comes on or is about to move off its
+   * line, and can still stop inside until its heading has turned LEFT_WAIT_ANGLE, short of the rule's commit.
+   */
+  private greenLeft(p: Piece, dt: number, target: (gap: number, vMax: number, reason: string) => void): boolean {
+    const i = p.step;
+    const conn = this.pieces.find(q => q.kind === 'conn' && q.step === i)!;
+    const turn = turnBetween(this.w.net, this.steps[i], conn.endRef);
+    if (!this.signalledApproach[i] || (turn !== 'left' && turn !== 'uturn')) return false;
+    const mouth = conn.s0 - FRONT_OFFSET - 0.3;
+    const h0 = this.line.at(conn.s0).heading;
+    let inside = conn.s0;
+    while (inside < conn.s1 && Math.abs(wrapAngle(this.line.at(inside).heading - h0)) < LEFT_WAIT_ANGLE) inside += 0.5;
+    if (this.s >= inside - 0.2 || mouth - this.s > LOOKAHEAD) return true;
+    const outside = this.s < mouth - 0.2;
+    // Outside, a car standing at its line may move off on green. Inside, the player stands in its way, so it waits
+    // for the player and only moving cars count, or the two would hold each other forever.
+    const oncoming = this.conflictsAt(this.steps[i]).filter(c => c.oncoming && (c.turn === 'straight' || c.turn === null));
+    const threat = this.pickThreat(outside ? oncoming : oncoming.filter(c => c.speed > YIELD_MOVING), outside && mouth - this.s < WAIT_NEAR_LINE, dt);
+    if (threat) target((outside ? mouth : inside) - this.s, 0, `oncoming ${threat.agentId} at ${i}`);
+    return true;
+  }
+
+  /**
+   * A moving car due within the margin, else one standing at its line until the player has waited YIELD_PATIENCE
+   * for it at the line; patience only grows while such a car is the reason for waiting.
+   */
+  private pickThreat(cars: DriveSnapshot['junctionConflicts'], atLine: boolean, dt: number): DriveSnapshot['junctionConflicts'][number] | undefined {
+    const moving = cars.find(c => c.speed > YIELD_MOVING && c.tta < YIELD_MARGIN_TTA);
+    const standing = cars.find(c => c.speed <= YIELD_MOVING && c.tta * Math.max(c.speed, 0.1) < WAITING_AT_LINE);
+    if (this.v >= STOP_SPEED) this.yieldWait = 0;
+    else if (!moving && standing && atLine) this.yieldWait += dt;
+    return moving ?? (standing && this.yieldWait < YIELD_PATIENCE ? standing : undefined);
+  }
+
   /** The snapshot's junction conflicts for a car standing at the end of `ref`. */
   private conflictsAt(ref: LaneRef): DriveSnapshot['junctionConflicts'] {
+    const key = `${ref.edgeId}|${ref.dir}`;
+    const cached = this.conflictCache.get(key);
+    if (cached) return cached;
+    const found = this.buildConflicts(ref);
+    this.conflictCache.set(key, found);
+    return found;
+  }
+
+  private buildConflicts(ref: LaneRef): DriveSnapshot['junctionConflicts'] {
     const { d, net, signals, signs, peds, traffic } = this.w;
     const match = { ref, edgeS: net.path(ref).endAt, lateral: 0, inJunction: null, onConnector: false, confidence: 1 };
     const pose = this.pose;
@@ -608,8 +650,8 @@ export class ScriptedDriver {
   }
 
   /**
-   * A car whose straight-line course over the next seconds meets the car's own planned course, such as AI turning
-   * right from a middle lane across the player's lane. Returns the front's gap to where the boxes would first touch.
+   * A car whose straight-line course over the next seconds meets the car's own planned course, such as one turning
+   * across the player's lane at a junction. Returns the front's gap to where the boxes would first touch.
    */
   private cutIn(): { id: number; gap: number } | null {
     const me = this.pose.position;
@@ -621,14 +663,22 @@ export class ScriptedDriver {
         const ahead = this.s + Math.max(this.v, 2) * tau;
         const mine = this.line.at(ahead);
         const p: Vec2 = [a.position[0] + Math.sin(a.heading) * a.speed * tau, a.position[1] + Math.cos(a.heading) * a.speed * tau];
+        // A standing car only matters if the boxes would really touch; with a margin, one waiting at its line beside
+        // the turn and waiting for the player would hold both for good.
+        const m = a.speed < YIELD_MOVING ? 0 : CUT_MARGIN;
         const hit = boxesOverlap(
-          { p: mine.position, h: mine.heading, l: PLAYER_LENGTH + 2 * CUT_MARGIN, w: PLAYER_WIDTH + 2 * CUT_MARGIN },
+          { p: mine.position, h: mine.heading, l: PLAYER_LENGTH + 2 * m, w: PLAYER_WIDTH + 2 * m },
           { p, h: a.heading, l: k.length, w: k.width },
         );
         if (!hit) continue;
         // Cars already ahead on the same course are the leader's business.
         if (Math.abs(wrapAngle(a.heading - mine.heading)) < Math.PI / 12 && tau === CUT_STEP) break;
-        const gap = Math.max(0, ahead - this.s - PLAYER_LENGTH / 2 - CUT_MARGIN - 1);
+        let gap = Math.max(0, ahead - this.s - PLAYER_LENGTH / 2 - CUT_MARGIN - 1);
+        // A car turning inside the junction sweeps more than its box: wait at the junction mouth, not in its path.
+        const here = this.piece(this.s);
+        if (this.w.traffic.inspect(a.id)?.connectorNode && here.kind === 'lane' && here.s1 - this.s - FRONT_OFFSET > 0) {
+          gap = Math.min(gap, here.s1 - this.s - FRONT_OFFSET - 0.5);
+        }
         if (!best || gap < best.gap) best = { id: a.id, gap };
         break;
       }
@@ -636,18 +686,24 @@ export class ScriptedDriver {
     return best;
   }
 
-  /** Someone on the path between polyline distances `from` and `to`, now or within two seconds. */
+  /** An AI car is on a connector of the junction at the end of this lane piece, or about to reach it. */
+  private junctionBusy(p: Piece): boolean {
+    const e = this.w.d.graph.edges.find(x => x.id === p.ref.edgeId)!;
+    const node = p.ref.dir === 1 ? e.to : e.from;
+    if (this.w.traffic.agents.some(a => a.active && this.w.traffic.inspect(a.id)?.connectorNode === node)) return true;
+    return this.conflictsAt(this.steps[p.step]).some(c => c.speed > YIELD_MOVING && c.tta < BUSY_TTA);
+  }
+
+  /** Someone on the path between polyline distances `from` and `to`. */
   private pedNear(from: number, to: number): boolean {
     const me = this.pose.position;
     return this.w.peds.peds.some(q => {
       if (!q.active || Math.abs(q.position[0] - me[0]) > 40 || Math.abs(q.position[1] - me[1]) > 40) return false;
-      return (q.walking ? [0, 1, 2] : [0]).some(tau => {
-        const at: Vec2 = [q.position[0] + Math.sin(q.heading) * PED_SPEED * tau, q.position[1] + Math.cos(q.heading) * PED_SPEED * tau];
-        const hit = this.line.project(at, from, to);
-        return !!hit && hit.lateral < PLAYER_WIDTH / 2 + PED_CLEARANCE;
-      });
+      const hit = this.line.project(q.position, from, to);
+      return !!hit && hit.lateral < PLAYER_WIDTH / 2 + PED_CLEARANCE;
     });
   }
+
 
   /** No car in the target lane alongside, close ahead, or closing from behind. */
   private gapFree(into: LaneRef): boolean {

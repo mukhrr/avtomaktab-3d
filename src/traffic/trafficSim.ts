@@ -125,6 +125,9 @@ const SPAWN_MIN = 120;
 const INITIAL_SPAWN_MIN = 30;
 const DESPAWN_AT = 350;
 const GRIDLOCK_TIME = 60;
+/** A stuck car closer than this in front of the player is never made to vanish. */
+const JAM_KEEP_RANGE = 15;
+const VIEW_HALF_ANGLE = Math.PI / 3;
 const SPAWN_ATTEMPTS = 30;
 const BRAKING = -1;
 const DEFAULT_KMH = 60;
@@ -137,6 +140,11 @@ const polyLength = (pts: Vec2[]) => {
   for (let i = 1; i < pts.length; i++) d += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
   return d;
 };
+
+function inView(player: PlayerState, p: Vec2): boolean {
+  const bearing = Math.atan2(p[0] - player.position[0], p[1] - player.position[1]);
+  return Math.abs(wrapAngle(bearing - player.heading)) <= VIEW_HALF_ANGLE;
+}
 
 export class TrafficSim {
   private readonly pool: Agent[] = [];
@@ -272,8 +280,9 @@ export class TrafficSim {
     for (const a of this.pool) {
       if (!a.active) continue;
       const d = dist(a.position, player.position);
-      // Exclusive junctions can lock in a ring of short edges; a car stuck that long out of sight is cleared instead.
-      if (d > DESPAWN_AT || (a.still > GRIDLOCK_TIME && d > SPAWN_MIN)) this.despawn(a);
+      // Exclusive junctions can lock in a ring of short edges; a car stuck that long is cleared unless it stands
+      // close in front of the player. Clearing the rest of the ring lets that one move off on its own.
+      if (d > DESPAWN_AT || (a.still > GRIDLOCK_TIME && (d > JAM_KEEP_RANGE || !inView(player, a.position)))) this.despawn(a);
     }
     this.buildIndex();
     this.arbitrate(player);
@@ -395,6 +404,18 @@ export class TrafficSim {
     if (!exits.length) {
       a.trapped = true;
       return;
+    }
+    if (!forced) {
+      // Turning from an inner lane would cut across the car beside it; with no lane changes, such a car goes on.
+      const e = this.edge(a.ref.edgeId);
+      const lanes = a.ref.dir === 1 ? e.lanesForward : e.lanesBackward;
+      const fits = exits.filter(r => {
+        const turn = turnBetween(this.net, a.ref, r);
+        if (turn === 'right') return a.ref.lane === 0;
+        if (turn === 'left' || turn === 'uturn') return a.ref.lane === lanes - 1;
+        return true;
+      });
+      if (fits.length) exits = fits;
     }
     a.next = exits[Math.floor(this.rand() * exits.length)];
     a.nextConn = this.conn(a.ref, a.next);

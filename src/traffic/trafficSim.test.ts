@@ -9,8 +9,9 @@ const NEXIA = CAR_CLASSES.nexia.length;
 const AWAY: PlayerState = { position: [100, 60], heading: 0, speed: 0, length: 4.5, width: 1.8 };
 const FREE: CrossingOccupancy = { occupied: () => false };
 
-function setup(count = 0, seed = 1) {
+function setup(count = 0, seed = 1, edit?: (d: DistrictData) => void) {
   const d = testNetwork();
+  edit?.(d);
   const net = new LaneNetwork(d);
   const signals = new SignalSystem(d);
   const sim = new TrafficSim(d, net, signals, { count, seed });
@@ -286,7 +287,77 @@ test('a car standing still for over 60 s is despawned only when it is out of the
   };
   expect(Math.hypot(AWAY.position[0] + 40, AWAY.position[1])).toBeGreaterThan(120);
   expect(run(AWAY)).toEqual([true, false]);
-  expect(run({ ...AWAY, position: [-40, 30] })).toEqual([true, true]);
+  // 12 m south of the queue: looking north at it keeps it, looking south (it is behind) clears it.
+  expect(run({ ...AWAY, position: [-45, 12], heading: Math.PI })).toEqual([true, true]);
+  expect(run({ ...AWAY, position: [-45, 12], heading: 0 })).toEqual([true, false]);
+  // In view but 30 m off it is cleared too.
+  expect(run({ ...AWAY, position: [-45, 30], heading: Math.PI })).toEqual([true, false]);
+});
+
+test('a jam beside the player clears cars out of view or more than 15 m away, not the one in plain view close ahead', () => {
+  const blocked: CrossingOccupancy = { occupied: id => id === 'z1' || id === 'z2' };
+  const c = setup(0, 1, d => d.crossings.push({ id: 'z2', position: [-95, 0], kind: 'zebra', edgeId: 'w', at: 95, width: 3 }));
+  const near = c.sim.place(W, 70, { carClass: 'nexia' });
+  const far = c.sim.place(W, 10, { carClass: 'nexia' });
+  // Standing on w east of both zebras, looking west: one car waits about 10 m ahead, the other about 65 m.
+  const player: PlayerState = { ...AWAY, position: [-35, -1.75], heading: -Math.PI / 2 };
+  for (let t = 0; t < 70; t += DT) c.step(player, blocked);
+  expect(c.sim.agents[near].active).toBe(true);
+  expect(c.sim.agents[far].active).toBe(false);
+});
+
+test('passes a standing player angled in the oncoming lane who is beside, not on, its path', () => {
+  const c = setup();
+  const player: PlayerState = { position: [100, -1.75], heading: -Math.PI / 2 + 0.61, speed: 0, length: 4.5, width: 1.8 };
+  const id = c.sim.place(E, 20, { carClass: 'nexia', speed: 10, route: [{ edgeId: 'tE', dir: 1, lane: 0 }] });
+  for (let t = 0; t < 20; t += DT) {
+    c.step(player);
+    const a = c.sim.agents[id];
+    if (!a.active) break;
+    expect(boxesOverlap(corners(a.position, a.heading, NEXIA, CAR_CLASSES.nexia.width),
+      corners(player.position, player.heading, player.length, player.width))).toBe(false);
+  }
+  expect(c.sim.agents[id].position[0]).toBeGreaterThan(120);
+});
+
+test('still queues behind that player once it starts to move', () => {
+  const c = setup();
+  const player: PlayerState = { position: [100, -1.75], heading: -Math.PI / 2 + 0.61, speed: 1, length: 4.5, width: 1.8 };
+  const id = c.sim.place(E, 20, { carClass: 'nexia', speed: 10 });
+  for (let t = 0; t < 20; t += DT) c.step(player);
+  expect(c.sim.agents[id].position[0]).toBeLessThan(100);
+});
+
+test('turns right only from the rightmost lane and left only from the leftmost', () => {
+  const twoLanes = (d: DistrictData) => {
+    const w = d.graph.edges.find(e => e.id === 'w')!;
+    w.lanesBackward = 2;
+    w.width = 10.5;
+    // Carry n and s on past their ends so turning into them is not a dead end, which free choice avoids.
+    for (const [arm, end, to] of [['n', [0, -120], [60, -120]], ['s', [0, 120], [60, 120]]] as const) {
+      const node = d.graph.nodes.find(x => x.id === arm)!;
+      const id = `${arm}X`;
+      d.graph.edges.push({ ...d.graph.edges.find(e => e.id === arm)!, id, roadId: id, from: arm, to: `${arm}2`, points: [[...end], [...to]], nodeIds: [arm, `${arm}2`] });
+      d.graph.nodes.push({ id: `${arm}2`, position: [...to], edges: [id] });
+      node.edges.push(id);
+    }
+  };
+  const seen = new Set<string>();
+  const c = setup(0, 1, twoLanes);
+  for (let k = 0; k < 40; k++) {
+    for (const lane of [0, 1]) {
+      const ref: LaneRef = { ...W, lane };
+      const id = c.sim.place(ref, c.net.path(ref).length - 35, { carClass: 'nexia' });
+      c.step();
+      const turn = c.sim.inspect(id)!.turn;
+      c.sim.clearNear(c.sim.agents[id].position, 1);
+      seen.add(`${lane}:${turn}`);
+      if (lane === 1) expect(turn).not.toBe('right');
+      if (lane === 0) expect(turn).not.toBe('left');
+    }
+  }
+  expect(seen).toContain('0:right');
+  expect(seen).toContain('1:left');
 });
 
 test('a car already inside the 3 m setback of an occupied zebra still stops before it', () => {
