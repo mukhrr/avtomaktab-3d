@@ -1,6 +1,6 @@
 import { NoEntryRule, StopSignRule, TurnRestrictionRule, WrongWayOnewayRule } from './signs';
 import { E_OUT, N_OUT, S_OUT, W_BACK, W_IN, testRoad, transit } from './testRoad';
-import { drive, ids, repeat, type SnapOver } from './testSnap';
+import { drive, fresh, ids, repeat, type SnapOver } from './testSnap';
 import { FRONT_OFFSET } from './thresholds';
 
 describe('noFullStopAtStopSign', () => {
@@ -39,6 +39,12 @@ describe('noEntry', () => {
     const vs = drive(new NoEntryRule(road), transit(W_IN, N_OUT));
     expect(ids(vs)).toEqual(['noEntry']);
     expect(vs[0].detail).toEqual({ edge: 'n|1' });
+  });
+
+  test('a match on the edge that has not held 2 s is not an entry yet', () => {
+    const into = [...transit(W_IN, W_IN, {}, { before: 10, inside: 5, after: 0 }), ...transit(W_IN, N_OUT, {}, { before: 0, inside: 5, after: 0 })];
+    expect(drive(new NoEntryRule(road), [...into, ...fresh(15, { speed: 5, ref: N_OUT }), ...repeat(10, { speed: 5, ref: E_OUT })])).toEqual([]);
+    expect(ids(drive(new NoEntryRule(road), [...into, ...fresh(30, { speed: 5, ref: N_OUT })]))).toEqual(['noEntry']);
   });
 
   test('a brief matcher flicker onto the edge is not an entry', () => {
@@ -81,6 +87,13 @@ describe('wrongWayOneway', () => {
     const vs = drive(new WrongWayOnewayRule(road), repeat(100, { ref: against, speed: 5 }));
     expect(ids(vs)).toEqual(['wrongWayOneway']);
     expect(vs[0].detail).toEqual({ edge: 'o1|-1' });
+  });
+
+  test('the time against it counts once the match has held 2 s', () => {
+    expect(drive(new WrongWayOnewayRule(road), fresh(30, { ref: against, speed: 5 }))).toEqual([]);
+    const vs = drive(new WrongWayOnewayRule(road), fresh(40, { ref: against, speed: 5 }));
+    expect(ids(vs)).toEqual(['wrongWayOneway']);
+    expect(vs[0].t).toBeCloseTo(3.5, 5);
   });
 
   test('stopping and going on is the same occurrence; leaving and coming back is another', () => {

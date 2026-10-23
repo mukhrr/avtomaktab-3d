@@ -1,7 +1,7 @@
 import type { DriveSnapshot } from '../snapshot';
 import { OncomingLaneRule, StoppedOnCrossingRule } from './position';
 import { W_BACK, W_IN, testRoad } from './testRoad';
-import { drive, ids, repeat, type SnapOver } from './testSnap';
+import { drive, fresh, ids, repeat, type SnapOver } from './testSnap';
 
 describe('oncomingLane', () => {
   const road = testRoad();
@@ -28,6 +28,13 @@ describe('oncomingLane', () => {
     expect(drive(new OncomingLaneRule(road), repeat(30, at(-2, { match: { inJunction: 'cross', onConnector: true } })))).toEqual([]);
     expect(drive(new OncomingLaneRule(road), repeat(30, at(-2, { match: { onConnector: true } })))).toEqual([]);
     expect(drive(new OncomingLaneRule(road), repeat(30, at(-2, { speed: -2 })))).toEqual([]);
+  });
+
+  test('a match that has not held 2 s is not judged; once it has, the stay over the line counts', () => {
+    expect(drive(new OncomingLaneRule(road), fresh(19, at(-1.5)))).toEqual([]);
+    const vs = drive(new OncomingLaneRule(road), fresh(40, at(-1.5)));
+    expect(ids(vs)).toEqual(['oncomingLane']);
+    expect(vs[0].t).toBeCloseTo(2.9, 5);
   });
 
   test('a oneway has no oncoming lane', () => {

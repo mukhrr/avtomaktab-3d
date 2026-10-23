@@ -1,6 +1,6 @@
 import type { DriveSnapshot } from '../snapshot';
 import {
-  EPS, SEVERE_OVER, SEVERE_SUSTAINED_HOLD, SEVERE_SUSTAINED_OVER, SPEEDING_PERIOD, SPEED_TOLERANCE,
+  EPS, MATCH_SETTLE, SEVERE_OVER, SEVERE_SUSTAINED_HOLD, SEVERE_SUSTAINED_OVER, SPEEDING_PERIOD, SPEED_TOLERANCE,
   TAILGATE_HEADWAY, TAILGATE_HOLD, TAILGATE_MIN_SPEED, TAILGATE_REPEAT, kmh,
 } from './thresholds';
 import { violation, type Rule, type Violation } from './types';
@@ -21,7 +21,7 @@ export class SpeedRule implements Rule {
     this.over += s.dt;
     this.sustained = by > SEVERE_SUSTAINED_OVER ? this.sustained + s.dt : 0;
     if (this.severe) return [];
-    if (by > SEVERE_OVER || this.sustained >= SEVERE_SUSTAINED_HOLD - EPS) {
+    if (s.match.held >= MATCH_SETTLE - EPS && (by > SEVERE_OVER || this.sustained >= SEVERE_SUSTAINED_HOLD - EPS)) {
       this.severe = true;
       return [violation('speedingSevere', s, { limit: s.speedLimit, kmh: Math.round(kmh(s.speed)) })];
     }

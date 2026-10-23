@@ -13,6 +13,9 @@ export const RED_LIGHT_DEDUPE = 3;
 
 export const STOP_SIGN_WINDOW = 10;
 
+/** A new edge or direction from the matcher must hold this long before fail-tier rules read it, so a wrong pick fails nobody. */
+export const MATCH_SETTLE = 2;
+
 export const NO_ENTRY_REACH = 40;
 /** A new edge must stay matched this long before noEntry is charged, so a matcher flicker is not a fail. */
 export const NO_ENTRY_HOLD = 0.5;

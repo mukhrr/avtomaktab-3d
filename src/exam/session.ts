@@ -105,6 +105,10 @@ export class ExamSession {
     return this.examiner?.nextManeuver ?? null;
   }
 
+  get replanFailures(): number {
+    return this.examiner?.replanFailures ?? 0;
+  }
+
   get penalties(): Record<PenaltyId, PenaltyEntry> {
     return this.deps.penalties;
   }

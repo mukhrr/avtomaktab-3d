@@ -20,7 +20,7 @@ export function snap(over: SnapOver = {}): DriveSnapshot {
     steer: 0,
     match: {
       ref: ref === undefined ? { edgeId: 'e', dir: 1, lane: 0 } : ref,
-      edgeS: 0, lateral: 0, inJunction: null, onConnector: false, confidence: 1, ...match,
+      edgeS: 0, lateral: 0, inJunction: null, onConnector: false, confidence: 1, held: 10, ...match,
     },
     speedLimit: 60, signalAhead: null, crossingsAhead: [], signsAhead: [], leader: null, junctionConflicts: [], events: [],
     ...rest,
@@ -36,3 +36,6 @@ export const repeat = (n: number, f: SnapOver | ((i: number) => SnapOver)): Snap
   Array.from({ length: n }, (_, i) => (typeof f === 'function' ? f(i) : f));
 
 export const ids = (vs: Violation[]) => vs.map(v => v.id);
+
+/** `n` frames of `f` on a match that has just changed: held rises from 0 as a real matcher's would. */
+export const fresh = (n: number, f: SnapOver): SnapOver[] => repeat(n, i => ({ ...f, match: { ...f.match, held: i * DT } }));

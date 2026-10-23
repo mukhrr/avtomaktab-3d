@@ -235,6 +235,7 @@ describe('rerouting', () => {
     expect(r.keys).not.toContain('exam.reroute');
     r.lane(N_OUT, 15, 60);
     expect(r.keys.filter(k => k === 'exam.reroute')).toHaveLength(1);
+    expect(r.ex.replanFailures).toBe(1);
     r.lane(N_OUT, 60);
     r.junction(N_OUT, N_BACK);
     r.lane(N_BACK, 0);
@@ -244,6 +245,52 @@ describe('rerouting', () => {
     r.lane(lane('tStub', 1), 0, 30);
     r.stopFor(lane('tStub', 1), 30, 3);
     expect(r.ex.phase).toBe('finished');
+  });
+
+  it('does not re-plan while a wrong match sits on the route road itself', () => {
+    const r = new Run(plan([[-100, 3], [120, 3], [237, 30]]));
+    r.lane(W_IN, 20, 30);
+    // The matcher says n, but the car is still in its lane on w, 70 m short of the cross.
+    for (let s = 30; s < 60; s += 0.5) {
+      const p = pointAt(r.net.path(W_IN).points, s).position;
+      r.prompts.push(...r.ex.update(snap({ t: r.t, position: p, speed: 5, ref: N_OUT, match: { edgeS: 10 } }), []));
+      r.t += DT;
+    }
+    expect(r.keys).not.toContain('exam.reroute');
+    expect(r.ex.replanFailures).toBe(0);
+  });
+
+  it('waits 2 s off the route before re-planning', () => {
+    const r = new Run(plan([[-100, 3], [120, 3], [237, 30]]));
+    r.lane(W_IN, 20);
+    r.junction(W_IN, N_OUT);
+    r.lane(N_OUT, 0, 9);
+    expect(r.keys).not.toContain('exam.reroute');
+    r.lane(N_OUT, 9.5, 14);
+    expect(r.keys.filter(k => k === 'exam.reroute')).toHaveLength(1);
+  });
+
+  it('speaks a reroute at most once in 10 s, and counts failed replans', () => {
+    let calls = 0;
+    const planner: typeof planRoute = (...a) => {
+      calls++;
+      return planRoute(...a);
+    };
+    const r = new Run(plan([[-100, 3], [120, 3], [237, 30]]), undefined, planner);
+    r.lane(W_IN, 20);
+    r.junction(W_IN, N_OUT);
+    r.lane(N_OUT, 0, 20);
+    expect(r.keys.filter(k => k === 'exam.reroute')).toHaveLength(1);
+    const t1 = r.t;
+    // Then the car shows up on tE, beyond the T and off the new route.
+    const far = lane('tE', -1);
+    r.lane(far, 0, 40);
+    expect(r.t - t1).toBeLessThan(10);
+    expect(r.keys.filter(k => k === 'exam.reroute')).toHaveLength(1);
+    r.lane(far, 40, 100);
+    expect(r.keys.filter(k => k === 'exam.reroute')).toHaveLength(2);
+    expect(calls).toBe(2);
+    expect(r.ex.replanFailures).toBe(0);
   });
 
   it('ignores a brief wrong-lane flicker', () => {

@@ -3,7 +3,7 @@ import type { Turn } from '../../traffic/turns';
 import type { DriveSnapshot } from '../snapshot';
 import { ManeuverWatch } from './maneuvers';
 import type { RoadInfo } from './road';
-import { EPS, FRONT_OFFSET, NO_ENTRY_HOLD, PAST_LINE, STOP_SIGN_WINDOW, STOP_SPEED, WRONG_WAY_HOLD } from './thresholds';
+import { EPS, FRONT_OFFSET, MATCH_SETTLE, NO_ENTRY_HOLD, PAST_LINE, STOP_SIGN_WINDOW, STOP_SPEED, WRONG_WAY_HOLD } from './thresholds';
 import { violation, type Rule, type Violation } from './types';
 
 const roadKey = (r: { edgeId: string; dir: number }) => `${r.edgeId}|${r.dir}`;
@@ -49,7 +49,7 @@ export class StopSignRule implements Rule {
   }
 }
 
-/** Judged after entry: the new edge must stay matched outside the junction for NO_ENTRY_HOLD. */
+/** Judged after entry: the new edge must stay matched outside the junction for NO_ENTRY_HOLD once settled. */
 export class NoEntryRule implements Rule {
   readonly id = 'noEntry';
   private key: string | null = null;
@@ -69,7 +69,7 @@ export class NoEntryRule implements Rule {
       this.held = 0;
       this.charged = false;
     }
-    if (!this.entered || this.charged || !this.road.noEntry(ref)) return [];
+    if (!this.entered || this.charged || !this.road.noEntry(ref) || s.match.held < MATCH_SETTLE - EPS) return [];
     this.held += s.dt;
     if (this.held < NO_ENTRY_HOLD - EPS) return [];
     this.charged = true;
@@ -124,7 +124,7 @@ export class WrongWayOnewayRule implements Rule {
       this.held = 0;
       this.charged = false;
     }
-    if (this.charged || this.road.lanes(ref) > 0 || s.speed <= STOP_SPEED) return [];
+    if (this.charged || this.road.lanes(ref) > 0 || s.speed <= STOP_SPEED || s.match.held < MATCH_SETTLE - EPS) return [];
     this.held += s.dt;
     if (this.held <= WRONG_WAY_HOLD + EPS) return [];
     this.charged = true;

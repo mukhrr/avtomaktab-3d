@@ -6,8 +6,11 @@ const RUN_TIMEOUT = 60_000;
 
 describe('exam runs on route-1 with M2 traffic (headless)', () => {
   it('a careful driver finishes and passes with 0 to 10 points', () => {
-    const { result, signalling } = runExam(world(), { indicators: true, obeyLights: true });
+    const { result, signalling, prompts, replanFailures } = runExam(world(), { indicators: true, obeyLights: true });
     expect(result.violations.map(v => v.id)).toEqual([]);
+    // The car never leaves the route, so the matcher must never make the examiner think it did.
+    expect(prompts.filter(p => p.key === 'exam.reroute')).toEqual([]);
+    expect(replanFailures).toBe(0);
     expect(result.phase).toBe('finished');
     expect(result.passed).toBe(true);
     expect(result.total).toBeLessThanOrEqual(10);

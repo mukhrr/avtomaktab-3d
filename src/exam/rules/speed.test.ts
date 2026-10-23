@@ -1,5 +1,5 @@
 import { SpeedRule, TailgatingRule } from './speed';
-import { drive, ids, repeat } from './testSnap';
+import { drive, fresh, ids, repeat } from './testSnap';
 
 const ms = (kmh: number) => kmh / 3.6;
 
@@ -35,6 +35,14 @@ describe('speeding', () => {
     const vs = drive(new SpeedRule(), repeat(120, { speed: ms(85), speedLimit: 60 }));
     expect(ids(vs)).toEqual(['speedingSevere']);
     expect(vs[0].t).toBeCloseTo(2.9, 5);
+  });
+
+  test('severe waits for the match to hold 2 s, so a brief pick of a slow road fails nobody', () => {
+    const slow = { speed: ms(65), speedLimit: 20 };
+    expect(drive(new SpeedRule(), [...fresh(15, slow), ...repeat(30, { speed: ms(50), speedLimit: 60 })])).toEqual([]);
+    const vs = drive(new SpeedRule(), fresh(40, slow));
+    expect(ids(vs)).toEqual(['speedingSevere']);
+    expect(vs[0].t).toBeCloseTo(2, 5);
   });
 
   test('20 km/h over for under 3 s is not severe', () => {

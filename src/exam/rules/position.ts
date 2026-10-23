@@ -1,7 +1,7 @@
 import type { DriveSnapshot } from '../snapshot';
 import type { RoadInfo } from './road';
 import {
-  CROSSING_HALF_DEPTH, CROSSING_OVERLAP, EPS, FRONT_OFFSET, ONCOMING_HOLD, ONCOMING_LATERAL, STOPPED_ON_CROSSING_HOLD, STOP_SPEED,
+  CROSSING_HALF_DEPTH, CROSSING_OVERLAP, EPS, FRONT_OFFSET, MATCH_SETTLE, ONCOMING_HOLD, ONCOMING_LATERAL, STOPPED_ON_CROSSING_HOLD, STOP_SPEED,
 } from './thresholds';
 import { violation, type Rule, type Violation } from './types';
 
@@ -15,6 +15,8 @@ export class OncomingLaneRule implements Rule {
 
   update(s: DriveSnapshot): Violation[] {
     const ref = s.match.ref;
+    // An unsettled match changes nothing: its lateral may be against a road the car is not on.
+    if (ref && s.match.held < MATCH_SETTLE - EPS) return [];
     const over = !!ref && s.speed >= 0 && s.match.inJunction === null && !s.match.onConnector && this.road.twoWay(ref)
       && s.match.lateral < this.road.divider(ref) - ONCOMING_LATERAL;
     if (!over) {

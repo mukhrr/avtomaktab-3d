@@ -11,7 +11,7 @@ import { CAR_CLASSES, TrafficSim, type PlayerState } from '../traffic/trafficSim
 import { endHeading, project, startHeading, turnBetween, wrapAngle } from '../traffic/turns';
 import { newCabin, type CabinState, type Indicator } from '../vehicle/cabin';
 import type { Glance } from '../vehicle/drivetrain';
-import type { ExamResult } from './examiner';
+import type { ExamResult, Prompt } from './examiner';
 import { MapMatcher } from './mapMatch';
 import { loadPenalties } from './penalties';
 import type { ExamRoute } from './route';
@@ -645,7 +645,7 @@ export class ScriptedDriver {
 
   private buildConflicts(ref: LaneRef): DriveSnapshot['junctionConflicts'] {
     const { d, net, signals, signs, peds, traffic } = this.w;
-    const match = { ref, edgeS: net.path(ref).endAt, lateral: 0, inJunction: null, onConnector: false, confidence: 1 };
+    const match = { ref, edgeS: net.path(ref).endAt, lateral: 0, inJunction: null, onConnector: false, confidence: 1, held: Infinity };
     const pose = this.pose;
     return buildSnapshot(
       { d, net, signals, signs, peds, traffic, playerLength: PLAYER_LENGTH, matcher: { update: () => match } },
@@ -801,6 +801,8 @@ export interface ExamRun {
   signalling: Violation[];
   /** Sim seconds from session start to its end, or to the cap. */
   seconds: number;
+  prompts: readonly Prompt[];
+  replanFailures: number;
   ended: boolean;
 }
 
@@ -865,5 +867,5 @@ export function runExam(
   }
   signalling.push(...observer.flush());
   const result = session.result!;
-  return { result, driver, signalling, seconds: t - t0, ended: !session.active };
+  return { result, driver, signalling, seconds: t - t0, ended: !session.active, prompts: session.prompts, replanFailures: session.replanFailures };
 }

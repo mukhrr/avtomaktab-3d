@@ -1,6 +1,7 @@
-import type { DistrictData, Vec2 } from '../shared/district';
+import type { DistrictData, GraphEdge, Vec2 } from '../shared/district';
 import { pointAt, type LaneNetwork, type LaneRef } from '../traffic/lanes';
 import { project } from '../traffic/turns';
+import { segmentDistance } from '../world/spatial';
 import { DirectionTracker, type Prompt } from './directions';
 import type { PenaltyEntry, PenaltyId } from './penalties';
 import type { RuleEngine } from './rules/engine';
@@ -26,8 +27,12 @@ const FAIL_TOTAL = 100;
 const FINISH_RADIUS = 15;
 const FINISH_SPEED = 0.5;
 const FINISH_HOLD = 2;
-/** Matcher noise must not trigger a reroute: the wrong lane has to hold this long. */
-const OFF_ROUTE_HOLD = 0.5;
+/** Matcher noise must not trigger a reroute: the car has to be off the route this long. */
+const OFF_ROUTE_HOLD = 2;
+/** Metres beyond the route road's edge before the car counts as off it, whatever the matcher says. */
+const OFF_ROUTE_MARGIN = 3;
+/** After a reroute, the next one waits this long, so a match flip-flopping between roads is not voiced again and again. */
+const REROUTE_COOLDOWN = 10;
 /** Lanes ahead a match may skip, for short edges that the matcher steps over. */
 const SKIP_AHEAD = 3;
 /** A failed replan from a lane is retried after this long. */
@@ -57,6 +62,9 @@ export class Examiner {
   private offSince: number | null = null;
   private stillSince: number | null = null;
   private failedReroute: { key: string; t: number } | null = null;
+  private lastReroute = -Infinity;
+  private failures = 0;
+  private readonly edges: Map<string, GraphEdge>;
 
   constructor(
     private readonly route: ExamRoute,
@@ -66,6 +74,7 @@ export class Examiner {
     private readonly engine?: Pick<RuleEngine, 'flush'>,
     private readonly planner: typeof planRoute = planRoute,
   ) {
+    this.edges = new Map(d.graph.edges.map(e => [e.id, e]));
     this.steps = route.steps;
     this.waypoints = route.waypoints;
     this.finish = route.finish;
@@ -97,6 +106,11 @@ export class Examiner {
       distanceM: this.driven, routeId: this.route.id,
       passed: this._phase === 'finished' && !this.failing(violations, total),
     };
+  }
+
+  /** Replans that threw, for diagnostics and the headless runs. */
+  get replanFailures(): number {
+    return this.failures;
   }
 
   get nextManeuver(): { maneuver: Maneuver; distance: number } | null {
@@ -193,8 +207,25 @@ export class Examiner {
         return;
       }
     }
+    if (!this.offRoute(s.position, ref)) {
+      this.offSince = null;
+      return;
+    }
     this.offSince ??= s.t;
-    if (s.t - this.offSince >= OFF_ROUTE_HOLD - 1e-9) this.reroute(s, ref, out);
+    if (s.t - this.offSince >= OFF_ROUTE_HOLD - 1e-9 && s.t - this.lastReroute >= REROUTE_COOLDOWN - 1e-9) this.reroute(s, ref, out);
+  }
+
+  /** Away from the roads of the next few steps, or on one of them the wrong way. */
+  private offRoute(position: Vec2, ref: LaneRef): boolean {
+    for (const step of this.steps.slice(this.cur, this.cur + SKIP_AHEAD + 1)) {
+      const e = this.edges.get(step.ref.edgeId);
+      if (!e) continue;
+      if (e.id === ref.edgeId) return ref.dir !== step.ref.dir;
+      for (let i = 1; i < e.points.length; i++) {
+        if (segmentDistance(position[0], position[1], e.points[i - 1], e.points[i]).d <= e.width / 2 + OFF_ROUTE_MARGIN) return false;
+      }
+    }
+    return true;
   }
 
   private reroute(s: DriveSnapshot, ref: LaneRef, out: Prompt[]): void {
@@ -216,8 +247,10 @@ export class Examiner {
       this.junction++;
       this.offSince = null;
       this.distance = this.alongToManeuver(at);
+      this.lastReroute = s.t;
       out.push({ key: 'exam.reroute' });
     } catch {
+      this.failures++;
       this.failedReroute = { key, t: s.t };
       const last = this.steps.length - 1;
       if (sameLane(ref, this.steps[last].ref)) this.cur = last;
