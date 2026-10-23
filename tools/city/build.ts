@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type { Crossing, DistrictConfig, DistrictData } from '../../src/shared/district';
 import { locateNode } from './attach';
+import { buildControllers } from './controllers';
 import { extractFeatures, type Overrides } from './extract';
 import { buildRoadGraph } from './graph';
 import { parseOsm } from './osm';
@@ -22,10 +23,14 @@ export function buildDistrict(xml: string, config: DistrictConfig, overrides: Ov
     const edge = graph.edges.find(e => e.id === hit.edgeId)!;
     crossings.push({ id: c.id, position: edge.points[hit.index], kind: c.kind, edgeId: hit.edgeId, at: hit.at, width: edge.width });
   }
+  const built = buildControllers(features.signals, graph.edges, graph.nodes, crossings);
   const [minLon, minLat, maxLon, maxLat] = config.bbox;
   const [minX, maxZ] = project(minLat, minLon);
   const [maxX, minZ] = project(maxLat, maxLon);
-  return { name: config.name, origin: config.origin, bounds: { minX, maxX, minZ, maxZ }, ...features, crossings, graph };
+  return {
+    name: config.name, origin: config.origin, bounds: { minX, maxX, minZ, maxZ }, ...features,
+    signals: built.signals, crossings: built.crossings, controllers: built.controllers, graph,
+  };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -43,6 +48,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   writeFileSync(`${outDir}/district.json`, json);
   console.info(
     `${d.roads.length} roads, ${d.buildings.length} buildings, ${d.areas.length} areas, ${d.signals.length} signals, ${d.crossings.length} crossings, ` +
+      `${d.controllers.length} controllers, ${d.signals.filter(s => s.approach).length} signals with an approach, ` +
       `${d.graph.nodes.length} graph nodes, ${d.graph.edges.length} edges, ${(json.length / 1e6).toFixed(2)} MB`,
   );
 }

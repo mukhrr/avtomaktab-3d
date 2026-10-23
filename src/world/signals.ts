@@ -1,9 +1,8 @@
 import * as THREE from 'three';
 import type { DistrictData } from '../shared/district';
-import { nearestLane } from './spawn';
+import { pointAlong } from './roadGeometry';
 
 const CURB_GAP = 1;
-const SEARCH_RADIUS = 30;
 const LAMP_OFF = new THREE.Color(0x333333);
 const LAMP_OFFSETS = [4.8, 4.43, 4.06];
 
@@ -23,15 +22,18 @@ export function addSignals(scene: THREE.Scene, d: DistrictData): { lamps: THREE.
   });
 
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0);
+  const edges = new Map(d.graph.edges.map(e => [e.id, e]));
   d.signals.forEach((s, i) => {
-    const lane = nearestLane(d, s.position[0], s.position[1], SEARCH_RADIUS);
     let [x, z] = s.position, heading = 0;
-    if (lane) {
-      const dx = Math.sin(lane.heading), dz = Math.cos(lane.heading), off = lane.edge.width / 2 + CURB_GAP;
-      x -= dz * off;
-      z += dx * off;
+    const edge = s.approach && edges.get(s.approach.edgeId);
+    if (s.approach && edge) {
+      const pose = pointAlong(edge.points, s.approach.stopAt);
+      const travel = s.approach.dir === 1 ? pose.heading : pose.heading + Math.PI;
+      const dx = Math.sin(travel), dz = Math.cos(travel), off = edge.width / 2 + CURB_GAP;
+      x = pose.x - dz * off;
+      z = pose.z + dx * off;
       // Lamps face drivers approaching along the lane.
-      heading = lane.heading + Math.PI;
+      heading = travel + Math.PI;
     }
     m.compose(p.set(x, 0, z), q.setFromAxisAngle(up, heading), one);
     for (const mesh of [poles, boxes, ...lamps]) mesh.setMatrixAt(i, m);

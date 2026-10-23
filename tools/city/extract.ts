@@ -7,12 +7,14 @@ export interface Overrides {
   buildingHeights: Record<string, number>;
 }
 
+export type SignalDirection = 'forward' | 'backward' | 'both';
+
 export interface ExtractResult {
   roads: Road[];
   buildings: Building[];
   areas: Area[];
   waterways: Waterway[];
-  signals: Signal[];
+  signals: (Signal & { direction?: SignalDirection })[];
   /** OSM node ids per road, in order, for the graph builder. */
   roadNodeIds: Map<string, string[]>;
   /** Crossing nodes that lie on car roads. */
@@ -45,7 +47,7 @@ const leadingNumber = (v: string | undefined) => {
   return m ? Number(m[1]) : undefined;
 };
 
-function hash(s: string): number {
+export function hash(s: string): number {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
   return h >>> 0;
@@ -83,7 +85,13 @@ export function extractFeatures(
   const result: ExtractResult = { roads: [], buildings: [], areas: [], waterways: [], signals: [], roadNodeIds: new Map(), crossingNodes: [] };
 
   for (const n of osm.nodes.values()) {
-    if (n.tags.highway === 'traffic_signals') result.signals.push({ id: n.id, position: project(n.lat, n.lon) });
+    if (n.tags.highway !== 'traffic_signals') continue;
+    const dir = n.tags['traffic_signals:direction'];
+    result.signals.push({
+      id: n.id,
+      position: project(n.lat, n.lon),
+      ...(dir === 'forward' || dir === 'backward' || dir === 'both' ? { direction: dir } : {}),
+    });
   }
 
   const resolve = (w: OsmWay): Vec2[] | null => {

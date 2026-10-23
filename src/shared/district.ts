@@ -31,9 +31,25 @@ export interface Waterway {
   points: Vec2[];
 }
 
+/** A car travelling `dir` along `edgeId` (1 toward `edge.to`) must stop before `stopAt` metres from `edge.from`. */
+export interface Approach {
+  edgeId: string;
+  dir: 1 | -1;
+  stopAt: number;
+}
+
+export interface SignalController {
+  id: string;
+  phases: Approach[][];
+  /** Seconds into the cycle at t = 0. */
+  offset: number;
+}
+
 export interface Signal {
   id: string;
   position: Vec2;
+  controllerId?: string;
+  approach?: Approach;
 }
 
 export interface GraphNode {
@@ -81,6 +97,7 @@ export interface DistrictData {
   waterways: Waterway[];
   signals: Signal[];
   crossings: Crossing[];
+  controllers: SignalController[];
   graph: { nodes: GraphNode[]; edges: GraphEdge[] };
 }
 

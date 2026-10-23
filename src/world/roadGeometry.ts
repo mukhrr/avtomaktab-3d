@@ -53,6 +53,21 @@ function slice(points: Vec2[], from: number, to: number): Vec2[] {
   return out;
 }
 
+/** Point at distance `s` along the polyline and the heading (atan2(dx, dz)) of the segment it lies on. */
+export function pointAlong(points: Vec2[], s: number): { x: number; z: number; heading: number } {
+  let d = 0;
+  for (let i = 1; i < points.length; i++) {
+    const [ax, az] = points[i - 1], [bx, bz] = points[i];
+    const seg = Math.hypot(bx - ax, bz - az);
+    if (s <= d + seg || i === points.length - 1) {
+      const t = seg ? Math.min(Math.max((s - d) / seg, 0), 1) : 0;
+      return { x: ax + (bx - ax) * t, z: az + (bz - az) * t, heading: Math.atan2(bx - ax, bz - az) };
+    }
+    d += seg;
+  }
+  return { x: points[0][0], z: points[0][1], heading: 0 };
+}
+
 export function trimEdge(edge: GraphEdge, startTrim: number, endTrim: number): Vec2[] {
   const len = length(edge.points);
   const total = startTrim + endTrim, max = len * (1 - MIN_REMAINING);
