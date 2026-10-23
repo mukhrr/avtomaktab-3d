@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { HELP_LINES, t } from '../i18n';
 import { REDLINE_RPM } from '../vehicle/drivetrain';
 import type { Vec2 } from '../shared/district';
 import type { StartChoice } from './choices';
@@ -18,6 +19,9 @@ export interface HudApp {
 
 const TACH_MAX = 7000;
 const HELP_KEY = 'avtomaktab.helpDismissed';
+
+/** "[Z/X] indicators" with the bracketed keys in bold. */
+const keyed = (text: string) => text.split(/\[([^\]]+)\]/).map((part, i) => (i % 2 ? <b key={i}>{part}</b> : part));
 
 const readDismissed = () => {
   try {
@@ -53,14 +57,12 @@ export function Hud({ store, minimap, debug, app }: { store: HudStore; minimap: 
   }, []);
 
   const tach = Math.min(1, s.rpm / TACH_MAX);
+  const L = s.exam?.lang ?? app.choice().lang;
   return (
     <div className="hud">
       {help && (
         <div className="panel help">
-          <b>W/S</b> gas / brake · <b>A/D</b> steer · <b>Space</b> handbrake<br />
-          <b>E/Q</b> gear up/down (auto: D/R when stopped) · Manual: <b>Shift</b> clutch · <b>I</b> ignition<br />
-          <b>Z/X</b> left/right indicator · <b>V</b> hazard · <b>B</b> seat belt · hold <b>1/2/3</b> look left mirror / rear-view / right mirror<br />
-          <b>G</b> auto/manual (when stopped) · <b>C</b> camera · <b>R</b> reset · <b>H</b> hide help
+          {HELP_LINES.map((k, i) => <Fragment key={k}>{i > 0 && <br />}{keyed(t(L, k))}</Fragment>)}
         </div>
       )}
       {debug && <div className="panel stats">{s.fps} fps · {s.drawCalls} draw calls · {s.activeCars ?? 0} cars · {s.activePeds ?? 0} peds · {s.controllers ?? 0} controllers · sim {(s.simMs ?? 0).toFixed(2)} ms</div>}
@@ -74,12 +76,12 @@ export function Hud({ store, minimap, debug, app }: { store: HudStore; minimap: 
           </div>
           <span className="box">{s.gearbox === 'auto' ? 'AUTO' : 'MANUAL'}</span>
         </div>
-        {!s.running && <div className="stalled">STALLED: clutch down (Shift) or neutral, then I</div>}
+        {!s.running && <div className="stalled">{t(L, 'hud.stalled')}</div>}
         <div className="cabin">
           <span className={`arrow${s.indicator === 'left' || s.hazard ? ' blink' : ''}`}>{'\u25C0'}</span>
           <span className={`hazard${s.hazard ? ' blink' : ''}`}>{'\u26A0'}</span>
           <span className={`arrow${s.indicator === 'right' || s.hazard ? ' blink' : ''}`}>{'\u25B6'}</span>
-          <span className={`belt${s.belt ? '' : ' off'}`} title={s.belt ? 'Belt fastened' : 'Belt unfastened (B)'}>{'\u{1F9CD}'}</span>
+          <span className={`belt${s.belt ? '' : ' off'}`} title={t(L, s.belt ? 'hud.beltOn' : 'hud.beltOff')}>{'\u{1F9CD}'}</span>
           <span className="mirrors">
             {(['left', 'rear', 'right'] as const).map(g => <i key={g} className={s.glance === g ? 'on' : ''} />)}
           </span>

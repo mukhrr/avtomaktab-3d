@@ -50,7 +50,7 @@
   "ui.manual": "Mexanika",
   "ui.start": "Boshlash",
   "ui.route": "Yo'nalish: {km} km",
-  "ui.examKeys": "R yoki Esc: imtihonni to'xtatish",
+  "ui.examKeys": "Z/X ko'rsatkich · 1/2/3 ko'zgular · V avariya · B kamar · R yoki Esc: imtihonni to'xtatish · H: boshqaruv",
   "hud.points": "Ball: {points}",
   "hud.metres": "{m} m",
   "debrief.abandoned": "Imtihon to'xtatildi",
@@ -61,5 +61,12 @@
   "debrief.none": "Xato yo'q",
   "debrief.km": "{km} km",
   "debrief.retry": "Qayta urinish",
-  "debrief.menu": "Menyu"
+  "debrief.menu": "Menyu",
+  "help.drive": "[W/S] gaz / tormoz · [A/D] rul · [Probel] qo'l tormozi",
+  "help.gears": "[E/Q] uzatma yuqoriga/pastga (avtomat: to'xtaganda D/R) · Mexanika: [Shift] ilashish · [I] o't oldirish",
+  "help.cabin": "[Z/X] chap/o'ng burilish ko'rsatkichi · [V] avariya signali · [B] xavfsizlik kamari · [1/2/3] bosib turing: chap ko'zgu / orqa ko'zgu / o'ng ko'zgu",
+  "help.misc": "[G] avtomat/mexanika (to'xtaganda) · [C] kamera · [R] qayta boshlash · [H] yordamni yashirish",
+  "hud.stalled": "Dvigatel o'chdi: ilashishni bosing (Shift) yoki neytral, keyin I",
+  "hud.beltOn": "Kamar taqilgan",
+  "hud.beltOff": "Kamar taqilmagan (B)"
 }

@@ -5,6 +5,9 @@ export type Lang = 'uz' | 'ru';
 
 const STRINGS: Record<Lang, Record<string, string>> = { uz, ru };
 
+/** The controls help, one line each; keys are in [brackets]. */
+export const HELP_LINES = ['help.drive', 'help.gears', 'help.cabin', 'help.misc'] as const;
+
 export function t(lang: Lang, key: string, vars?: Record<string, string | number>): string {
   const text = STRINGS[lang][key];
   if (text === undefined) {
