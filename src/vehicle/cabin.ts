@@ -1,3 +1,4 @@
+import { wrapAngle } from '../traffic/turns';
 import type { Controls, Glance } from './drivetrain';
 
 export type Indicator = 'left' | 'right';
@@ -9,12 +10,15 @@ export interface CabinState {
   glance: Glance | null;
   /** Sim time of the last glance at each mirror, -Infinity if never. */
   lastGlance: Record<Glance, number>;
-  /** The steering input has gone far enough the indicated way since the stalk was set. */
+  /** Car heading when the stalk was last set. */
+  setHeading: number;
+  /** The car has turned far enough the indicated way since the stalk was set. */
   turned: boolean;
 }
 
-// Thresholds on the normalised steering input, not the wheel angle, so they hold at any speed.
-const TURN_ENOUGH = 0.35;
+// Armed by how far the car has turned, not by the steer input: a keyboard tap goes past any steer threshold and back
+// within a lane change, long before the car is in the new lane.
+const TURN_ENOUGH = (30 * Math.PI) / 180;
 const STRAIGHT = 0.05;
 
 export const newCabin = (): CabinState => ({
@@ -23,17 +27,19 @@ export const newCabin = (): CabinState => ({
   belt: false,
   glance: null,
   lastGlance: { left: -Infinity, rear: -Infinity, right: -Infinity },
+  setHeading: 0,
   turned: false,
 });
 
-export function stepCabin(s: CabinState, c: Controls, t: number): CabinState {
-  let { indicator, turned } = s;
-  if (c.toggleLeft) [indicator, turned] = [indicator === 'left' ? null : 'left', false];
-  if (c.toggleRight) [indicator, turned] = [indicator === 'right' ? null : 'right', false];
+/** `heading` is the car's (atan2(x, z), falling as it turns right). */
+export function stepCabin(s: CabinState, c: Controls, t: number, heading: number): CabinState {
+  let { indicator, turned, setHeading } = s;
+  if (c.toggleLeft) [indicator, turned, setHeading] = [indicator === 'left' ? null : 'left', false, heading];
+  if (c.toggleRight) [indicator, turned, setHeading] = [indicator === 'right' ? null : 'right', false, heading];
   if (indicator) {
-    const along = indicator === 'right' ? c.steer : -c.steer;
-    if (along > TURN_ENOUGH) turned = true;
-    else if (turned && Math.abs(c.steer) < STRAIGHT) [indicator, turned] = [null, false];
+    const left = wrapAngle(heading - setHeading);
+    if ((indicator === 'left' ? left : -left) > TURN_ENOUGH) turned = true;
+    if (turned && Math.abs(c.steer) < STRAIGHT) [indicator, turned] = [null, false];
   }
   const lastGlance = c.glance ? { ...s.lastGlance, [c.glance]: t } : s.lastGlance;
   return {
@@ -42,6 +48,7 @@ export function stepCabin(s: CabinState, c: Controls, t: number): CabinState {
     belt: s.belt !== c.toggleBelt,
     glance: c.glance,
     lastGlance,
+    setHeading,
     turned,
   };
 }

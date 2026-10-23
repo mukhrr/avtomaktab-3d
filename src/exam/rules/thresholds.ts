@@ -30,6 +30,8 @@ export const SEVERE_SUSTAINED_OVER = 20;
 export const SEVERE_SUSTAINED_HOLD = 3;
 
 export const INDICATOR_LEAD = 1;
+/** An indicator that was on for INDICATOR_LEAD and went off this recently still signals the maneuver. */
+export const INDICATOR_RECENT = 3;
 export const MIRROR_WINDOW = 6;
 export const LANE_CHANGE_HOLD = 1;
 /** After a junction exit, lane changes are watched again once the exit lane has held LANE_CHANGE_HOLD or after this far. */

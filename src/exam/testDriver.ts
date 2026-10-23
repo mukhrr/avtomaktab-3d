@@ -9,8 +9,8 @@ import { LaneNetwork, pointAt, type LaneRef } from '../traffic/lanes';
 import { closingSpeed } from '../traffic/trafficBodies';
 import { CAR_CLASSES, TrafficSim, type PlayerState } from '../traffic/trafficSim';
 import { endHeading, project, startHeading, turnBetween, wrapAngle } from '../traffic/turns';
-import { newCabin, type CabinState, type Indicator } from '../vehicle/cabin';
-import type { Glance } from '../vehicle/drivetrain';
+import { newCabin, stepCabin, type CabinState, type Indicator } from '../vehicle/cabin';
+import type { Controls, Glance } from '../vehicle/drivetrain';
 import type { ExamResult, Prompt } from './examiner';
 import { MapMatcher } from './mapMatch';
 import { loadPenalties } from './penalties';
@@ -90,6 +90,15 @@ const LANE_GAP_TIME = 3;
 const CUT_STEP = 0.25;
 const CUT_HORIZON = 2.5;
 const CUT_MARGIN = 0.5;
+/** Cobalt wheelbase, and MAX_STEER and STEER_FALLOFF_SPEED in src/vehicle/vehicle.ts, to turn path curvature into steer input. */
+const WHEELBASE = 2.6;
+const MAX_STEER = 0.6;
+const STEER_FALLOFF_SPEED = 12;
+/** STEER_IN and STEER_OUT in src/vehicle/input.ts: keyboard steer ramps, per second. */
+const KEY_STEER_IN = 3;
+const KEY_STEER_OUT = 5;
+/** Steer-seconds of error the keyboard driver lets build up before tapping a key. */
+const KEY_TAP = 0.03;
 
 interface Piece {
   kind: 'lane' | 'conn';
@@ -216,6 +225,11 @@ export class ScriptedDriver {
   private moved = false;
   private lastGlance = -Infinity;
   private touching = new Set<number>();
+  /** Keyboard steer: the ramped input, the key held, and the error built up since the last tap. */
+  private steer = 0;
+  private steerKey = 0;
+  private steerDebt = 0;
+  private wantSignal: Indicator | null = null;
   private readonly signalledApproach: boolean[];
   private readonly steps: LaneRef[];
 
@@ -357,6 +371,8 @@ export class ScriptedDriver {
     this.s = this.pieces[0].s0;
     this.v = this.prevV = 0;
     this.cabin = { ...newCabin(), belt: true };
+    this.steer = this.steerKey = this.steerDebt = 0;
+    this.wantSignal = null;
     this.moved = false;
     this.stillAtStart = 0;
   }
@@ -369,13 +385,14 @@ export class ScriptedDriver {
     if (this.v < 0.02 && a <= 0) this.v = 0;
     this.s = Math.min(this.s + this.v * dt, this.line.length);
     if (this.v > STOP_SPEED) this.moved = true;
+    this.keyboardSteer(dt);
     this.signal(t);
     const { position, heading } = this.pose;
     const events = this.contacts(t);
     const frame: SessionFrame = {
       t, dt, position, heading, speed: this.v,
       drivetrain: { gearbox: 'auto', gear: 1, rpm: 800, running: true },
-      cabin: this.cabin, steer: 0, events,
+      cabin: this.cabin, steer: this.steer, events,
     };
     this.snap = buildSnapshot(
       { d: this.w.d, net: this.w.net, matcher: this.matcher, signals: this.w.signals, signs: this.w.signs, peds: this.w.peds, traffic: this.w.traffic, playerLength: PLAYER_LENGTH },
@@ -745,7 +762,25 @@ export class ScriptedDriver {
     return best;
   }
 
-  /** Indicator and mirror glances for the next maneuver. */
+  /**
+   * Steer input as a keyboard driver makes it: taps of A or D, ramped like InputReader, whose average follows the
+   * steer the path's curvature needs. The path is followed exactly whatever this says; it feeds the indicator stalk.
+   */
+  private keyboardSteer(dt: number): void {
+    const k = wrapAngle(this.line.at(this.s + 1).heading - this.line.at(this.s - 1).heading) / 2;
+    // Heading falls turning right, and steer is positive to the right.
+    const target = Math.max(-1, Math.min(1, (-Math.atan(WHEELBASE * k) * (1 + this.v / STEER_FALLOFF_SPEED)) / MAX_STEER));
+    this.steerDebt += (target - this.steer) * dt;
+    if (this.steerKey === 0 && Math.abs(this.steerDebt) > KEY_TAP) this.steerKey = Math.sign(this.steerDebt);
+    else if (this.steerKey !== 0 && Math.sign(this.steerDebt) !== this.steerKey) this.steerKey = 0;
+    const rate = this.steerKey !== 0 && Math.sign(this.steerKey) !== -Math.sign(this.steer) ? KEY_STEER_IN : KEY_STEER_OUT;
+    this.steer += Math.max(-rate * dt, Math.min(rate * dt, this.steerKey - this.steer));
+  }
+
+  /**
+   * Indicator and mirror glances for the next maneuver, through the real stalk: Z or X when the wanted side changes,
+   * and off by hand only if the stalk has not cancelled itself.
+   */
   private signal(t: number): void {
     const front = this.s + FRONT_OFFSET;
     let side: Indicator | null = null;
@@ -755,18 +790,23 @@ export class ScriptedDriver {
       if (next.at - front <= lead) side = next.side;
     }
     if (!side && this.s < this.pieces[0].s0 + PULL_OFF_CANCEL) side = 'left';
-    const lit = this.style.indicators ? side : null;
+    const want = this.style.indicators ? side : null;
+    let toggle: Indicator | null = null;
+    if (want !== this.wantSignal) {
+      if (want && this.cabin.indicator !== want) toggle = want;
+      else if (!want && this.cabin.indicator) toggle = this.cabin.indicator;
+      this.wantSignal = want;
+    }
     let glance: Glance | null = null;
     if (side && t - this.lastGlance >= GLANCE_EVERY) {
       glance = side;
       this.lastGlance = t;
     }
-    this.cabin = {
-      ...this.cabin,
-      indicator: lit,
-      glance,
-      lastGlance: glance ? { ...this.cabin.lastGlance, [glance]: t } : this.cabin.lastGlance,
+    const c: Controls = {
+      throttle: 0, brake: 0, clutch: 0, steer: this.steer, handbrake: false, shiftUp: false, shiftDown: false, ignition: false,
+      toggleLeft: toggle === 'left', toggleRight: toggle === 'right', toggleHazard: false, toggleBelt: false, glance,
     };
+    this.cabin = stepCabin(this.cabin, c, t, this.pose.heading);
   }
 
   /** Collision and pedestrian-hit events the physics would report, from box overlap. */

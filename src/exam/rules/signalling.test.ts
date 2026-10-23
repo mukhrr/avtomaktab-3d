@@ -1,7 +1,9 @@
-import type { CabinState } from '../../vehicle/cabin';
+import { newCabin, stepCabin, type CabinState, type Indicator } from '../../vehicle/cabin';
+import type { Controls } from '../../vehicle/drivetrain';
 import { MirrorCheckRule, IndicatorRule, PullOffRule, SeatBeltRule } from './signalling';
 import { E_OUT, N_OUT, S_OUT, W_IN, testRoad, transit } from './testRoad';
-import { drive, ids, repeat, type SnapOver } from './testSnap';
+import { drive, ids, repeat, snap, type SnapOver } from './testSnap';
+import type { Violation } from './types';
 
 const road = testRoad();
 /** transit() enters the junction at frame 20, t = 2. */
@@ -54,6 +56,16 @@ describe('noIndicator', () => {
     expect(drive(new IndicatorRule(road), laneChange(1, () => ({ indicator: 'left' })))).toEqual([]);
     expect(drive(new IndicatorRule(road), laneChange(0, () => ({}), 15).slice(0, 20).concat(repeat(5, { ref: lane(1), speed: 8 }), repeat(10, { ref: lane(0), speed: 8 })))).toEqual([]);
     expect(ids(drive(new IndicatorRule(road), laneChange(1, () => ({ indicator: 'right' }))))).toEqual(['noIndicator']);
+  });
+
+  test('an indicator on for 1 s or more that went off within 3 s of the lane change still counts, for its own side only', () => {
+    // laneChange() changes lane at frame 20; the indicator is on from frame 3 to 16 here, off 0.4 s before.
+    const early = (side: 'left' | 'right', from: number, to: number) => (i: number) => ({ indicator: i >= from && i < to ? side : null });
+    expect(drive(new IndicatorRule(road), laneChange(1, early('left', 3, 16)))).toEqual([]);
+    expect(ids(drive(new IndicatorRule(road), laneChange(1, early('right', 3, 16))))).toEqual(['noIndicator']);
+    // On 1.2 s but off 3.3 s before the change, or on only 0.8 s.
+    expect(ids(drive(new IndicatorRule(road), [...repeat(25, { ref: lane(0), speed: 8 }), ...laneChange(1)].map((f, i) => ({ ...f, cabin: early('left', 0, 12)(i) }))))).toEqual(['noIndicator']);
+    expect(ids(drive(new IndicatorRule(road), laneChange(1, early('left', 8, 16))))).toEqual(['noIndicator']);
   });
 
   test('lane index changes inside a junction or while reversing are not lane changes', () => {
@@ -134,5 +146,80 @@ describe('noSeatBelt', () => {
   test('creeping at 4 km/h or belted is fine', () => {
     expect(drive(new SeatBeltRule(), repeat(50, { speed: 4 / 3.6, cabin: { belt: false } }))).toEqual([]);
     expect(drive(new SeatBeltRule(), repeat(50, { speed: 15 }))).toEqual([]);
+  });
+});
+
+/**
+ * The stalk driven through stepCabin by a keyboard driver: A/D ramp the steer input like InputReader (3/s in, 5/s
+ * back), and the heading follows a kinematic bicycle at the given speed.
+ */
+describe('noIndicator through the real stalk, keyboard steering', () => {
+  const STEP = 1 / 60;
+  const idle: Controls = { throttle: 0, brake: 0, clutch: 0, steer: 0, handbrake: false, shiftUp: false, shiftDown: false, ignition: false, toggleLeft: false, toggleRight: false, toggleHazard: false, toggleBelt: false, glance: null };
+
+  interface Script {
+    seconds: number;
+    speed: number;
+    heading0: number;
+    /** Z or X pressed at these times. */
+    stalk: [number, Indicator][];
+    /** -1 A held, +1 D held. */
+    key: (t: number) => number;
+    frame: (t: number) => SnapOver;
+  }
+
+  function run(sc: Script): { vs: Violation[]; indicator: Indicator | null } {
+    const rule = new IndicatorRule(road);
+    let cabin: CabinState = { ...newCabin(), belt: true };
+    let steer = 0, heading = sc.heading0;
+    const vs: Violation[] = [];
+    for (let i = 0; i * STEP < sc.seconds; i++) {
+      const t = i * STEP;
+      const key = sc.key(t);
+      const rate = key !== 0 && Math.sign(key) !== -Math.sign(steer) ? 3 : 5;
+      steer += Math.max(-rate * STEP, Math.min(rate * STEP, key - steer));
+      heading -= (sc.speed * Math.tan((steer * 0.6) / (1 + sc.speed / 12)) / 2.6) * STEP;
+      const press = sc.stalk.find(([at]) => Math.abs(at - t) < STEP / 2)?.[1];
+      cabin = stepCabin(cabin, { ...idle, steer, toggleLeft: press === 'left', toggleRight: press === 'right', glance: press ?? null }, t, heading);
+      vs.push(...rule.update(snap({ t, dt: STEP, heading, speed: sc.speed, steer, cabin, ...sc.frame(t) })));
+    }
+    return { vs, indicator: cabin.indicator };
+  }
+
+  const tap = (at: number, len: number, k: number) => (t: number) => (t >= at && t < at + len ? k : 0);
+  const both = (...fs: ((t: number) => number)[]) => (t: number) => fs.reduce((a, f) => a + f(t), 0);
+  // 0.25 s on A to angle left, the car drifts over, 0.25 s on D to straighten; the lane index changes at t = 3.
+  const laneChange = (stalk: [number, Indicator][]): Script => ({
+    seconds: 5, speed: 8, heading0: Math.PI / 2, stalk, key: both(tap(1.5, 0.25, -1), tap(3.4, 0.25, 1)),
+    frame: t => ({ ref: lane(t < 3 ? 0 : 1) }),
+  });
+
+  test('a signalled lane change is credited although the tap ends long before the lane changes', () => {
+    expect(run(laneChange([[0, 'left']])).vs).toEqual([]);
+  });
+
+  test('the wrong indicator still does not count', () => {
+    expect(ids(run(laneChange([[0, 'right']])).vs)).toEqual(['noIndicator']);
+  });
+
+  test('switched on too late is still too late', () => {
+    expect(ids(run(laneChange([[2.5, 'left']])).vs)).toEqual(['noIndicator']);
+  });
+
+  // Right from w into s: in the junction from t = 2 to 5, steered with a held D and two short releases.
+  const rightTurn = (stalk: [number, Indicator][]): Script => ({
+    seconds: 7, speed: 5, heading0: Math.PI / 2, stalk,
+    key: both(tap(2, 0.8, 1), tap(3, 0.6, 1), tap(3.8, 0.7, 1)),
+    frame: t => (t < 2 ? { ref: W_IN } : t < 5 ? { ref: W_IN, match: { inJunction: 'cross', onConnector: true } } : { ref: S_OUT }),
+  });
+
+  test('a signalled right turn is credited and the stalk cancels itself after it', () => {
+    const r = run(rightTurn([[0, 'right']]));
+    expect(r.vs).toEqual([]);
+    expect(r.indicator).toBeNull();
+  });
+
+  test('a lane change does not cancel the stalk on its own', () => {
+    expect(run(laneChange([[0, 'left']])).indicator).toBe('left');
   });
 });
