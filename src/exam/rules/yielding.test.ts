@@ -45,6 +45,40 @@ describe('pedestrianNotYielded', () => {
     expect(ids(drive(new PedestrianYieldRule(), approach(60, 8, () => onRoad, 'signal')))).toEqual(['pedestrianNotYielded']);
   });
 
+  test('stopping before a zebra and going while the pedestrian still waits at the curb is fine', () => {
+    const curb = { pedAtCurb: true };
+    const frames = [
+      ...approach(60, 8, () => curb).filter(f => f.crossingsAhead![0].distance > 6),
+      ...repeat(12, { speed: 0, crossingsAhead: [xing(6, curb)] }),
+      ...repeat(20, i => ({ speed: 2, crossingsAhead: [xing(6 - i * 0.2, curb)] })),
+    ];
+    expect(drive(new PedestrianYieldRule(), frames)).toEqual([]);
+  });
+
+  test('a stop shorter than 1 s does not release the curb, and a stop never releases someone on the carriageway', () => {
+    const at = (p: Partial<Crossing>, n: number) => [
+      ...approach(60, 8, () => p).filter(f => f.crossingsAhead![0].distance > 6),
+      ...repeat(n, { speed: 0, crossingsAhead: [xing(6, { ...p, occupied: !!p.pedOnCarriageway })] }),
+      ...repeat(20, i => ({ speed: 2, crossingsAhead: [xing(6 - i * 0.2, { ...p, occupied: !!p.pedOnCarriageway })] })),
+    ];
+    expect(ids(drive(new PedestrianYieldRule(), at({ pedAtCurb: true }, 8)))).toEqual(['pedestrianNotYielded']);
+    expect(ids(drive(new PedestrianYieldRule(), at(onRoad, 30)))).toEqual(['pedestrianNotYielded']);
+  });
+
+  test('stopped for a curb pedestrian who then steps out, driving on is one', () => {
+    const frames = [
+      ...approach(60, 8, () => ({ pedAtCurb: true })).filter(f => f.crossingsAhead![0].distance > 6),
+      ...repeat(15, { speed: 0, crossingsAhead: [xing(6, { pedAtCurb: true })] }),
+      ...repeat(5, { speed: 0, crossingsAhead: [xing(6, { pedOnCarriageway: true, occupied: true })] }),
+      ...repeat(20, i => ({ speed: 2, crossingsAhead: [xing(6 - i * 0.2, { pedOnCarriageway: true, occupied: true })] })),
+    ];
+    expect(ids(drive(new PedestrianYieldRule(), frames))).toEqual(['pedestrianNotYielded']);
+  });
+
+  test('a pedestrian waiting at the curb since far away who steps out late is still not yielded to', () => {
+    expect(ids(drive(new PedestrianYieldRule(), approach(60, 8, d => (d > 8 ? { pedAtCurb: true } : onRoad))))).toEqual(['pedestrianNotYielded']);
+  });
+
   test('unmarked crossings are not judged', () => {
     expect(drive(new PedestrianYieldRule(), approach(60, 8, () => onRoad, 'unmarked'))).toEqual([]);
   });
@@ -76,7 +110,7 @@ describe('pedestrianNotYielded', () => {
 
 describe('vehicleNotYielded', () => {
   const car = (over: Partial<Conflict> = {}): Conflict =>
-    ({ agentId: 7, fromRight: true, oncoming: false, tta: 2, speed: 8, rank: 1, turn: 'straight', ...over });
+    ({ agentId: 7, fromRight: true, oncoming: false, tta: 2, speed: 8, rank: 1, turn: 'straight', onConnector: false, ...over });
   /** Every frame of a w-to-exit transit sees `c`. */
   const through = (road: ReturnType<typeof testRoad>, c: Conflict[], to = E_OUT, extra: SnapOver = {}) =>
     drive(new VehicleYieldRule(road), transit(W_IN, to, { junctionConflicts: c, ...extra }));
@@ -107,6 +141,10 @@ describe('vehicleNotYielded', () => {
     expect(through(testRoad(), [car({ speed: 0, tta: 0.5 })])).toEqual([]);
   });
 
+  test('moving off after a car from the right crossed in front, while it finishes its connector, is fine', () => {
+    expect(through(testRoad(), [car({ tta: 0, onConnector: true })])).toEqual([]);
+  });
+
   test('one per junction, and a car that turns up after entry is not judged', () => {
     const frames = transit(W_IN, E_OUT).map((f, i) => (i >= 22 ? { ...f, junctionConflicts: [car({ tta: 1 })] } : f));
     expect(drive(new VehicleYieldRule(testRoad()), frames)).toEqual([]);
@@ -120,10 +158,24 @@ describe('vehicleNotYielded', () => {
     const oncoming = car({ fromRight: false, oncoming: true });
     const run = (to: typeof N_OUT, c: Conflict[]) => drive(new VehicleYieldRule(road), lit(transit(W_IN, to, { junctionConflicts: c })));
 
-    test('turning left across oncoming straight traffic 2 s away gives one, judged at the exit with the moment it happened', () => {
-      const vs = run(N_OUT, [oncoming]);
+    /** Rolls in, stops near the centre for `wait` frames, then turns 0.15 rad per frame; `c(phase, i)` gives the conflicts. */
+    const waitAndTurn = (wait: number, c: (phase: 'in' | 'wait' | 'turn', i: number) => Conflict[]) => lit([
+      ...repeat(20, { speed: 5, ref: W_IN }),
+      ...repeat(5, i => ({ speed: 3, ref: W_IN, match: { inJunction: 'cross', onConnector: true }, junctionConflicts: c('in', i) })),
+      ...repeat(wait, i => ({ speed: 0, ref: W_IN, match: { inJunction: 'cross', onConnector: true }, junctionConflicts: c('wait', i) })),
+      ...repeat(12, i => ({ speed: 4, heading: -(i + 1) * 0.15, ref: W_IN, match: { inJunction: 'cross', onConnector: true }, junctionConflicts: c('turn', i) })),
+      ...repeat(10, { speed: 5, ref: N_OUT }),
+    ]);
+
+    test('turning left across oncoming straight traffic 2 s away gives one, judged at the exit with the moment it commits', () => {
+      const vs = drive(new VehicleYieldRule(road), waitAndTurn(0, () => [oncoming]));
       expect(ids(vs)).toEqual(['vehicleNotYielded']);
-      expect(vs[0].t).toBeCloseTo(2, 5);
+      expect(vs[0].t).toBeCloseTo(2.5 + 5 * 0.1, 5);
+    });
+
+    test('rolling in with an oncoming car near, stopping until it has passed, then turning is fine', () => {
+      const frames = waitAndTurn(20, (phase, i) => (phase === 'in' || (phase === 'wait' && i < 15) ? [oncoming] : []));
+      expect(drive(new VehicleYieldRule(road), frames)).toEqual([]);
     });
 
     test('going straight or right, or the oncoming car turning left itself, gives none', () => {

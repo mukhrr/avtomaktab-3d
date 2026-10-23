@@ -146,6 +146,7 @@ test('junctionConflicts carries each car\'s speed, approach priority rank and it
   expect(by(oncoming)).toMatchObject({ speed: 5, rank: 2 });
   expect(by(left)).toMatchObject({ speed: 0, rank: 1 });
   for (const x of s.junctionConflicts) expect(['left', 'right', 'straight', 'uturn', null]).toContain(x.turn);
+  for (const x of s.junctionConflicts) expect(x.onConnector).toBe(false);
 });
 
 test('a crossing stays listed while the rear of the car is still on it', () => {

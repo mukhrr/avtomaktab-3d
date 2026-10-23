@@ -53,6 +53,8 @@ export const CROSSING_HALF_DEPTH = 1.5;
 /** The car's box must reach this far into the band to count as stopped on it, the same depth as the stopLinePast ceiling. */
 export const CROSSING_OVERLAP = 0.5;
 export const STOPPED_ON_CROSSING_HOLD = 2;
+/** A stop this long short of a zebra lets the car go on while someone only waits at the curb. */
+export const CURB_WAIT_RELEASE = 1;
 
 /** A car with priority closer than this in time claims it: PRIORITY_TTA in src/traffic/trafficSim.ts. */
 export const YIELD_TTA = 3;
@@ -60,7 +62,7 @@ export const YIELD_TTA = 3;
 export const YIELD_MOVING = 0.5;
 /** A stop line this close to the end of the approach lane makes the junction signalled. */
 export const SIGNAL_REACH = 40;
-/** A left turner still within this of its approach heading has not crossed the oncoming lanes yet. */
+/** A left turner whose heading passes this from its approach heading is cutting across the oncoming lanes. */
 export const LEFT_TURN_COMMIT = Math.PI / 4;
 
 /** Half the car width: the centre this far beyond the lane divider puts the car over it. */

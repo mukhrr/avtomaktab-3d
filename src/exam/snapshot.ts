@@ -32,8 +32,13 @@ export interface DriveSnapshot {
   signsAhead: { sign: Sign; distance: number }[];
   /** Bumper-to-bumper gap and speed of the nearest car ahead in the player's lane. */
   leader: { distance: number; speed: number } | null;
-  /** `rank` is the car's approach priority as TrafficSim ranks it; `turn` its connector, null before it chose one. */
-  junctionConflicts: { agentId: number; fromRight: boolean; oncoming: boolean; tta: number; speed: number; rank: number; turn: Turn | null }[];
+  /**
+   * `rank` is the car's approach priority as TrafficSim ranks it; `turn` its connector, null before it chose one.
+   * `onConnector` cars are already crossing the junction (tta 0) and no longer contend for priority.
+   */
+  junctionConflicts: {
+    agentId: number; fromRight: boolean; oncoming: boolean; tta: number; speed: number; rank: number; turn: Turn | null; onConnector: boolean;
+  }[];
   events: GameEvent[];
 }
 
@@ -197,6 +202,7 @@ function junctionConflicts(ctx: SnapshotContext, match: LaneMatch, topo: Topolog
       speed: v.speed,
       rank: approachRank(ctx.signs.atJunction(a.ref)),
       turn: a.turn,
+      onConnector: a.connectorNode === node,
     });
   }
   return out.sort((x, y) => x.tta - y.tta || x.agentId - y.agentId);
