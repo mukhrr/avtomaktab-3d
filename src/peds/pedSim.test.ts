@@ -90,6 +90,7 @@ test('an unmarked crosser waits for the player', () => {
   d.crossings = [{ id: 'u1', position: [-40, 0], kind: 'unmarked', edgeId: 'w', at: 40, width: 7 }];
   const c = setup(d, { crossers: 1, walkers: 0 });
   const player: PlayerState = { position: [-70, 0], heading: Math.PI / 2, speed: 12, length: 4.5, width: 1.8 };
+  c.step();
   for (let i = 0; i < 30; i++) c.step(player);
   expect(c.sim.occupied('u1')).toBe(false);
   c.step({ ...player, position: [-120, 0] });
@@ -149,8 +150,8 @@ test('walkers stay on footway polylines and walk at 1.1 to 1.5 m/s', () => {
   }
 });
 
-test('crossers spawn at curb ends, near a crossing, at least 9 m from the player', () => {
-  const player: PlayerState = { position: [-40, 12], heading: 0, speed: 0, length: 4.5, width: 1.8 };
+test('crossers spawn at curb ends of a crossing 40 m or more from the player', () => {
+  const player: PlayerState = { position: [-40, 50], heading: 0, speed: 0, length: 4.5, width: 1.8 };
   const c = setup(testNetwork(), { crossers: 20, walkers: 0 });
   c.step(player);
   const active = c.sim.peds.filter(p => p.active);
@@ -158,8 +159,28 @@ test('crossers spawn at curb ends, near a crossing, at least 9 m from the player
   for (const p of active) {
     expect(Math.abs(p.position[1])).toBeCloseTo(3, 5);
     expect(Math.abs(p.position[0] + 40)).toBeLessThanOrEqual(1);
-    expect(dist(p.position, player.position)).toBeGreaterThanOrEqual(9);
   }
+});
+
+test('no crossers spawn at a crossing closer than 40 m to the player', () => {
+  const c = setup(testNetwork(), { crossers: 5, walkers: 0 });
+  c.step({ ...AWAY, position: [-40, 30] });
+  expect(c.sim.peds.filter(p => p.active).length).toBe(0);
+});
+
+test('walkers spawn at least 40 m from the player', () => {
+  const player: PlayerState = { ...AWAY, position: [-60, -6] };
+  const c = setup(testNetwork(), { crossers: 0, walkers: 30 });
+  const seen = new Set<number>();
+  for (let i = 0; i < 60; i++) {
+    c.step(player);
+    for (const p of c.sim.peds) {
+      if (!p.active || seen.has(p.id)) continue;
+      seen.add(p.id);
+      expect(dist(p.position, player.position)).toBeGreaterThanOrEqual(40);
+    }
+  }
+  expect(seen.size).toBeGreaterThan(0);
 });
 
 test('no crossers spawn when every crossing is beyond 150 m', () => {

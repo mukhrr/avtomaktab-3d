@@ -54,7 +54,7 @@ const CROSSER_RANGE = 150;
 const CROSSER_LEAVE = 200;
 const WALKER_RANGE = 200;
 const WALKER_LEAVE = 250;
-const MIN_SPAWN_DIST = 9;
+const MIN_SPAWN_DIST = 40;
 const CURB_MARGIN = 1.5;
 const LEAVE_DISTANCE = 15;
 const SPAWN_JITTER = 1;
@@ -304,8 +304,11 @@ export class PedSim implements CrossingOccupancy {
     for (const p of this.pool) {
       if (p.active) continue;
       if (p.kind === 'crosser') {
-        near ??= this.crossings.flatMap((x, k) => (dist(x.centre, player.position) <= CROSSER_RANGE ? [k] : []));
-        if (near.length) this.spawnCrosser(p, near, player);
+        near ??= this.crossings.flatMap((x, k) => {
+          const d = dist(x.centre, player.position);
+          return d >= MIN_SPAWN_DIST && d <= CROSSER_RANGE ? [k] : [];
+        });
+        if (near.length) this.spawnCrosser(p, near);
       } else {
         runs ??= this.runsNear(player);
         if (runs.length && this.spawnAttempts < WALKER_ATTEMPTS_PER_STEP) this.spawnWalker(p, runs, player);
@@ -313,28 +316,21 @@ export class PedSim implements CrossingOccupancy {
     }
   }
 
-  private spawnCrosser(p: Ped, near: number[], player: PlayerState): void {
-    for (let i = 0; i < SPAWN_ATTEMPTS; i++) {
-      const k = near[Math.floor(this.rand() * near.length)];
-      const x = this.crossings[k];
-      const side: 1 | -1 = this.rand() < 0.5 ? -1 : 1;
-      const along = (this.rand() * 2 - 1) * SPAWN_JITTER;
-      const px = x.centre[0] + x.normal[0] * side * x.half + x.tangent[0] * along;
-      const pz = x.centre[1] + x.normal[1] * side * x.half + x.tangent[1] * along;
-      if (Math.hypot(px - player.position[0], pz - player.position[1]) < MIN_SPAWN_DIST) continue;
-      p.crossing = k;
-      p.across = side * x.half;
-      p.along = along;
-      p.dir = side === 1 ? -1 : 1;
-      p.leaveDir = this.rand() < 0.5 ? -1 : 1;
-      p.left = 0;
-      p.state = 'waiting';
-      p.walking = false;
-      p.speed = CROSS_SPEED[0] + this.rand() * (CROSS_SPEED[1] - CROSS_SPEED[0]);
-      this.activate(p);
-      this.placeCrosser(p, x);
-      return;
-    }
+  private spawnCrosser(p: Ped, near: number[]): void {
+    const k = near[Math.floor(this.rand() * near.length)];
+    const x = this.crossings[k];
+    const side: 1 | -1 = this.rand() < 0.5 ? -1 : 1;
+    p.crossing = k;
+    p.across = side * x.half;
+    p.along = (this.rand() * 2 - 1) * SPAWN_JITTER;
+    p.dir = side === 1 ? -1 : 1;
+    p.leaveDir = this.rand() < 0.5 ? -1 : 1;
+    p.left = 0;
+    p.state = 'waiting';
+    p.walking = false;
+    p.speed = CROSS_SPEED[0] + this.rand() * (CROSS_SPEED[1] - CROSS_SPEED[0]);
+    this.activate(p);
+    this.placeCrosser(p, x);
   }
 
   private runsNear(player: PlayerState): number[] {
