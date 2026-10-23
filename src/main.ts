@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { DistrictData } from './shared/district';
+import { CameraRig, CAR_LAYER } from './camera/cameras';
+import { createMirrors } from './camera/mirrors';
 import { fixedSteps, STEP } from './physics/loop';
 import { createPhysics } from './physics/world';
 import { InputReader } from './vehicle/input';
@@ -40,6 +42,9 @@ const { world } = await createPhysics(district);
 const spawn = nearestLane(district, ...SPAWN_POINT)!;
 const car = new Vehicle(world, spawn);
 scene.add(car.object);
+car.object.traverse(o => o.layers.set(CAR_LAYER));
+const rig = new CameraRig(camera, renderer.domElement);
+const mirrors = createMirrors(renderer, scene, car.object);
 
 const held = new Set<string>(), pressed = new Set<string>();
 addEventListener('keydown', e => {
@@ -73,13 +78,13 @@ function resetToLane() {
 }
 
 const clock = new THREE.Clock();
-const camTarget = new THREE.Vector3(), camPos = new THREE.Vector3();
 let acc = 0, flippedFor = 0;
 
 renderer.setAnimationLoop(() => {
   const dt = clock.getDelta();
   const controls = input.read(held, pressed, navigator.getGamepads?.() ?? [], dt);
   if (pressed.has('KeyR')) resetToLane();
+  if (pressed.has('KeyC')) rig.cycle();
   pressed.clear();
 
   const r = fixedSteps(acc, dt);
@@ -96,14 +101,11 @@ renderer.setAnimationLoop(() => {
   if (flippedFor > FLIPPED_RESET_S) { resetToLane(); flippedFor = 0; }
 
   if (orbit) orbit.update();
-  else {
-    const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(car.object.quaternion).setY(0).normalize();
-    camPos.copy(p).addScaledVector(fwd, -7).setY(p.y + 2.8);
-    camera.position.lerp(camPos, 1 - Math.exp(-dt * 5));
-    camera.lookAt(camTarget.copy(p).addScaledVector(fwd, 4).setY(p.y + 1));
-  }
+  else rig.update(car.object, car.speed, dt);
   env.follow(p.x, p.z);
+  mirrors.update(rig.mode);
   renderer.render(scene, camera);
+  mirrors.overlay(rig.mode);
 });
 
-Object.assign(window, { __game: { car, held, pressed } });
+Object.assign(window, { __game: { car, held, pressed, rig } });
