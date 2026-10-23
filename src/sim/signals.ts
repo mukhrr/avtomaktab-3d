@@ -68,9 +68,16 @@ export class SignalSystem {
       const ctrl = s.controllerId ? this.ctrls.get(s.controllerId) : undefined;
       if (!ctrl || !s.approach) continue;
       const a = s.approach;
-      const phase = ctrl.phases.findIndex(p =>
-        p.some(q => q.edgeId === a.edgeId && q.dir === a.dir && q.stopAt === a.stopAt));
-      if (phase >= 0) this.bySignal.set(s.id, { ctrl, phase, stopAt: a.stopAt });
+      let best: Stop | null = null;
+      ctrl.phases.forEach((phase, k) => {
+        for (const q of phase) {
+          if (q.edgeId !== a.edgeId || q.dir !== a.dir) continue;
+          if (!best || Math.abs(q.stopAt - a.stopAt) < Math.abs(best.stopAt - a.stopAt)) {
+            best = { ctrl, phase: k, stopAt: q.stopAt };
+          }
+        }
+      });
+      if (best) this.bySignal.set(s.id, best);
     }
     for (const x of d.crossings) {
       const ctrl = x.controllerId ? this.ctrls.get(x.controllerId) : undefined;

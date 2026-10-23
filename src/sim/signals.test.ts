@@ -110,3 +110,16 @@ test('flashing lamps blink at 1 Hz', () => {
   expect(sys.lampOn('flashingGreen')).toBe(false);
   expect(sys.lampOn('red')).toBe(true);
 });
+
+test('headState matches a signal whose stopAt was deduped away', () => {
+  const d = {
+    controllers: [{ id: 'c', phases: [[p0], [p1]], offset: 0 }],
+    signals: [{ id: 'late', position: { x: 0, z: 0 }, controllerId: 'c', approach: { ...p1, stopAt: 14 } }],
+    crossings: [],
+  } as unknown as DistrictData;
+  const sys = new SignalSystem(d);
+  sys.time = 26;
+  expect(sys.headState('late')).toBe('green');
+  sys.time = 0;
+  expect(sys.headState('late')).toBe('red');
+});
