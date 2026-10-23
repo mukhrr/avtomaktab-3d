@@ -20,3 +20,12 @@ test('on listeners see events until unsubscribed', () => {
   bus.emit(crash);
   expect(seen).toEqual([hit]);
 });
+
+test('the undrained queue keeps only the last 256 events', () => {
+  const bus = new EventBus();
+  for (let i = 0; i < 300; i++) bus.emit({ ...hit, pedId: i });
+  const out = bus.drain();
+  expect(out).toHaveLength(256);
+  expect(out[0]).toEqual({ ...hit, pedId: 44 });
+  expect(out[255]).toEqual({ ...hit, pedId: 299 });
+});

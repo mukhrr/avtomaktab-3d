@@ -2,12 +2,16 @@ export type GameEvent =
   | { type: 'collision'; with: 'car' | 'building'; speed: number; time: number }
   | { type: 'pedestrianHit'; pedId: number; speed: number; time: number };
 
+const QUEUE_CAP = 256;
+
 export class EventBus {
   private queue: GameEvent[] = [];
   private listeners = new Set<(e: GameEvent) => void>();
 
   emit(e: GameEvent): void {
     this.queue.push(e);
+    // Nothing drains the queue until M3 scores events, so it would otherwise grow by one per collision.
+    if (this.queue.length > QUEUE_CAP) this.queue.shift();
     this.listeners.forEach(fn => fn(e));
   }
 
