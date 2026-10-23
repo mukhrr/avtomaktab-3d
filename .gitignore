@@ -1,0 +1,7 @@
+node_modules
+dist
+data/raw/
+spike/osm.xml
+spike/osm.json
+.superpowers/
+.DS_Store

@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tashkent Drive Spike</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #9fc3e0; font-family: system-ui, sans-serif; }
+  canvas { display: block; }
+  #hud { position: fixed; left: 16px; bottom: 16px; color: #fff; text-shadow: 0 1px 3px #000a; pointer-events: none; }
+  #speed { font-size: 44px; font-weight: 700; line-height: 1; }
+  #speed small { font-size: 16px; font-weight: 500; }
+  #street { font-size: 18px; margin-top: 6px; }
+  #stats { position: fixed; right: 16px; top: 16px; color: #fff; font: 12px ui-monospace, monospace; background: #0007; padding: 6px 8px; border-radius: 6px; }
+  #help { position: fixed; left: 16px; top: 16px; color: #fff; font-size: 13px; background: #0007; padding: 8px 10px; border-radius: 6px; line-height: 1.5; }
+  #minimap { position: fixed; right: 16px; bottom: 16px; width: 200px; height: 200px; border-radius: 50%; border: 2px solid #fff8; background: #2b2f33cc; }
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; color: #fff; font-size: 20px; background: #1d2730; }
+</style>
+</head>
+<body>
+<div id="loading">Toshkent yuklanmoqda…</div>
+<div id="help"><b>W/S</b> or arrows: gas / brake / reverse · <b>A/D</b>: steer · <b>Space</b>: handbrake<br><b>C</b>: camera · <b>R</b>: reset to start</div>
+<div id="stats"></div>
+<div id="hud"><div id="speed">0 <small>km/h</small></div><div id="street"></div></div>
+<canvas id="minimap" width="400" height="400"></canvas>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const city = await (await fetch('city.json')).json();
+document.getElementById('loading').remove();
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xa9cbe6);
+scene.fog = new THREE.Fog(0xc9d9e3, 250, 900);
+const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 3000);
+
+scene.add(new THREE.HemisphereLight(0xdfefff, 0x8a7a5a, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1d6, 2.2);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -120, right: 120, top: 120, bottom: -120, near: 1, far: 600 });
+scene.add(sun, sun.target);
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshLambertMaterial({ color: 0xb8ab8c }));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Ribbon along a polyline, mitred at joints.
+function ribbon(pts, width, y) {
+  const pos = [], idx = [], h = width / 2;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[Math.max(i - 1, 0)], b = pts[Math.min(i + 1, pts.length - 1)];
+    let dx = b[0] - a[0], dz = b[1] - a[1];
+    const len = Math.hypot(dx, dz) || 1; dx /= len; dz /= len;
+    let s = h;
+    if (i > 0 && i < pts.length - 1) {
+      const px = pts[i][0] - a[0], pz = pts[i][1] - a[1], pl = Math.hypot(px, pz) || 1;
+      const cos = (px / pl) * dx + (pz / pl) * dz;
+      s = h / Math.max(Math.sqrt((1 + cos) / 2), 0.5);
+    }
+    pos.push(pts[i][0] - dz * s, y, pts[i][1] + dx * s, pts[i][0] + dz * s, y, pts[i][1] - dx * s);
+    if (i > 0) { const k = (i - 1) * 2; idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+function flatPoly(pts, y) {
+  const shape = new THREE.Shape(pts.map(p => new THREE.Vector2(p[0], -p[1])));
+  const g = new THREE.ShapeGeometry(shape);
+  g.rotateX(-Math.PI / 2);
+  g.translate(0, y, 0);
+  return g;
+}
+
+const FOOT = new Set(['footway', 'path', 'cycleway', 'pedestrian']);
+const carRoads = city.roads.filter(r => !FOOT.has(r.t));
+const footRoads = city.roads.filter(r => FOOT.has(r.t));
+
+const addMerged = (geoms, mat, shadow = true) => {
+  if (!geoms.length) return;
+  const m = new THREE.Mesh(mergeGeometries(geoms), mat);
+  m.receiveShadow = shadow;
+  scene.add(m);
+  return m;
+};
+
+addMerged(city.green.map(p => flatPoly(p, 0.03)), new THREE.MeshLambertMaterial({ color: 0x6f9a4a }));
+addMerged(city.water.filter(w => w.a && w.p.length > 3).map(w => flatPoly(w.p.slice(0, -1), 0.05)), new THREE.MeshLambertMaterial({ color: 0x4f8fb0 }));
+addMerged(city.water.filter(w => !w.a).map(w => ribbon(w.p, 9, 0.05)), new THREE.MeshLambertMaterial({ color: 0x4f8fb0 }));
+addMerged(footRoads.map(r => ribbon(r.p, r.w, 0.06)), new THREE.MeshLambertMaterial({ color: 0xc9bfae }));
+// Curb band under each car road reads as a sidewalk edge.
+addMerged(carRoads.map(r => ribbon(r.p, r.w + 1.2, 0.07)), new THREE.MeshLambertMaterial({ color: 0xa8a39a }));
+addMerged(carRoads.map(r => ribbon(r.p, r.w, 0.09)), new THREE.MeshLambertMaterial({ color: 0x3d4045 }));
+
+// Centre markings: solid on wide two-way roads, dashed elsewhere.
+const markings = [];
+for (const r of carRoads) {
+  if (r.w < 6 || r.t === 'service') continue;
+  const solid = !r.o && r.w >= 10;
+  for (let i = 0; i < r.p.length - 1; i++) {
+    const [ax, az] = r.p[i], [bx, bz] = r.p[i + 1];
+    const len = Math.hypot(bx - ax, bz - az);
+    if (solid) { markings.push(ribbon([r.p[i], r.p[i + 1]], 0.15, 0.11)); continue; }
+    for (let d = 1; d + 3 < len; d += 9) {
+      const t0 = d / len, t1 = (d + 3) / len;
+      markings.push(ribbon([[ax + (bx - ax) * t0, az + (bz - az) * t0], [ax + (bx - ax) * t1, az + (bz - az) * t1]], 0.15, 0.11));
+    }
+  }
+}
+addMerged(markings, new THREE.MeshBasicMaterial({ color: 0xeeeeee }), false);
+
+// Buildings: Tashkent centre is mostly 3–5 storey with a few towers; untagged ones get a seeded height.
+const PALETTE = [0xe8dcc4, 0xf2ece0, 0xd9c7a7, 0xcfd6d8, 0xe6d2b5, 0xbfc7c9];
+const byColor = PALETTE.map(() => []);
+city.buildings.forEach((b, i) => {
+  const seed = (i * 2654435761) >>> 0;
+  const h = b.h ?? 8 + (seed % 5) * 3.2;
+  const shape = new THREE.Shape(b.p.map(p => new THREE.Vector2(p[0], -p[1])));
+  const g = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false });
+  g.rotateX(-Math.PI / 2);
+  byColor[seed % PALETTE.length].push(g);
+});
+byColor.forEach((gs, i) => {
+  const m = addMerged(gs, new THREE.MeshLambertMaterial({ color: PALETTE[i] }));
+  if (m) m.castShadow = true;
+});
+
+// Trees along major roads and inside parks, as two instanced meshes.
+const treePts = [];
+const rand = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+for (const r of carRoads) {
+  if (!['primary', 'secondary', 'tertiary', 'trunk'].includes(r.t)) continue;
+  for (let i = 0; i < r.p.length - 1; i++) {
+    const [ax, az] = r.p[i], [bx, bz] = r.p[i + 1];
+    const len = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / len, nz = (bx - ax) / len;
+    for (let d = 4; d < len - 4; d += 10) {
+      const x = ax + (bx - ax) * d / len, z = az + (bz - az) * d / len, off = r.w / 2 + 3;
+      treePts.push([x + nx * off, z + nz * off], [x - nx * off, z - nz * off]);
+    }
+  }
+}
+function inPoly(x, z, p) {
+  let c = false;
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++)
+    if ((p[i][1] > z) !== (p[j][1] > z) && x < (p[j][0] - p[i][0]) * (z - p[i][1]) / (p[j][1] - p[i][1]) + p[i][0]) c = !c;
+  return c;
+}
+for (const p of city.green) {
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const [x, z] of p) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z); }
+  const n = Math.min(Math.floor((maxX - minX) * (maxZ - minZ) / 150), 300);
+  for (let k = 0; k < n; k++) {
+    const x = minX + rand() * (maxX - minX), z = minZ + rand() * (maxZ - minZ);
+    if (inPoly(x, z, p)) treePts.push([x, z]);
+  }
+}
+
+// Spatial grid for buildings (collision) and road segments (street name, spawn).
+const CELL = 40;
+const grid = new Map();
+const key = (x, z) => `${Math.floor(x / CELL)},${Math.floor(z / CELL)}`;
+const put = (x0, z0, x1, z1, item) => {
+  for (let gx = Math.floor(x0 / CELL); gx <= Math.floor(x1 / CELL); gx++)
+    for (let gz = Math.floor(z0 / CELL); gz <= Math.floor(z1 / CELL); gz++) {
+      const k = `${gx},${gz}`; if (!grid.has(k)) grid.set(k, { b: [], s: [] }); grid.get(k)[item.kind].push(item);
+    }
+};
+for (const b of city.buildings) {
+  const xs = b.p.map(p => p[0]), zs = b.p.map(p => p[1]);
+  put(Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs), { kind: 'b', p: b.p });
+}
+for (const r of carRoads) for (let i = 0; i < r.p.length - 1; i++) {
+  const [ax, az] = r.p[i], [bx, bz] = r.p[i + 1];
+  put(Math.min(ax, bx) - r.w, Math.min(az, bz) - r.w, Math.max(ax, bx) + r.w, Math.max(az, bz) + r.w, { kind: 's', a: r.p[i], b: r.p[i + 1], r });
+}
+const hitsBuilding = (x, z) => (grid.get(key(x, z))?.b ?? []).some(b => inPoly(x, z, b.p));
+function nearestRoad(x, z) {
+  let best = null, bd = Infinity;
+  for (const s of grid.get(key(x, z))?.s ?? []) {
+    const [ax, az] = s.a, [bx, bz] = s.b, dx = bx - ax, dz = bz - az;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
+    const d = Math.hypot(x - ax - dx * t, z - az - dz * t);
+    if (d < bd) { bd = d; best = s; }
+  }
+  return bd < (best?.r.w ?? 0) / 2 + 2 ? best : null;
+}
+
+const okTrees = treePts.filter(([x, z]) => !hitsBuilding(x, z) && !nearestRoad(x, z));
+const trunkGeo = new THREE.CylinderGeometry(0.18, 0.25, 3, 6).translate(0, 1.5, 0);
+const crownGeo = new THREE.IcosahedronGeometry(2.6, 0).translate(0, 5, 0);
+const trunks = new THREE.InstancedMesh(trunkGeo, new THREE.MeshLambertMaterial({ color: 0x6b5138 }), okTrees.length);
+const crowns = new THREE.InstancedMesh(crownGeo, new THREE.MeshLambertMaterial({ color: 0x4f7d34, flatShading: true }), okTrees.length);
+const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+okTrees.forEach(([x, z], i) => {
+  const s = 0.8 + rand() * 0.6;
+  q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rand() * 6.28);
+  mtx.compose(new THREE.Vector3(x, 0, z), q, sc.set(s, s, s));
+  trunks.setMatrixAt(i, mtx); crowns.setMatrixAt(i, mtx);
+});
+crowns.castShadow = true;
+scene.add(trunks, crowns);
+
+// Traffic lights: a pole with three lamps, cycling on a shared timer.
+const lamps = [];
+const poleGeo = new THREE.CylinderGeometry(0.1, 0.1, 4).translate(0, 2, 0);
+const boxGeo = new THREE.BoxGeometry(0.4, 1.1, 0.35).translate(0, 4.4, 0);
+const lampGeo = new THREE.SphereGeometry(0.12, 8, 6);
+const darkMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+const LAMP_COLORS = [0xff2a2a, 0xffc21a, 0x27e05a];
+for (const [x, z] of city.signals) {
+  const s = nearestRoad(x, z), off = s ? s.r.w / 2 + 1 : 4;
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(poleGeo, darkMat), new THREE.Mesh(boxGeo, darkMat));
+  const set = LAMP_COLORS.map((c, i) => {
+    const m = new THREE.Mesh(lampGeo, new THREE.MeshBasicMaterial({ color: 0x333333 }));
+    m.position.set(0, 4.8 - i * 0.37, 0.19); g.add(m); return m;
+  });
+  lamps.push(set);
+  if (s) {
+    const [ax, az] = s.a, [bx, bz] = s.b, len = Math.hypot(bx - ax, bz - az) || 1;
+    g.position.set(x - (bz - az) / len * off, 0, z + (bx - ax) / len * off);
+    g.rotation.y = Math.atan2(bx - ax, bz - az) + Math.PI;
+  } else g.position.set(x + off, 0, z);
+  scene.add(g);
+}
+
+// Car: Cobalt-ish white sedan made of boxes.
+const car = new THREE.Group();
+const white = new THREE.MeshStandardMaterial({ color: 0xf4f4f2, roughness: 0.35, metalness: 0.3 });
+const glass = new THREE.MeshStandardMaterial({ color: 0x1c2630, roughness: 0.1, metalness: 0.6 });
+const body = new THREE.Mesh(new THREE.BoxGeometry(1.74, 0.7, 4.48), white); body.position.y = 0.65;
+const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.56, 0.58, 2.3), glass); cabin.position.set(0, 1.28, -0.15);
+const roof = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.08, 1.8), white); roof.position.set(0, 1.6, -0.2);
+[body, cabin, roof].forEach(m => { m.castShadow = true; car.add(m); });
+const wheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.24, 14).rotateZ(Math.PI / 2);
+const wheelMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+const wheels = [[-0.82, 1.35], [0.82, 1.35], [-0.82, -1.35], [0.82, -1.35]].map(([x, z]) => {
+  const w = new THREE.Mesh(wheelGeo, wheelMat); w.position.set(x, 0.32, z); car.add(w); return w;
+});
+for (const x of [-0.6, 0.6]) {
+  const l = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.05), new THREE.MeshBasicMaterial({ color: 0xfff6d8 }));
+  l.position.set(x, 0.75, 2.25); car.add(l);
+  const t = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.05), new THREE.MeshBasicMaterial({ color: 0xb01818 }));
+  t.position.set(x, 0.8, -2.25); car.add(t);
+}
+scene.add(car);
+
+// Spawn on the primary road closest to Amir Temur square, facing along it.
+let spawn = { x: 0, z: 0, h: 0 };
+{
+  let bd = Infinity;
+  for (const r of carRoads) if (r.t === 'primary' || r.t === 'secondary')
+    for (let i = 0; i < r.p.length - 1; i++) {
+      const [ax, az] = r.p[i], [bx, bz] = r.p[i + 1], mx = (ax + bx) / 2, mz = (az + bz) / 2, d = Math.hypot(mx, mz);
+      if (d < bd && Math.hypot(bx - ax, bz - az) > 20) {
+        bd = d;
+        const len = Math.hypot(bx - ax, bz - az), nx = (bz - az) / len, nz = -(bx - ax) / len;
+        // Right-hand traffic: start in the right half of the carriageway.
+        const off = r.o ? 0 : r.w / 4;
+        spawn = { x: mx - nx * off, z: mz - nz * off, h: Math.atan2(bx - ax, bz - az) };
+      }
+    }
+}
+
+const state = { x: spawn.x, z: spawn.z, h: spawn.h, v: 0, steer: 0 };
+const keys = {};
+let camMode = 0;
+addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'KeyC') camMode = (camMode + 1) % 3;
+  if (e.code === 'KeyR') Object.assign(state, { x: spawn.x, z: spawn.z, h: spawn.h, v: 0, steer: 0 });
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
+});
+
+const WHEELBASE = 2.6, MAX_V = 33, MAX_REV = 6;
+function step(dt) {
+  const gas = keys.KeyW || keys.ArrowUp, brk = keys.KeyS || keys.ArrowDown;
+  const left = keys.KeyA || keys.ArrowLeft, right = keys.KeyD || keys.ArrowRight, hand = keys.Space;
+  let a = 0;
+  if (gas) a = state.v < 0 ? 9 : 3.2 * (1 - state.v / MAX_V);
+  if (brk) a = state.v > 0.3 ? -8 : -2.5;
+  if (hand) a = -Math.sign(state.v) * 10;
+  a -= state.v * 0.04 + Math.sign(state.v) * 0.15;
+  state.v = Math.max(-MAX_REV, Math.min(MAX_V, state.v + a * dt));
+  if (!gas && !brk && Math.abs(state.v) < 0.2) state.v = 0;
+
+  const maxSteer = 0.6 / (1 + Math.abs(state.v) / 12);
+  const target = (left ? 1 : 0) - (right ? 1 : 0);
+  state.steer += (target * maxSteer - state.steer) * Math.min(1, dt * 6);
+  state.h += state.v / WHEELBASE * Math.tan(state.steer) * dt;
+
+  const nx = state.x + Math.sin(state.h) * state.v * dt, nz = state.z + Math.cos(state.h) * state.v * dt;
+  const fx = nx + Math.sin(state.h) * 2.2 * Math.sign(state.v || 1), fz = nz + Math.cos(state.h) * 2.2 * Math.sign(state.v || 1);
+  if (hitsBuilding(fx, fz) || hitsBuilding(nx, nz)) state.v *= -0.2;
+  else { state.x = nx; state.z = nz; }
+
+  car.position.set(state.x, 0, state.z);
+  car.rotation.y = state.h;
+  wheels[0].rotation.y = wheels[1].rotation.y = state.steer;
+}
+
+const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
+camera.position.set(state.x - Math.sin(state.h) * 8, 3.2, state.z - Math.cos(state.h) * 8);
+function updateCamera(dt) {
+  const s = Math.sin(state.h), c = Math.cos(state.h);
+  if (camMode === 1) {
+    camera.position.set(state.x - 0.35 * c + s * 0.1, 1.25, state.z + 0.35 * s + c * 0.1);
+    camera.lookAt(state.x + s * 20, 1.0, state.z + c * 20);
+    car.visible = false;
+    return;
+  }
+  car.visible = true;
+  const back = camMode === 0 ? 8 : 25, up = camMode === 0 ? 3.2 : 18;
+  camPos.set(state.x - s * back, up, state.z - c * back);
+  camera.position.lerp(camPos, 1 - Math.exp(-dt * 5));
+  camLook.set(state.x + s * 4, 1, state.z + c * 4);
+  camera.lookAt(camLook);
+}
+
+// Minimap: static road layer drawn once, car arrow on top.
+const mm = document.getElementById('minimap'), mctx = mm.getContext('2d');
+const MM_SCALE = 0.55;
+const roadLayer = new OffscreenCanvas(2400, 2400), rctx = roadLayer.getContext('2d');
+rctx.translate(1200, 1200); rctx.lineCap = 'round';
+rctx.fillStyle = '#4f6e3a'; for (const p of city.green) { rctx.beginPath(); p.forEach(([x, z], i) => (i ? rctx.lineTo : rctx.moveTo).call(rctx, x * MM_SCALE * 2, z * MM_SCALE * 2)); rctx.fill(); }
+rctx.fillStyle = '#6d6a64'; for (const b of city.buildings) { rctx.beginPath(); b.p.forEach(([x, z], i) => (i ? rctx.lineTo : rctx.moveTo).call(rctx, x * MM_SCALE * 2, z * MM_SCALE * 2)); rctx.fill(); }
+rctx.strokeStyle = '#e6e6e6';
+for (const r of carRoads) { rctx.lineWidth = Math.max(2, r.w * MM_SCALE * 2); rctx.beginPath(); r.p.forEach(([x, z], i) => (i ? rctx.lineTo : rctx.moveTo).call(rctx, x * MM_SCALE * 2, z * MM_SCALE * 2)); rctx.stroke(); }
+function drawMinimap() {
+  mctx.save();
+  mctx.clearRect(0, 0, 400, 400);
+  mctx.beginPath(); mctx.arc(200, 200, 200, 0, 6.29); mctx.clip();
+  mctx.translate(200, 200); mctx.rotate(state.h + Math.PI);
+  mctx.drawImage(roadLayer, -1200 - state.x * MM_SCALE * 2, -1200 - state.z * MM_SCALE * 2);
+  mctx.restore();
+  mctx.fillStyle = '#ff4d3a'; mctx.beginPath(); mctx.moveTo(200, 186); mctx.lineTo(210, 212); mctx.lineTo(190, 212); mctx.fill();
+}
+
+const speedEl = document.getElementById('speed'), streetEl = document.getElementById('street'), statsEl = document.getElementById('stats');
+const clock = new THREE.Clock();
+let frames = 0, fpsT = 0, fps = 0, phaseT = 0;
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  step(dt); updateCamera(dt);
+
+  phaseT += dt;
+  const phase = phaseT % 20 < 9 ? 2 : phaseT % 20 < 11 ? 1 : 0;
+  for (const set of lamps) set.forEach((m, i) => m.material.color.setHex(i === phase ? LAMP_COLORS[i] : 0x333333));
+
+  sun.position.set(state.x + 120, 200, state.z + 80);
+  sun.target.position.set(state.x, 0, state.z);
+
+  renderer.render(scene, camera);
+  drawMinimap();
+
+  speedEl.innerHTML = `${Math.round(Math.abs(state.v) * 3.6)} <small>km/h</small>`;
+  const road = nearestRoad(state.x, state.z);
+  streetEl.textContent = road ? (road.r.n || road.r.t) : 'off road';
+  frames++; fpsT += dt;
+  if (fpsT > 0.5) { fps = Math.round(frames / fpsT); frames = 0; fpsT = 0; }
+  const info = renderer.info.render;
+  statsEl.textContent = `${fps} fps · ${info.calls} draw calls · ${(info.triangles / 1000).toFixed(0)}k tris · ${okTrees.length} trees`;
+});
+</script>
+</body>
+</html>
