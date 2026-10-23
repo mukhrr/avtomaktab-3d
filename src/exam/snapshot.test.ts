@@ -110,8 +110,8 @@ const SOUTH_ARM: LaneRef = { edgeId: 's', dir: 1, lane: 0 };
 const EAST_ARM: LaneRef = { edgeId: 'e', dir: -1, lane: 0 };
 const NORTH_ARM: LaneRef = { edgeId: 'n', dir: -1, lane: 0 };
 
-function conflictSetup() {
-  const c = setup();
+function conflictSetup(d: DistrictData = testNetwork()) {
+  const c = setup(d);
   const place = (ref: LaneRef, toEnd: number, speed: number) =>
     c.traffic.place(ref, c.net.path(ref).length - toEnd, { speed });
   return { ...c, place };
@@ -131,6 +131,26 @@ test('junctionConflicts lists cars on the other arms with side, oncoming and tim
   expect(by(oncoming).tta).toBeCloseTo(6, 1);
   expect(by(left)).toMatchObject({ fromRight: false, oncoming: false });
   expect(by(left).tta).toBeCloseTo(150, 0);
+});
+
+test('junctionConflicts carries each car\'s speed, approach priority rank and its turn at the junction', () => {
+  const d = testNetwork();
+  d.signs.push({ id: 'gw', type: 'giveWay', edgeId: 's', dir: 1, at: 110 }, { id: 'pr', type: 'priorityRoad', edgeId: 'e', dir: -1, at: 10 });
+  const c = conflictSetup(d);
+  const right = c.place(SOUTH_ARM, 20, 10);
+  const oncoming = c.place(EAST_ARM, 30, 5);
+  const left = c.place(NORTH_ARM, 15, 0);
+  const s = c.snap([-30, 1.75], EAST);
+  const by = (id: number) => s.junctionConflicts.find(x => x.agentId === id)!;
+  expect(by(right)).toMatchObject({ speed: 10, rank: 0 });
+  expect(by(oncoming)).toMatchObject({ speed: 5, rank: 2 });
+  expect(by(left)).toMatchObject({ speed: 0, rank: 1 });
+  for (const x of s.junctionConflicts) expect(['left', 'right', 'straight', 'uturn', null]).toContain(x.turn);
+});
+
+test('a crossing stays listed while the rear of the car is still on it', () => {
+  const c = setup();
+  expect(c.snap([-37, 1.75], EAST).crossingsAhead.map(x => x.id)).toEqual(['z1']);
 });
 
 test('junctionConflicts leaves out the own approach, far cars, and everything when no junction is near', () => {

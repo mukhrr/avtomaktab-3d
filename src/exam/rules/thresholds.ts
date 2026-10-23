@@ -43,3 +43,42 @@ export const BELT_SPEED = 5;
 export const EPS = 1e-6;
 
 export const kmh = (ms: number) => Math.abs(ms) * 3.6;
+
+/** Stopping distance used by the yielding and braking rules: v²/STOPPING_DIVISOR + STOPPING_MARGIN metres (v in m/s). */
+export const STOPPING_DIVISOR = 8;
+export const STOPPING_MARGIN = 2;
+export const stoppingDistance = (v: number) => (v * v) / STOPPING_DIVISOR + STOPPING_MARGIN;
+/** Half the zebra band along the road: ZEBRA_LENGTH / 2 in src/world/crossings.ts. */
+export const CROSSING_HALF_DEPTH = 1.5;
+/** The car's box must reach this far into the band to count as stopped on it, the same depth as the stopLinePast ceiling. */
+export const CROSSING_OVERLAP = 0.5;
+export const STOPPED_ON_CROSSING_HOLD = 2;
+
+/** A car with priority closer than this in time claims it: PRIORITY_TTA in src/traffic/trafficSim.ts. */
+export const YIELD_TTA = 3;
+/** Below this a car is standing, no threat until it moves off: MOVING in src/traffic/trafficSim.ts. */
+export const YIELD_MOVING = 0.5;
+/** A stop line this close to the end of the approach lane makes the junction signalled. */
+export const SIGNAL_REACH = 40;
+/** A left turner still within this of its approach heading has not crossed the oncoming lanes yet. */
+export const LEFT_TURN_COMMIT = Math.PI / 4;
+
+/** Half the car width: the centre this far beyond the lane divider puts the car over it. */
+export const ONCOMING_LATERAL = 0.9;
+export const ONCOMING_HOLD = 1;
+
+export const COLLISION_DEBOUNCE = 3;
+/** A yielding fail hides the crash that follows it within this. */
+export const COLLISION_DEDUPE = 3;
+/** m/s: below this the player counts as standing when a car hits it. */
+export const COLLISION_STANDING = 1;
+export const OBSTACLE_MIN_SPEED = 2;
+
+export const HARSH_DECEL = 6;
+export const HARSH_HOLD = 0.3;
+export const HARSH_REPEAT = 10;
+/** A crash this recent explains the deceleration. */
+export const HARSH_CRASH_WINDOW = 1;
+
+export const ROLLBACK_SPEED = 0.3;
+export const ROLLBACK_DISTANCE = 0.5;

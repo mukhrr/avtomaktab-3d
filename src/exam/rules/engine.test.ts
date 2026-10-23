@@ -8,7 +8,9 @@ import { newCabin, type CabinState } from '../../vehicle/cabin';
 import type { DrivetrainState } from '../../vehicle/drivetrain';
 import { MapMatcher } from '../mapMatch';
 import { buildSnapshot, type DriveSnapshot, type SnapshotContext } from '../snapshot';
+import { CollisionRule } from './collisions';
 import { RuleEngine } from './engine';
+import { HarshBrakingRule } from './handling';
 import { WrongLaneForTurnRule } from './lanes';
 import { RoadInfo } from './road';
 import { IndicatorRule, MirrorCheckRule, SeatBeltRule } from './signalling';
@@ -48,6 +50,26 @@ test('redLight hides stopLinePast and yellowEntry from the same line within 3 s'
     scripted([v('stopLinePast', 2.5, line), v('yellowEntry', 1, line), v('stopLinePast', 3, other), v('stopLinePast', 4.2, line)]),
   ]);
   expect(runTo(engine, 8).map(x => `${x.id}@${x.t}`)).toEqual(['redLight@1', 'stopLinePast@3', 'stopLinePast@4.2']);
+});
+
+test('pedestrianNotYielded hides the collisionPedestrian that follows within 3 s, vehicleNotYielded the collisionCar', () => {
+  const engine = new RuleEngine([scripted([
+    v('pedestrianNotYielded', 1, { crossing: 'z1' }), v('collisionPedestrian', 1.5, { ped: 3 }), v('collisionPedestrian', 4.5, { ped: 4 }),
+    v('vehicleNotYielded', 6, { agent: 7 }), v('collisionCar', 7, { speed: 6 }),
+  ])]);
+  expect(runTo(engine, 10).map(x => `${x.id}@${x.t}`)).toEqual(['pedestrianNotYielded@1', 'collisionPedestrian@4.5', 'vehicleNotYielded@6']);
+});
+
+test('a crash through the real rules is one collisionCar, not also harsh braking (RF2)', () => {
+  const engine = new RuleEngine([new CollisionRule(), new HarshBrakingRule()]);
+  const crash = { type: 'collision' as const, with: 'car' as const, speed: 9, time: 0 };
+  const out: Violation[] = [];
+  for (let i = 0; i < 30; i++) {
+    const speed = i < 10 ? 9 : Math.max(0, 9 - (i - 9) * 3);
+    const events = i === 10 || i === 11 || i === 14 ? [crash] : [];
+    out.push(...engine.update(snap({ t: i / 10, speed, accel: i >= 10 && speed > 0 ? -30 : 0, events })));
+  }
+  expect(out.map(x => x.id)).toEqual(['collisionCar']);
 });
 
 test('a lower-tier same-line violation is held back 3 s, so a later redLight still hides it', () => {

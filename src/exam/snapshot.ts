@@ -4,8 +4,8 @@ import type { LightState, SignalSystem } from '../sim/signals';
 import type { SignSystem } from '../sim/signs';
 import type { PedSim } from '../peds/pedSim';
 import type { LaneNetwork, LaneRef } from '../traffic/lanes';
-import { CAR_CLASSES, type TrafficSim } from '../traffic/trafficSim';
-import { classifyTurn, endHeading, wrapAngle } from '../traffic/turns';
+import { CAR_CLASSES, approachRank, type TrafficSim } from '../traffic/trafficSim';
+import { classifyTurn, endHeading, wrapAngle, type Turn } from '../traffic/turns';
 import type { CabinState } from '../vehicle/cabin';
 import type { DrivetrainState, Gearbox } from '../vehicle/drivetrain';
 import type { LaneMatch, MapMatcher } from './mapMatch';
@@ -32,7 +32,8 @@ export interface DriveSnapshot {
   signsAhead: { sign: Sign; distance: number }[];
   /** Bumper-to-bumper gap and speed of the nearest car ahead in the player's lane. */
   leader: { distance: number; speed: number } | null;
-  junctionConflicts: { agentId: number; fromRight: boolean; oncoming: boolean; tta: number }[];
+  /** `rank` is the car's approach priority as TrafficSim ranks it; `turn` its connector, null before it chose one. */
+  junctionConflicts: { agentId: number; fromRight: boolean; oncoming: boolean; tta: number; speed: number; rank: number; turn: Turn | null }[];
   events: GameEvent[];
 }
 
@@ -68,8 +69,8 @@ const LEADER_RANGE = 60;
 const LEADER_HALF_WIDTH = 1.8;
 const LEADER_ANGLE = Math.PI / 3;
 const ONCOMING = (150 * Math.PI) / 180;
-/** A crossing stays listed this far past its centre, while the car is still on it. */
-const CROSSING_DEPTH = 2;
+/** A crossing stays listed this far past its centre, while the rear of the car may still be on it. */
+const CROSSING_DEPTH = 4;
 
 interface Topology {
   crossingsByEdge: Map<string, DistrictData['crossings']>;
@@ -193,6 +194,9 @@ function junctionConflicts(ctx: SnapshotContext, match: LaneMatch, topo: Topolog
       fromRight: classifyTurn(ph, ah) === 'left',
       oncoming: Math.abs(wrapAngle(ah - ph)) > ONCOMING,
       tta,
+      speed: v.speed,
+      rank: approachRank(ctx.signs.atJunction(a.ref)),
+      turn: a.turn,
     });
   }
   return out.sort((x, y) => x.tta - y.tta || x.agentId - y.agentId);

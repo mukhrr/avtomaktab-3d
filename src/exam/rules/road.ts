@@ -1,6 +1,7 @@
 import type { DistrictData, Sign } from '../../shared/district';
 import type { SignSystem } from '../../sim/signs';
 import type { LaneNetwork, LaneRef } from '../../traffic/lanes';
+import { approachRank } from '../../traffic/trafficSim';
 import { turnBetween, type Turn } from '../../traffic/turns';
 import { NO_ENTRY_REACH } from './thresholds';
 
@@ -25,6 +26,23 @@ export class RoadInfo {
     if (!this.edges.has(edgeId)) return false;
     const start = dir === 1 ? 0 : this.length(edgeId);
     return this.signs.ahead(edgeId, dir, start, NO_ENTRY_REACH).some(g => g.type === 'noEntry');
+  }
+
+  twoWay({ edgeId }: Approach): boolean {
+    const e = this.edges.get(edgeId);
+    return !!e && e.lanesForward > 0 && e.lanesBackward > 0;
+  }
+
+  /** Lateral of the line between the two directions, metres right of the edge centreline for traffic going `dir`. */
+  divider(r: Approach): number {
+    const e = this.edges.get(r.edgeId);
+    if (!e) return 0;
+    return e.width / 2 - (this.lanes(r) * e.width) / (e.lanesForward + e.lanesBackward);
+  }
+
+  /** Junction priority of the approach, ranked as TrafficSim ranks it. */
+  rank(ref: LaneRef): number {
+    return approachRank(this.signs.atJunction(ref));
   }
 
   junctionSigns(ref: LaneRef): Sign[] {

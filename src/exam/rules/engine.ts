@@ -1,12 +1,13 @@
 import type { PenaltyId } from '../penalties';
 import type { DriveSnapshot } from '../snapshot';
-import { NO_ENTRY_DEDUPE, RED_LIGHT_DEDUPE } from './thresholds';
+import { COLLISION_DEDUPE, NO_ENTRY_DEDUPE, RED_LIGHT_DEDUPE } from './thresholds';
 import type { Rule, Violation } from './types';
 
 interface Suppression {
   by: PenaltyId;
   hides: PenaltyId[];
-  key: string;
+  /** Detail field both must share; null when GameEvent gives nothing to match on. */
+  key: string | null;
   within: number;
   /** Hidden ids are held back for `within` so a suppressor arriving later still removes them. */
   hold: boolean;
@@ -17,6 +18,8 @@ const SUPPRESSIONS: Suppression[] = [
   { by: 'redLight', hides: ['stopLinePast', 'yellowEntry'], key: 'line', within: RED_LIGHT_DEDUPE, hold: true },
   // Not held: wrongWayOneway is a fail and always comes after noEntry, so delaying it would only delay the fail.
   { by: 'noEntry', hides: ['wrongWayOneway'], key: 'edge', within: NO_ENTRY_DEDUPE, hold: false },
+  { by: 'pedestrianNotYielded', hides: ['collisionPedestrian'], key: null, within: COLLISION_DEDUPE, hold: false },
+  { by: 'vehicleNotYielded', hides: ['collisionCar'], key: null, within: COLLISION_DEDUPE, hold: false },
 ];
 const LONGEST = Math.max(...SUPPRESSIONS.map(x => x.within));
 
@@ -57,11 +60,11 @@ export class RuleEngine {
   }
 
   private holdFor(v: Violation): number {
-    return Math.max(0, ...SUPPRESSIONS.filter(x => x.hold && x.hides.includes(v.id) && v.detail?.[x.key] !== undefined).map(x => x.within));
+    return Math.max(0, ...SUPPRESSIONS.filter(x => x.hold && x.hides.includes(v.id) && (x.key === null || v.detail?.[x.key] !== undefined)).map(x => x.within));
   }
 
   private hidden(v: Violation): boolean {
-    return SUPPRESSIONS.some(x => x.hides.includes(v.id) && this.suppressors.some(p =>
-      p.id === x.by && p.detail?.[x.key] !== undefined && p.detail[x.key] === v.detail?.[x.key] && Math.abs(v.t - p.t) <= x.within));
+    return SUPPRESSIONS.some(x => x.hides.includes(v.id) && this.suppressors.some(p => p.id === x.by && Math.abs(v.t - p.t) <= x.within
+      && (x.key === null || (p.detail?.[x.key] !== undefined && p.detail[x.key] === v.detail?.[x.key]))));
   }
 }

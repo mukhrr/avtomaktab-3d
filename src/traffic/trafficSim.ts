@@ -8,6 +8,12 @@ import { pointAt, type LaneNetwork, type LaneRef } from './lanes';
 import { approachKey, laneKey, nearestObstacle, type LookaheadWorld } from './lookahead';
 import { classifyTurn, endHeading, project, turnBetween, wrapAngle, type Turn } from './turns';
 
+/** Junction priority of an approach from its signs: priorityRoad 2, unsigned 1, stop or giveWay 0. */
+export function approachRank(signs: readonly { type: string }[]): number {
+  const types = new Set(signs.map(g => g.type));
+  return types.has('stop') || types.has('giveWay') ? 0 : types.has('priorityRoad') ? 2 : 1;
+}
+
 export interface PlayerState {
   position: Vec2;
   heading: number;
@@ -214,10 +220,10 @@ export class TrafficSim {
       for (const [dir, lanes, end] of [[1, e.lanesForward, e.to], [-1, e.lanesBackward, e.from]] as const) {
         if (lanes === 0) continue;
         const ref: LaneRef = { edgeId: e.id, dir, lane: 0 };
-        const types = new Set(signs.atJunction(ref).map(g => g.type));
-        if (types.has('stop')) this.stopSigns.add(approachKey(ref));
+        const at = signs.atJunction(ref);
+        if (at.some(g => g.type === 'stop')) this.stopSigns.add(approachKey(ref));
         if ((nodeEdges.get(end) ?? 0) < 3) continue;
-        const rank = types.has('stop') || types.has('giveWay') ? 0 : types.has('priorityRoad') ? 2 : 1;
+        const rank = approachRank(at);
         this.approaches.set(approachKey(ref), { node: end, rank, heading: endHeading(net.path(ref).points) });
       }
     }
@@ -290,10 +296,11 @@ export class TrafficSim {
     return a.id;
   }
 
-  inspect(id: number): { ref: LaneRef; s: number; connectorNode: string | null; generation: number } | null {
+  /** `turn` is the connector being driven, else the one chosen for the next junction, null before choosing. */
+  inspect(id: number): { ref: LaneRef; s: number; connectorNode: string | null; generation: number; turn: Turn | null } | null {
     const a = this.pool[id];
     if (!a || !a.active) return null;
-    return { ref: a.ref, s: a.s, connectorNode: a.conn?.node ?? null, generation: a.generation };
+    return { ref: a.ref, s: a.s, connectorNode: a.conn?.node ?? null, generation: a.generation, turn: (a.conn ?? a.nextConn)?.kind ?? null };
   }
 
   private advance(a: Agent, dt: number, player: PlayerState, crossings: CrossingOccupancy): void {
