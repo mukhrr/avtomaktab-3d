@@ -18,10 +18,8 @@ describe('exam runs on route-1 with M2 traffic (headless)', () => {
     const { result } = runExam(world(), { indicators: true, obeyLights: false });
     expect(result.phase).toBe('failed');
     expect(result.passed).toBe(false);
-    // Ignoring lights it may also queue across a crossing on its way; the exam ends on the first red it runs.
-    const ids = result.violations.map(v => v.id);
-    expect(ids.at(-1)).toBe('redLight');
-    expect(ids.filter(id => id === 'redLight')).toHaveLength(1);
+    // Every violation is listed, so a new one before the red light would show here.
+    expect(result.violations.map(v => v.id)).toEqual(['redLight']);
   }, RUN_TIMEOUT);
 
   it('a driver who never indicates gets one noIndicator per signalled maneuver', () => {
@@ -31,12 +29,13 @@ describe('exam runs on route-1 with M2 traffic (headless)', () => {
     // Turns are the route's left, right and U-turn steps; straight-through steps carry no indicator duty
     // (ManeuverWatch gives them side null). Lane changes are maneuvers too: on 22813507:0, 2 to reach the rightmost
     // lane for the first pass's right turn and 3 to reach the leftmost for the second pass's left turn.
-    const turns = w.route.steps.filter(s => s.maneuver === 'left' || s.maneuver === 'right' || s.maneuver === 'uturn').length;
-    expect(turns).toBe(6);
+    const turnSteps = w.route.steps.filter(s => s.maneuver === 'left' || s.maneuver === 'right' || s.maneuver === 'uturn');
+    expect(turnSteps).toHaveLength(6);
     expect(driver.laneChanges).toBe(5);
     const missed = signalling.filter(v => v.id === 'noIndicator');
     const kinds = missed.map(v => String(v.detail?.maneuver));
-    expect(kinds.filter(k => !k.startsWith('lane-'))).toHaveLength(turns);
+    // In route order, each turn's miss names that step's own direction.
+    expect(kinds.filter(k => !k.startsWith('lane-'))).toEqual(turnSteps.map(s => s.maneuver));
     expect(kinds.filter(k => k.startsWith('lane-'))).toHaveLength(driver.laneChanges);
     // The pull-off from the kerb is its own, lighter penalty.
     expect(signalling.filter(v => v.id === 'noIndicatorPullOff')).toHaveLength(1);

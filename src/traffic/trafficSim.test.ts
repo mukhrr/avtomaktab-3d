@@ -273,37 +273,55 @@ test('stops for a person on an unmarked crossing', () => {
   expect(sim.agents[id].speed).toBeLessThan(0.1);
 });
 
-test('a car standing still for over 60 s is despawned only when it is out of the player\'s sight', () => {
+test('a car standing still for over 60 s is despawned when the player is far away', () => {
   const blocked: CrossingOccupancy = { occupied: id => id === 'z1' };
-  const run = (player: PlayerState) => {
+  const c = setup();
+  const id = c.sim.place(W, 10, { carClass: 'nexia' });
+  const alive: boolean[] = [];
+  for (let t = 0; t < 80; t += DT) {
+    c.step(AWAY, blocked);
+    if (Math.abs(t - 50) < DT / 2 || Math.abs(t - 79) < DT / 2) alive.push(c.sim.agents[id].active);
+  }
+  expect(Math.hypot(AWAY.position[0] + 40, AWAY.position[1])).toBeGreaterThan(120);
+  expect(alive).toEqual([true, false]);
+});
+
+describe('a jam beside the player', () => {
+  const blocked: CrossingOccupancy = { occupied: id => id === 'z1' };
+  /** A car held at z1 (stopped from about 12 s), then the player placed relative to it; alive at each checkpoint. */
+  const run = (place: (car: Vec2) => PlayerState, checks = [80, 140]) => {
     const c = setup();
     const id = c.sim.place(W, 10, { carClass: 'nexia' });
+    for (let t = 0; t < 10; t += DT) c.step(AWAY, blocked);
+    const player = place([...c.sim.agents[id].position] as Vec2);
     const alive: boolean[] = [];
-    for (let t = 0; t < 80; t += DT) {
+    for (let t = 10; t < checks[checks.length - 1] + 1; t += DT) {
       c.step(player, blocked);
-      if (Math.abs(t - 50) < DT / 2 || Math.abs(t - 79) < DT / 2) alive.push(c.sim.agents[id].active);
+      if (checks.some(k => Math.abs(t - k) < DT / 2)) alive.push(c.sim.agents[id].active);
     }
     return alive;
   };
-  expect(Math.hypot(AWAY.position[0] + 40, AWAY.position[1])).toBeGreaterThan(120);
-  expect(run(AWAY)).toEqual([true, false]);
-  // 12 m south of the queue: looking north at it keeps it, looking south (it is behind) clears it.
-  expect(run({ ...AWAY, position: [-45, 12], heading: Math.PI })).toEqual([true, true]);
-  expect(run({ ...AWAY, position: [-45, 12], heading: 0 })).toEqual([true, false]);
-  // In view but 30 m off it is cleared too.
-  expect(run({ ...AWAY, position: [-45, 30], heading: Math.PI })).toEqual([true, false]);
-});
+  const east = (x: number, z: number): PlayerState => ({ ...AWAY, position: [x, z], heading: Math.PI / 2 });
 
-test('a jam beside the player clears cars out of view or more than 15 m away, not the one in plain view close ahead', () => {
-  const blocked: CrossingOccupancy = { occupied: id => id === 'z1' || id === 'z2' };
-  const c = setup(0, 1, d => d.crossings.push({ id: 'z2', position: [-95, 0], kind: 'zebra', edgeId: 'w', at: 95, width: 3 }));
-  const near = c.sim.place(W, 70, { carClass: 'nexia' });
-  const far = c.sim.place(W, 10, { carClass: 'nexia' });
-  // Standing on w east of both zebras, looking west: one car waits about 10 m ahead, the other about 65 m.
-  const player: PlayerState = { ...AWAY, position: [-35, -1.75], heading: -Math.PI / 2 };
-  for (let t = 0; t < 70; t += DT) c.step(player, blocked);
-  expect(c.sim.agents[near].active).toBe(true);
-  expect(c.sim.agents[far].active).toBe(false);
+  it('clears a car behind the player after 60 s', () => {
+    expect(run(([x, z]) => east(x + 10, z + 5))).toEqual([false, false]);
+  });
+
+  it('keeps a car beside the player past 60 s and clears it after 120 s', () => {
+    expect(run(([x, z]) => east(x, z + 4))).toEqual([true, false]);
+  });
+
+  it('keeps a car 30 m ahead past 60 s and clears it after 120 s', () => {
+    expect(run(([x, z]) => east(x - 30, z + 5))).toEqual([true, false]);
+  });
+
+  it('clears a car standing within 15 m in front of the player only as a last resort, after 240 s', () => {
+    expect(run(([x, z]) => east(x - 10, z), [140, 230, 260])).toEqual([true, true, false]);
+  });
+
+  it('never clears a car the player is touching', () => {
+    expect(run(([x, z]) => east(x, z + 1.8), [140, 260])).toEqual([true, true]);
+  });
 });
 
 test('passes a standing player angled in the oncoming lane who is beside, not on, its path', () => {

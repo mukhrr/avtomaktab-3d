@@ -59,10 +59,10 @@ Rules that see the same mistake twice charge it once: redLight hides stopLinePas
 | driver | result |
 |---|---|
 | careful | finished, 0 points, about 760 s of sim time |
-| runs red lights | failed on redLight; queueing with lights ignored it may also collect a stoppedOnCrossing first |
+| runs red lights | failed on redLight, its only violation |
 | never indicates | 11 noIndicator over the whole route (6 turns, 5 lane changes on 22813507:0) and 1 noIndicatorPullOff; the exam fails on the fifth noIndicator |
 
-The three runs take about 45 s together. Other seeds (3, 7, 9) also finish with 0 points; seed 11 finishes with 20 (stoppedOnCrossing, see the Task 11 report).
+The three runs take about 45 s together. Other seeds: 3, 7 and 11 finish with 0 points, 9 with 20 (stoppedOnCrossing behind a car stopping in a junction, see the Task 11 report).
 
 ## Tuning log
 
@@ -76,4 +76,6 @@ No threshold was changed. Every false positive the careful driver showed in play
 - collisionPedestrian and stoppedOnCrossing with crossers walking off along the kerb line: the driver now gives way to anyone on its path and does not enter a crossing it cannot clear.
 - pedestrianNotYielded at a zebra drawn past the lane end, in the junction mouth: the driver now looks for crossings up to 15 m past the lane end.
 
-Fix round 1 changed M2 code, not exam thresholds: AI cars turn right only from the rightmost lane and left only from the leftmost, a car stuck for 60 s is cleared unless it stands within 15 m in front of the player, an AI car no longer waits for a standing player whose box it would not touch, and crossers leaving a crossing walk off the carriageway instead of along the kerb line. The driver workarounds for walking-off crossers were removed.
+Fix round 1 changed M2 code, not exam thresholds: AI cars turn right only from the rightmost lane and left only from the leftmost, a stuck car is cleared after 60 s when behind the player, after 120 s when in sight and after 240 s when within 15 m in front, never while touching the player, an AI car no longer waits for a standing player whose box it would not touch, and crossers leaving a crossing walk off the carriageway instead of along the kerb line. The driver workarounds for walking-off crossers were removed.
+
+Fix round 2: the district build moves marked crossings that OSM puts on or inside a junction back onto their approach (20 of 161 moved), so a car waiting at the junction no longer stands on one. Route-1 then counts 8 zebras instead of 6; its steps are unchanged.

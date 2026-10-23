@@ -2,7 +2,8 @@ import type { Crossing, Vec2 } from '../shared/district';
 import type { SignalSystem } from '../sim/signals';
 import { canStopBefore } from './idm';
 import type { LaneNetwork, LaneRef } from './lanes';
-import { CAR_CLASSES, type Agent, type Conn, type CrossingOccupancy, type PlayerState } from './trafficSim';
+import { CAR_CLASSES } from './carClasses';
+import type { Agent, Conn, CrossingOccupancy, PlayerState } from './trafficSim';
 
 export const LOOKAHEAD = 80;
 const STOP_LINE_SETBACK = 1;

@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import type { Crossing, DistrictConfig, DistrictData, Sign } from '../../src/shared/district';
 import { edgeLength, locateNode } from './attach';
 import { buildControllers } from './controllers';
+import { crossingsOffJunctions } from './crossings';
 import { extractFeatures, type Overrides } from './extract';
 import { buildRoadGraph } from './graph';
 import { parseOsm } from './osm';
@@ -38,7 +39,7 @@ export function buildDistrict(xml: string, config: DistrictConfig, overrides: Ov
     crossings.push({ id: c.id, position: edge.points[hit.index], kind: c.kind, edgeId: hit.edgeId, at: hit.at, width: edge.width });
   }
   validateSigns(signs, graph.edges);
-  const built = buildControllers(features.signals, graph.edges, graph.nodes, crossings);
+  const built = buildControllers(features.signals, graph.edges, graph.nodes, crossingsOffJunctions(crossings, graph.edges, graph.nodes));
   const [minLon, minLat, maxLon, maxLat] = config.bbox;
   const [minX, maxZ] = project(minLat, minLon);
   const [maxX, minZ] = project(maxLat, maxLon);

@@ -25,7 +25,7 @@ Generated route: `public/districts/tashkent-center/routes/route-1.json` (rebuild
 | Signalled right | 1 | (83, -439) |
 | Signalled straight | 1 | (-487, -44) |
 | Unsignalled, priority to the right | 2 | (-319, -556), (-587, -640) |
-| Zebras | 6 | along the route |
+| Zebras | 8 | along the route (two sit just off junction nodes; the district build moves such crossings out of the junction) |
 | Signalled pedestrian crossings | 5 | along the route |
 | Turns from a multi-lane approach | 2 | both turns at (83, -439) |
 | Speed zone changes | 2 | into and out of the 50 km/h part of Istiqlol |

@@ -288,19 +288,25 @@ describe('clearNear', () => {
   });
 });
 
-test('crossers leaving a crossing next to a junction stay off every carriageway', () => {
+test.each([
+  // The first leaves along the pavement; at the second there is no pavement off the kerb ends, so nobody walks on.
+  ['a road-wide zebra 8 m from the junction', -8, 7, true],
+  ['a narrow zebra in the junction mouth, its kerb ends on the cross road', -3, 3, false],
+])('crossers leaving %s stay off every carriageway once off the band', (_, x, width, walkOn) => {
   const d = testNetwork();
-  d.crossings = [{ id: 'j1', position: [-8, 0], kind: 'zebra', edgeId: 'w', at: 8, width: 7 }];
+  d.crossings = [{ id: 'j1', position: [x, 0], kind: 'zebra', edgeId: 'w', at: -x, width }];
   const c = setup(d, { crossers: 20, walkers: 0 });
   const roads = d.roads.filter(r => r.kind !== 'footway');
-  let leftBand = 0;
+  const w = roads.find(r => r.id === 'w')!;
+  let checked = 0;
   for (let i = 0; i < 60 * 30; i++) {
     c.step();
     for (const p of c.sim.peds) {
-      if (!p.active || Math.abs(p.position[0] + 8) <= 2.5) continue;
-      leftBand++;
+      // The band itself: waiting at its ends and walking across it is where a crosser is meant to be on the road.
+      if (!p.active || (Math.abs(p.position[0] - x) <= 2.5 && Math.abs(p.position[1]) <= w.width / 2)) continue;
+      checked++;
       for (const r of roads) expect(distToPolyline(p.position, r.points)).toBeGreaterThan(r.width / 2);
     }
   }
-  expect(leftBand).toBeGreaterThan(0);
+  expect(checked > 0).toBe(walkOn);
 });

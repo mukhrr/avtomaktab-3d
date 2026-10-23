@@ -81,7 +81,7 @@ const BUSY_TTA = 4;
 /** Patience with a car standing at its line counts only while the player waits this close to its own line. */
 const WAIT_NEAR_LINE = 3;
 /** Inside the junction a left turner may still wait until its heading has turned this far, short of the rule's commit. */
-const LEFT_WAIT_ANGLE = Math.PI / 6;
+const LEFT_WAIT_ANGLE = (38 * Math.PI) / 180;
 /** Crossings drawn across the junction mouth sit past the lane end but still on its edge. */
 const JUNCTION_CROSSING = 15;
 const LANE_GAP_BEHIND = 12;
@@ -524,7 +524,11 @@ export class ScriptedDriver {
     if (state !== 'yellow') this.yellow.delete(key);
     let stop = state === 'red' || state === 'redYellow';
     if (state === 'yellow') {
-      if (!this.yellow.has(key)) this.yellow.set(key, gap > 0 && canStopBefore(v, gap, YELLOW_MAX_DECEL + 0.05));
+      if (!this.yellow.has(key)) {
+        // Decided on the yellow rule's own measure, along the edge centreline: on a bend it differs from the lane's.
+        const ruleGap = (light.stopAt - this.edgeAt(p, Math.max(this.s, p.s0))) * p.ref.dir - FRONT_OFFSET;
+        this.yellow.set(key, gap > 0 && ruleGap > 0 && canStopBefore(v, ruleGap, YELLOW_MAX_DECEL + 0.05));
+      }
       stop = this.yellow.get(key)!;
     }
     if (stop) target(gap - STOP_GAP, 0, `light ${state} ${key}`);
@@ -551,10 +555,12 @@ export class ScriptedDriver {
       // Never enter a marked crossing without room to clear it: a car standing just beyond, or someone walking there.
       if (c.kind !== 'unmarked' && band > 0) {
         const beyond = front + band + 2 * CROSSING_HALF_DEPTH;
+        // Too close to the junction to wait between them: cross only once nobody is turning through it, and with
+        // room behind a car ahead however fast it goes, since it may stop in the junction for its own turn.
+        const nearJunction = p.s1 - beyond < PLAYER_LENGTH + 1 && p.step < this.steps.length - 1;
         const blocked = (lead && lead.speed < QUEUE_SPEED && lead.gap - (band + 2 * CROSSING_HALF_DEPTH) - 1 < PLAYER_LENGTH)
           || this.pedNear(beyond, beyond + PLAYER_LENGTH + 2)
-          // Too close to the junction to wait between them: cross only once nobody is turning through it.
-          || (p.s1 - beyond < PLAYER_LENGTH + 1 && p.step < this.steps.length - 1 && this.junctionBusy(p));
+          || (nearJunction && this.junctionBusy(p));
         if (blocked) target(band - STOP_GAP, 0, `keep ${c.id} clear`);
       }
     }
@@ -601,10 +607,11 @@ export class ScriptedDriver {
     const turn = turnBetween(this.w.net, this.steps[i], conn.endRef);
     if (!this.signalledApproach[i] || (turn !== 'left' && turn !== 'uturn')) return false;
     const mouth = conn.s0 - FRONT_OFFSET - 0.3;
-    const h0 = this.line.at(conn.s0).heading;
+    const h0 = this.line.at(conn.s0 - 1).heading;
     let inside = conn.s0;
-    while (inside < conn.s1 && Math.abs(wrapAngle(this.line.at(inside).heading - h0)) < LEFT_WAIT_ANGLE) inside += 0.5;
-    if (this.s >= inside - 0.2 || mouth - this.s > LOOKAHEAD) return true;
+    while (inside < conn.s1 && Math.abs(wrapAngle(this.line.at(inside).heading - h0)) < LEFT_WAIT_ANGLE) inside += 0.25;
+    // A car stopped at `inside` stands a little short of it and keeps watching until it moves off.
+    if (this.s > inside || mouth - this.s > LOOKAHEAD) return true;
     const outside = this.s < mouth - 0.2;
     // Outside, a car standing at its line may move off on green. Inside, the player stands in its way, so it waits
     // for the player and only moving cars count, or the two would hold each other forever.

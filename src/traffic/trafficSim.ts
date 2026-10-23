@@ -5,6 +5,7 @@ import { SignSystem } from '../sim/signs';
 import { nearestLane } from '../world/spawn';
 import { DEFAULT_DRIVER, idmAccel, turnSpeed } from './idm';
 import { pointAt, type LaneNetwork, type LaneRef } from './lanes';
+import { CAR_CLASSES, type CarClass } from './carClasses';
 import { approachKey, laneKey, nearestObstacle, type LookaheadWorld } from './lookahead';
 import { classifyTurn, endHeading, project, turnBetween, wrapAngle, type Turn } from './turns';
 
@@ -23,15 +24,7 @@ export interface PlayerState {
   width: number;
 }
 
-export type CarClass = 'spark' | 'nexia' | 'cobalt' | 'damas' | 'bus';
-
-export const CAR_CLASSES: Record<CarClass, { length: number; width: number; weight: number }> = {
-  spark: { length: 3.6, width: 1.6, weight: 25 },
-  nexia: { length: 4.5, width: 1.7, weight: 25 },
-  cobalt: { length: 4.5, width: 1.74, weight: 30 },
-  damas: { length: 3.5, width: 1.5, weight: 12 },
-  bus: { length: 11, width: 2.5, weight: 8 },
-};
+export { CAR_CLASSES, type CarClass } from './carClasses';
 
 export interface AgentView {
   id: number;
@@ -125,9 +118,16 @@ const SPAWN_MIN = 120;
 const INITIAL_SPAWN_MIN = 30;
 const DESPAWN_AT = 350;
 const GRIDLOCK_TIME = 60;
-/** A stuck car closer than this in front of the player is never made to vanish. */
+/** A stuck car still after this while in the player's sight is cleared too. */
+const GRIDLOCK_SEEN_TIME = 120;
+const GRIDLOCK_LAST_RESORT = 240;
+/** A stuck car closer than this within AHEAD_HALF_ANGLE in front of the player is never made to vanish. */
 const JAM_KEEP_RANGE = 15;
-const VIEW_HALF_ANGLE = Math.PI / 3;
+const AHEAD_HALF_ANGLE = Math.PI / 3;
+/** Beside counts as in sight; only what lies behind this is out of it. */
+const SIGHT_HALF_ANGLE = (110 * Math.PI) / 180;
+/** "About to touch": this close to the player's box. */
+const CONTACT_MARGIN = 1;
 const SPAWN_ATTEMPTS = 30;
 const BRAKING = -1;
 const DEFAULT_KMH = 60;
@@ -141,9 +141,17 @@ const polyLength = (pts: Vec2[]) => {
   return d;
 };
 
-function inView(player: PlayerState, p: Vec2): boolean {
-  const bearing = Math.atan2(p[0] - player.position[0], p[1] - player.position[1]);
-  return Math.abs(wrapAngle(bearing - player.heading)) <= VIEW_HALF_ANGLE;
+/** The boxes, the player's grown by CONTACT_MARGIN, overlap. */
+function touching(a: Agent, player: PlayerState): boolean {
+  const dx = a.position[0] - player.position[0], dz = a.position[1] - player.position[1];
+  const ext = (h: number, l: number, w: number, ax: number, az: number) =>
+    (l / 2) * Math.abs(Math.sin(h) * ax + Math.cos(h) * az) + (w / 2) * Math.abs(Math.cos(h) * ax - Math.sin(h) * az);
+  const width = CAR_CLASSES[a.carClass].width;
+  const pl = player.length + 2 * CONTACT_MARGIN, pw = player.width + 2 * CONTACT_MARGIN;
+  return [a.heading, a.heading + Math.PI / 2, player.heading, player.heading + Math.PI / 2].every(h => {
+    const ax = Math.sin(h), az = Math.cos(h);
+    return Math.abs(dx * ax + dz * az) <= ext(a.heading, a.length, width, ax, az) + ext(player.heading, pl, pw, ax, az);
+  });
 }
 
 export class TrafficSim {
@@ -280,15 +288,26 @@ export class TrafficSim {
     for (const a of this.pool) {
       if (!a.active) continue;
       const d = dist(a.position, player.position);
-      // Exclusive junctions can lock in a ring of short edges; a car stuck that long is cleared unless it stands
-      // close in front of the player. Clearing the rest of the ring lets that one move off on its own.
-      if (d > DESPAWN_AT || (a.still > GRIDLOCK_TIME && (d > JAM_KEEP_RANGE || !inView(player, a.position)))) this.despawn(a);
+      if (d > DESPAWN_AT || (a.still > GRIDLOCK_TIME && this.jamCleared(a, d, player))) this.despawn(a);
     }
     this.buildIndex();
     this.arbitrate(player);
     for (const a of this.pool) if (a.active) this.advance(a, dt, player, crossings);
     this.fill(player, this.started ? SPAWN_MIN : INITIAL_SPAWN_MIN);
     this.started = true;
+  }
+
+  /**
+   * Exclusive junctions can lock in a ring of short edges. A stuck car out of the player's sight goes first; one in
+   * sight only after the longer wait, once clearing the unseen ones has not freed it; one close in front of the
+   * player last of all, when the player is part of the ring. A car touching the player is never made to vanish.
+   */
+  private jamCleared(a: Agent, d: number, player: PlayerState): boolean {
+    if (touching(a, player)) return false;
+    const off = Math.abs(wrapAngle(Math.atan2(a.position[0] - player.position[0], a.position[1] - player.position[1]) - player.heading));
+    if (off > SIGHT_HALF_ANGLE) return true;
+    if (d <= JAM_KEEP_RANGE && off <= AHEAD_HALF_ANGLE) return a.still > GRIDLOCK_LAST_RESORT;
+    return a.still > GRIDLOCK_SEEN_TIME;
   }
 
   /** Removes every car within `radius` of `position`, for placing the player there. */

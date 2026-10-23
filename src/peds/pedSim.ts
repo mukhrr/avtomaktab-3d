@@ -15,6 +15,8 @@ export interface PedView {
 }
 
 interface CrossingGeom {
+  /** The road the crossing spans. */
+  road: string;
   id: string;
   kind: 'signal' | 'zebra' | 'unmarked';
   centre: Vec2;
@@ -133,15 +135,15 @@ function segDist(p: Vec2, a: Vec2, b: Vec2): number {
   return Math.hypot(p[0] - a[0] - dx * t, p[1] - a[1] - dz * t);
 }
 
-/** Whether a point lies on (or within ROAD_MARGIN of) any car carriageway. */
-function carriagewayTest(d: DistrictData): (p: Vec2) => boolean {
-  const grid = new Map<string, { a: Vec2; b: Vec2; reach: number }[]>();
+/** The car roads whose carriageway (grown by ROAD_MARGIN) covers a point. */
+function carriagewayTest(d: DistrictData): (p: Vec2) => string[] {
+  const grid = new Map<string, { a: Vec2; b: Vec2; reach: number; road: string }[]>();
   for (const r of d.roads) {
     if (FOOT_KINDS.has(r.kind)) continue;
     const reach = r.width / 2 + ROAD_MARGIN;
     for (let i = 1; i < r.points.length; i++) {
       const a = r.points[i - 1], b = r.points[i];
-      const seg = { a, b, reach };
+      const seg = { a, b, reach, road: r.id };
       const x0 = Math.floor((Math.min(a[0], b[0]) - reach) / CELL), x1 = Math.floor((Math.max(a[0], b[0]) + reach) / CELL);
       const z0 = Math.floor((Math.min(a[1], b[1]) - reach) / CELL), z1 = Math.floor((Math.max(a[1], b[1]) + reach) / CELL);
       for (let cx = x0; cx <= x1; cx++) {
@@ -154,8 +156,9 @@ function carriagewayTest(d: DistrictData): (p: Vec2) => boolean {
       }
     }
   }
-  return (p: Vec2) =>
-    (grid.get(cellKey(Math.floor(p[0] / CELL), Math.floor(p[1] / CELL))) ?? []).some(s => segDist(p, s.a, s.b) < s.reach);
+  return (p: Vec2) => [...new Set(
+    (grid.get(cellKey(Math.floor(p[0] / CELL), Math.floor(p[1] / CELL))) ?? []).filter(s => segDist(p, s.a, s.b) < s.reach).map(s => s.road),
+  )];
 }
 
 /** Footway polylines cut into runs that stay off every car carriageway. */
@@ -191,7 +194,7 @@ export class PedSim implements CrossingOccupancy {
   /** Walker spawn samples taken during the last step. */
   spawnAttempts = 0;
   private readonly clear = new Map<number, boolean>();
-  private readonly onRoad: (p: Vec2) => boolean;
+  private readonly roadsAt: (p: Vec2) => string[];
 
   constructor(d: DistrictData, opts: { crossers: number; walkers: number; seed: number }) {
     this.rand = rng(opts.seed);
@@ -203,12 +206,12 @@ export class PedSim implements CrossingOccupancy {
       const tangent: Vec2 = [Math.sin(h), Math.cos(h)];
       this.crossingIndex.set(c.id, this.crossings.length);
       this.crossings.push({
-        id: c.id, kind: c.kind, centre: c.position, tangent,
+        id: c.id, road: edge.roadId, kind: c.kind, centre: c.position, tangent,
         normal: [-tangent[1], tangent[0]], half: c.width / 2 + CURB_MARGIN,
       });
     }
-    this.onRoad = carriagewayTest(d);
-    this.footways.push(...offRoadRuns(d, this.onRoad));
+    this.roadsAt = carriagewayTest(d);
+    this.footways.push(...offRoadRuns(d, p => this.roadsAt(p).length > 0));
     this.footways.forEach((f, k) => {
       const xs = f.points.map(p => Math.floor(p[0] / CELL)), zs = f.points.map(p => Math.floor(p[1] / CELL));
       for (let cx = Math.min(...xs); cx <= Math.max(...xs); cx++) {
@@ -320,12 +323,24 @@ export class PedSim implements CrossingOccupancy {
       x.centre[0] + x.normal[0] * across + x.tangent[0] * along,
       x.centre[1] + x.normal[1] * across + x.tangent[1] * along,
     ];
+    // Stepping off the crossing road is fine; a kerb end that lies on another road, or no way off within
+    // LEAVE_OUT_MAX, means there is no pavement here, and the crosser simply goes.
     let out = 0;
-    while (out < LEAVE_OUT_MAX && this.onRoad(at(p.across + p.dir * out, p.along))) out += LEAVE_SAMPLE;
+    for (;;) {
+      const roads = this.roadsAt(at(p.across + p.dir * out, p.along));
+      if (!roads.length) break;
+      if (out >= LEAVE_OUT_MAX || roads.some(r => r !== x.road)) {
+        p.leavePath = [at(p.across, p.along)];
+        p.leaveLength = 0;
+        p.left = 0;
+        return;
+      }
+      out += LEAVE_SAMPLE;
+    }
     const across = p.across + p.dir * out;
     const clear = (dir: 1 | -1) => {
       let run = 0;
-      while (run < LEAVE_DISTANCE && !this.onRoad(at(across, p.along + dir * (run + LEAVE_SAMPLE)))) run += LEAVE_SAMPLE;
+      while (run < LEAVE_DISTANCE && !this.roadsAt(at(across, p.along + dir * (run + LEAVE_SAMPLE))).length) run += LEAVE_SAMPLE;
       return run;
     };
     const back = -p.leaveDir as 1 | -1;
