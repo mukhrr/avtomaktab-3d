@@ -15,6 +15,7 @@ import { WrongLaneForTurnRule } from './lanes';
 import { RoadInfo } from './road';
 import { IndicatorRule, MirrorCheckRule, SeatBeltRule } from './signalling';
 import { RedLightRule, StopLinePastRule, YellowEntryRule } from './signals';
+import { VehicleYieldRule } from './yielding';
 import { NoEntryRule, StopSignRule, TurnRestrictionRule, WrongWayOnewayRule } from './signs';
 import { SpeedRule, TailgatingRule } from './speed';
 import { snap } from './testSnap';
@@ -167,5 +168,31 @@ describe('end to end through the real matcher and snapshot', () => {
   test('on red it is one redLight on top', () => {
     const vs = run(true, t => ({ indicator: 'left', lastGlance: { left: t > 12 ? 12 : -Infinity, rear: -Infinity, right: -Infinity } }));
     expect(vs.map(x => x.id)).toEqual(['redLight']);
+  });
+
+  /** Eastbound on e straight through the unsignalled T at t, a car on tStub (the player's right) `toEnd` from the junction. */
+  function throughT(aiSpeed: number) {
+    const d = testNetwork();
+    const net = new LaneNetwork(d);
+    const signals = new SignalSystem(d);
+    const signs = new SignSystem(d);
+    const traffic = new TrafficSim(d, net, signals, { count: 0, seed: 1 }, signs);
+    const ref = { edgeId: 'tStub', dir: -1 as const, lane: 0 };
+    traffic.place(ref, net.path(ref).length - 2 * Math.max(aiSpeed, 8), { speed: aiSpeed });
+    const ctx: SnapshotContext = { d, net, matcher: new MapMatcher(d, net), signals, signs, peds: { occupied: () => false, curbWaiting: () => false }, traffic, playerLength: 4.5 };
+    const engine = new RuleEngine([new VehicleYieldRule(new RoadInfo(d, net, signs))]);
+    const drivetrain: DrivetrainState = { gearbox: 'manual', gear: 2, rpm: 2500, running: true };
+    const out: Violation[] = [];
+    for (let i = 0, x = 190; x < 290; i++, x += 5 * DT30) {
+      out.push(...engine.update(buildSnapshot(ctx, {
+        t: i * DT30, dt: DT30, position: [x, 1.75], heading: EAST, speed: 5, prevSpeed: 5, drivetrain, cabin: newCabin(), steer: 0, events: [],
+      })));
+    }
+    return out;
+  }
+
+  test('vehicleNotYielded: entering the T with a car from the right 2 s away gives one; with it standing, none', () => {
+    expect(throughT(8).map(x => x.id)).toEqual(['vehicleNotYielded']);
+    expect(throughT(0)).toEqual([]);
   });
 });
