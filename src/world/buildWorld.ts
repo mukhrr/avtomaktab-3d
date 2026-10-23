@@ -5,7 +5,8 @@ import { addBuildings } from './buildings';
 import { dashes, edgeMarkings } from './markings';
 import { addMerged, polygonGeometry, ribbonGeometry } from './meshes';
 import { junctionPolygon, junctionTrim, trimEdge } from './roadGeometry';
-import { addSignals } from './signals';
+import { addCrossings } from './crossings';
+import { addSignals, type SignalLamps } from './signals';
 import { treePositions } from './vegetation';
 
 const Y = { green: 0.03, water: 0.05, sidewalk: 0.06, curb: 0.07, asphalt: 0.09, marking: 0.11 };
@@ -15,7 +16,7 @@ const TREE_SEED = 7;
 
 const lambert = (color: number) => new THREE.MeshLambertMaterial({ color });
 
-export function buildWorld(scene: THREE.Scene, d: DistrictData): void {
+export function buildWorld(scene: THREE.Scene, d: DistrictData): { signalLamps: SignalLamps } {
   const roads = new Map(d.roads.map(r => [r.id, r]));
   const edges = new Map(d.graph.edges.map(e => [e.id, e]));
 
@@ -57,7 +58,8 @@ export function buildWorld(scene: THREE.Scene, d: DistrictData): void {
 
   addBuildings(scene, d.buildings);
   addTrees(scene, d);
-  addSignals(scene, d);
+  addCrossings(scene, d);
+  return { signalLamps: addSignals(scene, d) };
 }
 
 function addMarkings(out: THREE.BufferGeometry[], e: GraphEdge, road: Road | undefined, pts: GraphEdge['points']) {

@@ -26,6 +26,7 @@ export interface Spawn { position: Vec2; heading: number }
 
 export class Vehicle {
   readonly object: THREE.Group;
+  readonly collider: RAPIER.Collider;
   private body: RAPIER.RigidBody;
   private controller: RAPIER.DynamicRayCastVehicleController;
   private wheels: THREE.Object3D[];
@@ -39,8 +40,11 @@ export class Vehicle {
 
     this.body = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setCanSleep(false).setAdditionalMass(0));
     const volume = 8 * HALF_EXTENTS.x * HALF_EXTENTS.y * HALF_EXTENTS.z;
-    world.createCollider(
-      RAPIER.ColliderDesc.cuboid(HALF_EXTENTS.x, HALF_EXTENTS.y, HALF_EXTENTS.z).setDensity(MASS / volume).setFriction(0.4),
+    this.collider = world.createCollider(
+      RAPIER.ColliderDesc.cuboid(HALF_EXTENTS.x, HALF_EXTENTS.y, HALF_EXTENTS.z)
+        .setDensity(MASS / volume)
+        .setFriction(0.4)
+        .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),
       this.body,
     );
 

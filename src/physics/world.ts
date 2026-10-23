@@ -6,20 +6,20 @@ import type { Building, DistrictData } from '../shared/district';
 export const DRIVE_SURFACE_Y = 0.09;
 const GROUND_MARGIN = 500;
 
-export async function createPhysics(d: DistrictData): Promise<{ world: RAPIER.World }> {
+export async function createPhysics(d: DistrictData): Promise<{ world: RAPIER.World; ground: RAPIER.Collider }> {
   await RAPIER.init();
   const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
 
   const { minX, maxX, minZ, maxZ } = d.bounds;
   const hx = (maxX - minX) / 2 + GROUND_MARGIN, hz = (maxZ - minZ) / 2 + GROUND_MARGIN;
-  world.createCollider(
+  const ground = world.createCollider(
     RAPIER.ColliderDesc.cuboid(hx, 0.5, hz).setTranslation((minX + maxX) / 2, DRIVE_SURFACE_Y - 0.5, (minZ + maxZ) / 2),
   );
   for (const b of d.buildings) {
     const { vertices, indices } = buildingMesh(b);
     world.createCollider(RAPIER.ColliderDesc.trimesh(vertices, indices).setFriction(0.3));
   }
-  return { world };
+  return { world, ground };
 }
 
 /** Closed prism of a footprint: walls, roof and floor. Exact for concave footprints, unlike a convex hull. */

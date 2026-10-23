@@ -9,6 +9,9 @@ export interface HudState {
   street: string;
   fps: number;
   drawCalls: number;
+  activeCars?: number;
+  activePeds?: number;
+  controllers?: number;
 }
 
 export interface HudStore {

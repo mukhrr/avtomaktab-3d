@@ -1,0 +1,46 @@
+import RAPIER from '@dimforge/rapier3d-compat';
+import { STEP } from '../physics/loop';
+import { DRIVE_SURFACE_Y } from '../physics/world';
+import type { Controls } from '../vehicle/drivetrain';
+import { Vehicle } from '../vehicle/vehicle';
+import type { AgentView } from './trafficSim';
+import { TrafficBodies } from './trafficBodies';
+
+const idle: Controls = { throttle: 0, brake: 0, clutch: 0, steer: 0, handbrake: false, shiftUp: false, shiftDown: false, ignition: false };
+
+const agent = (over: Partial<AgentView>): AgentView => ({
+  id: 0, active: true, position: [0, 0], heading: 0, carClass: 'cobalt', colour: 0, braking: false, speed: 0, ...over,
+});
+
+async function flatWorld() {
+  await RAPIER.init();
+  const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+  world.createCollider(RAPIER.ColliderDesc.cuboid(2000, 0.5, 2000).setTranslation(0, DRIVE_SURFACE_Y - 0.5, 0));
+  return world;
+}
+
+test('a car driven at 30 km/h into a stationary traffic body is reported and stopped by it', async () => {
+  const world = await flatWorld();
+  const car = new Vehicle(world, { position: [0, 0], heading: Math.PI / 2 });
+  const bodies = new TrafficBodies(world, 2);
+  const parked = [agent({ position: [25, 0], heading: Math.PI / 2 }), agent({ id: 1, active: false })];
+  const queue = new RAPIER.EventQueue(true);
+  const started: [number, number][] = [];
+
+  for (let i = 0; i < 6 / STEP; i++) {
+    bodies.sync(parked);
+    car.update(car.speed * 3.6 < 30 ? { ...idle, throttle: 1 } : idle, STEP);
+    world.step(queue);
+    queue.drainCollisionEvents((a, b, s) => {
+      if (s && (a === car.collider.handle || b === car.collider.handle)) started.push([a, b]);
+    });
+  }
+  car.sync();
+
+  expect(started.length).toBeGreaterThan(0);
+  const other = started[0][0] === car.collider.handle ? started[0][1] : started[0][0];
+  expect(bodies.isTrafficCollider(other)).toBe(true);
+  expect(bodies.isTrafficCollider(car.collider.handle)).toBe(false);
+  // Cobalt rear is at 25 - 2.25; the chassis front is 2.24 ahead of its centre.
+  expect(car.object.position.x).toBeLessThan(21);
+});
