@@ -1,3 +1,5 @@
+import type { Vec2 } from '../shared/district';
+import { LAMP_SEED, lampPositions } from '../world/streetside';
 import { loadWorld, runExam } from './testDriver';
 
 // Same traffic as main.ts: 60 cars (seed 1), 40 crossers and 80 walkers (seed 2).
@@ -6,7 +8,9 @@ const RUN_TIMEOUT = 60_000;
 
 describe('exam runs on route-1 with M2 traffic (headless)', () => {
   it('a careful driver finishes and passes with 0 to 10 points', () => {
-    const { result, signalling, prompts, replanFailures } = runExam(world(), { indicators: true, obeyLights: true });
+    const w = world();
+    const path: Vec2[] = [];
+    const { result, signalling, prompts, replanFailures } = runExam(w, { indicators: true, obeyLights: true }, { watch: s => path.push(s.position) });
     expect(result.violations.map(v => v.id)).toEqual([]);
     // The car never leaves the route, so the matcher must never make the examiner think it did.
     expect(prompts.filter(p => p.key === 'exam.reroute')).toEqual([]);
@@ -15,6 +19,11 @@ describe('exam runs on route-1 with M2 traffic (headless)', () => {
     expect(result.passed).toBe(true);
     expect(result.total).toBeLessThanOrEqual(10);
     expect(signalling).toEqual([]);
+    // Lamp colliders are off the carriageway, so the careful path must never come near one.
+    const lamps = lampPositions(w.d, LAMP_SEED);
+    expect(path.length).toBeGreaterThan(1000);
+    const closest = path.reduce((best, [x, z]) => lamps.reduce((b, l) => Math.min(b, Math.hypot(l.x - x, l.z - z)), best), Infinity);
+    expect(closest).toBeGreaterThan(1);
   }, RUN_TIMEOUT);
 
   it('a driver who runs red lights fails on redLight', () => {

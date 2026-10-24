@@ -11,12 +11,12 @@ import { junctionPolygon, junctionTrim, trimEdge } from './roadGeometry';
 import { addCrossings } from './crossings';
 import { addSigns } from './signs';
 import { addSignals, type SignalLamps } from './signals';
-import { treePositions } from './vegetation';
+import { addStreetside } from './streetside';
+import { TREE_SEED, treePositions } from './vegetation';
 
 const Y = { green: 0.03, water: 0.05, sidewalk: 0.06, curb: 0.07, asphalt: 0.09, marking: 0.11 };
 const CURB_EXTRA = 1.2;
 const MARKING_WIDTH = 0.15;
-const TREE_SEED = 7;
 const CHUNK_SIZE = 200;
 
 const lambert = (color: number) => new THREE.MeshLambertMaterial({ color });
@@ -64,6 +64,7 @@ export function buildWorld(scene: THREE.Scene, d: DistrictData, mats: Record<Gro
 
   addBuildings(scene, d.buildings, facadeAtlas, CHUNK_SIZE);
   addTrees(scene, d);
+  addStreetside(scene, d, CHUNK_SIZE);
   addCrossings(scene, d);
   addSigns(scene, d);
   return { signalLamps: addSignals(scene, d) };

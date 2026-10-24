@@ -2,6 +2,7 @@ import type { DistrictData, Vec2 } from '../shared/district';
 import { rng } from '../sim/rng';
 import { Grid, pointInPolygon, segmentDistance } from './spatial';
 
+export const TREE_SEED = 7;
 const AVENUE_KINDS = new Set(['primary', 'secondary', 'tertiary', 'trunk']);
 const SPACING = 10;
 const CURB_GAP = 3;

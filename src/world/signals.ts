@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { DistrictData } from '../shared/district';
+import type { DistrictData, GraphEdge, Signal } from '../shared/district';
 import type { LightState, SignalSystem } from '../sim/signals';
 import { pointAlong } from './roadGeometry';
 
@@ -10,6 +10,16 @@ const LAMP_OFFSETS = [4.8, 4.43, 4.06];
 const WALK_OFFSETS = [2.75, 2.4];
 const WALK_COLOURS = [new THREE.Color(0xff2a1a), new THREE.Color(0x2aff5a)];
 const WALK_SIDE_GAP = 0.8;
+
+/** Where a signal pole stands: on the kerb of its approach, facing drivers on it. */
+export function signalPose(s: Signal, edges: Map<string, GraphEdge>): { x: number; z: number; heading: number } {
+  const edge = s.approach && edges.get(s.approach.edgeId);
+  if (!s.approach || !edge) return { x: s.position[0], z: s.position[1], heading: 0 };
+  const pose = pointAlong(edge.points, s.approach.stopAt);
+  const travel = s.approach.dir === 1 ? pose.heading : pose.heading + Math.PI;
+  const dx = Math.sin(travel), dz = Math.cos(travel), off = edge.width / 2 + CURB_GAP;
+  return { x: pose.x - dz * off, z: pose.z + dx * off, heading: travel + Math.PI };
+}
 
 /** Writes which lamps (red, yellow, green) are lit for a state; a flashing green is dark during its off half. */
 function lit(state: LightState | null, on: boolean, out: boolean[]): void {
@@ -41,17 +51,7 @@ export function addSignals(scene: THREE.Scene, d: DistrictData): SignalLamps {
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0);
   const edges = new Map(d.graph.edges.map(e => [e.id, e]));
   d.signals.forEach((s, i) => {
-    let [x, z] = s.position, heading = 0;
-    const edge = s.approach && edges.get(s.approach.edgeId);
-    if (s.approach && edge) {
-      const pose = pointAlong(edge.points, s.approach.stopAt);
-      const travel = s.approach.dir === 1 ? pose.heading : pose.heading + Math.PI;
-      const dx = Math.sin(travel), dz = Math.cos(travel), off = edge.width / 2 + CURB_GAP;
-      x = pose.x - dz * off;
-      z = pose.z + dx * off;
-      // Lamps face drivers approaching along the lane.
-      heading = travel + Math.PI;
-    }
+    const { x, z, heading } = signalPose(s, edges);
     m.compose(p.set(x, 0, z), q.setFromAxisAngle(up, heading), one);
     for (const mesh of [poles, boxes, ...lamps]) mesh.setMatrixAt(i, m);
   });

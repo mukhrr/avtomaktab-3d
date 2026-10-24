@@ -1,10 +1,13 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import type { Building, DistrictData } from '../shared/district';
+import { LAMP_SEED, lampPositions } from '../world/streetside';
 
 /** Road surface height; the ground collider top sits here so wheels rest on the asphalt. */
 export const DRIVE_SURFACE_Y = 0.09;
 const GROUND_MARGIN = 500;
+const LAMP_RADIUS = 0.12;
+const LAMP_HEIGHT = 8;
 
 export async function createPhysics(d: DistrictData): Promise<{ world: RAPIER.World; ground: RAPIER.Collider }> {
   await RAPIER.init();
@@ -18,6 +21,9 @@ export async function createPhysics(d: DistrictData): Promise<{ world: RAPIER.Wo
   for (const b of d.buildings) {
     const { vertices, indices } = buildingMesh(b);
     world.createCollider(RAPIER.ColliderDesc.trimesh(vertices, indices).setFriction(0.3));
+  }
+  for (const l of lampPositions(d, LAMP_SEED)) {
+    world.createCollider(RAPIER.ColliderDesc.cylinder(LAMP_HEIGHT / 2, LAMP_RADIUS).setTranslation(l.x, DRIVE_SURFACE_Y + LAMP_HEIGHT / 2, l.z));
   }
   return { world, ground };
 }
