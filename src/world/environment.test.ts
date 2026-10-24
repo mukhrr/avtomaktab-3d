@@ -164,3 +164,78 @@ describe('createEnvironment', () => {
     expect(litHemi.intensity).toBe(TIMES_OF_DAY.noon.hemiIntensity);
   });
 });
+
+describe('material patchShader', () => {
+  const stubShader = () => ({ uniforms: {}, vertexShader: '', fragmentShader: '' }) as unknown as THREE.WebGLProgramParametersWithUniforms;
+  const compile = (m: THREE.Material, shader = stubShader()) => {
+    m.onBeforeCompile(shader, {} as THREE.WebGLRenderer);
+    return shader;
+  };
+
+  it('runs the CSM patch and then patchShader', () => {
+    const { env } = setup();
+    const seen: boolean[] = [];
+    const m = new THREE.MeshLambertMaterial();
+    m.userData.patchShader = (shader: THREE.WebGLProgramParametersWithUniforms) => {
+      seen.push('CSM_cascades' in shader.uniforms);
+    };
+    env.setupMaterial(m);
+    compile(m);
+    expect(seen).toEqual([true]);
+    expect(m.defines?.CSM_CASCADES).toBe(3);
+  });
+
+  it('runs patchShader exactly once per compile after quality changes', () => {
+    const { env } = setup();
+    const patch = vi.fn();
+    const m = new THREE.MeshLambertMaterial();
+    m.userData.patchShader = patch;
+    env.setupMaterial(m);
+    env.setQuality(QUALITY.low);
+    compile(m);
+    expect(patch).toHaveBeenCalledTimes(1);
+    env.setQuality(QUALITY.high);
+    compile(m);
+    expect(patch).toHaveBeenCalledTimes(2);
+    env.setQuality(QUALITY.medium);
+    const shader = compile(m);
+    expect(patch).toHaveBeenCalledTimes(3);
+    expect('CSM_cascades' in shader.uniforms).toBe(true);
+  });
+
+  it('keeps program cache keys apart for different patches and cascade counts', () => {
+    const { env } = setup();
+    const a = new THREE.MeshLambertMaterial();
+    const b = new THREE.MeshLambertMaterial();
+    a.userData.patchShader = () => {};
+    b.userData.patchShader = () => {};
+    env.setupMaterial(a);
+    env.setupMaterial(b);
+    const high = a.customProgramCacheKey();
+    expect(high).not.toBe(b.customProgramCacheKey());
+    env.setQuality(QUALITY.medium);
+    expect(a.customProgramCacheKey()).not.toBe(high);
+  });
+
+  it('runs patchShader on low where there is no CSM', () => {
+    const { env } = setup(QUALITY.low);
+    const patch = vi.fn();
+    const m = new THREE.MeshLambertMaterial();
+    m.userData.patchShader = patch;
+    env.setupMaterial(m);
+    const shader = compile(m);
+    expect(patch).toHaveBeenCalledTimes(1);
+    expect('CSM_cascades' in shader.uniforms).toBe(false);
+  });
+
+  it('leaves a material without patchShader as before', () => {
+    const { env } = setup();
+    const m = new THREE.MeshLambertMaterial();
+    const key = m.customProgramCacheKey();
+    env.setupMaterial(m);
+    const shader = compile(m);
+    expect('CSM_cascades' in shader.uniforms).toBe(true);
+    expect(m.customProgramCacheKey()).toBe(m.onBeforeCompile.toString());
+    expect(key).toBe(THREE.Material.prototype.customProgramCacheKey.call(new THREE.MeshLambertMaterial()));
+  });
+});

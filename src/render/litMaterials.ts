@@ -12,6 +12,7 @@ export function useSkyAmbient(root: THREE.Object3D): void {
         color: l.color, map: l.map, flatShading: l.flatShading, vertexColors: l.vertexColors,
         side: l.side, transparent: l.transparent, opacity: l.opacity, roughness: 1, metalness: 0,
       });
+      s.userData = { ...l.userData };
       swapped.set(m, s);
       m.dispose();
     }

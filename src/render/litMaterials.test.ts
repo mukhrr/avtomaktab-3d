@@ -75,4 +75,13 @@ describe('lit materials per preset', () => {
     expect(a.roughness).toBe(1);
     expect(a.metalness).toBe(0);
   });
+
+  it('keeps userData.patchShader on the swapped material', () => {
+    const patch = () => {};
+    const l = new THREE.MeshLambertMaterial();
+    l.userData.patchShader = patch;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), l);
+    useSkyAmbient(mesh);
+    expect((mesh.material as THREE.Material).userData.patchShader).toBe(patch);
+  });
 });
