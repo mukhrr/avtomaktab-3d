@@ -133,6 +133,18 @@ describe('HornMonitor', () => {
     expect(w.run(8, agents)).toEqual([]);
   });
 
+  it('is silent when a car stands just ahead of the player in the same lane', () => {
+    const w = setup();
+    w.setLight('green');
+    expect(w.run(8, [w.car(1, -8), w.car(2, 7)])).toEqual([]);
+  });
+
+  it('still honks when the car ahead is in another lane or past 10 m', () => {
+    const w = setup();
+    w.setLight('green');
+    expect(w.run(8, [w.car(1, -8), w.car(2, 7, { position: [3.5, 7] }), w.car(3, 16)]).map(h => h.agentId)).toEqual([1]);
+  });
+
   it('ignores inactive cars when picking the first in queue', () => {
     const w = setup();
     w.setLight('green');

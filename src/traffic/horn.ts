@@ -22,6 +22,7 @@ const QUEUE_RANGE = 25;
 const LANE_HALF_WIDTH = 1.8;
 const SAME_WAY = Math.PI / 3;
 const LIGHT_RANGE = 40;
+const BLOCKED_AHEAD = 10;
 
 export function hornDecision(s: HornState): boolean {
   return s.playerAhead && !s.honked && s.greenFor >= MIN_GREEN_S && s.greenFor <= MAX_GREEN_S && Math.abs(s.playerSpeed) < STOPPED_BELOW;
@@ -92,6 +93,7 @@ export class HornMonitor {
       this.honked.clear();
       return [];
     }
+    if (this.blockedAhead(player, agents)) return [];
     const first = this.firstBehind(player, agents);
     if (!first) return [];
     const { agent, gap } = first;
@@ -113,6 +115,17 @@ export class HornMonitor {
     const l = this.deps.signals.approachState(edgeId, dir, m.edgeS, within);
     if (!l || (l.stopAt - m.edgeS) * dir > LIGHT_RANGE) return null;
     return { state: l.state, greenFor: this.deps.signals.greenAge(edgeId, dir, m.edgeS, within) };
+  }
+
+  private blockedAhead(player: PlayerPose, agents: readonly AgentView[]): boolean {
+    const fx = Math.sin(player.heading), fz = Math.cos(player.heading);
+    return agents.some(a => {
+      if (!a.active) return false;
+      const dx = a.position[0] - player.position[0], dz = a.position[1] - player.position[1];
+      const ahead = dx * fx + dz * fz, across = dx * fz - dz * fx;
+      const gap = ahead - player.length / 2 - CAR_CLASSES[a.carClass].length / 2;
+      return ahead > 0 && gap <= BLOCKED_AHEAD && Math.abs(across) <= LANE_HALF_WIDTH;
+    });
   }
 
   private firstBehind(player: PlayerPose, agents: readonly AgentView[]): { agent: AgentView; gap: number } | null {
