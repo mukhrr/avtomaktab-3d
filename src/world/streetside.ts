@@ -325,7 +325,7 @@ export function arykGeometry(points: Vec2[]): THREE.BufferGeometry {
   return merged;
 }
 
-const paint = (g: THREE.BufferGeometry, hex: number) => {
+export const paint = (g: THREE.BufferGeometry, hex: number) => {
   const c = new THREE.Color(hex);
   if (g.getAttribute('uv')) g.deleteAttribute('uv');
   const n = g.getAttribute('position').count;

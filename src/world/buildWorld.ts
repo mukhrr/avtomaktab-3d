@@ -11,6 +11,7 @@ import { junctionPolygon, junctionTrim, trimEdge } from './roadGeometry';
 import { addCrossings } from './crossings';
 import { addSigns } from './signs';
 import { addSignals, type SignalLamps } from './signals';
+import { addFurniture } from './furniture';
 import { addStreetside } from './streetside';
 import { TREE_SEED, treePositions } from './vegetation';
 
@@ -65,6 +66,7 @@ export function buildWorld(scene: THREE.Scene, d: DistrictData, mats: Record<Gro
   addBuildings(scene, d.buildings, facadeAtlas, CHUNK_SIZE);
   addTrees(scene, d);
   addStreetside(scene, d, CHUNK_SIZE);
+  addFurniture(scene, d);
   addCrossings(scene, d);
   addSigns(scene, d);
   return { signalLamps: addSignals(scene, d) };

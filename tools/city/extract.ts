@@ -1,4 +1,4 @@
-import type { Area, Building, BuildingStyle, CrossingKind, Road, Signal, Vec2, Waterway } from '../../src/shared/district';
+import type { Area, Building, BuildingStyle, CrossingKind, FurnitureKind, Road, Signal, Vec2, Waterway } from '../../src/shared/district';
 import type { OsmData, OsmWay } from './osm';
 import { classifyBuilding, LEVEL_HEIGHT, levelsFor, minAreaRect } from './styles';
 
@@ -11,12 +11,16 @@ export interface Overrides {
 
 export type SignalDirection = 'forward' | 'backward' | 'both';
 
+export interface RawFurniture { id: string; kind: FurnitureKind; position: Vec2 }
+
 export interface ExtractResult {
   roads: Road[];
   buildings: Building[];
   areas: Area[];
   waterways: Waterway[];
   signals: (Signal & { direction?: SignalDirection })[];
+  /** Bus stop, bench and bin nodes at their OSM positions; build.ts snaps them to the street. */
+  furniture: RawFurniture[];
   /** OSM node ids per road, in order, for the graph builder. */
   roadNodeIds: Map<string, string[]>;
   /** Crossing nodes that lie on car roads. */
@@ -36,6 +40,10 @@ const GREEN_LANDUSE = new Set(['grass', 'forest', 'recreation_ground']);
 const WATERWAY_WIDTH: Record<string, number> = { canal: 9, river: 9, stream: 3 };
 
 export const FOOT_KINDS = new Set(['footway', 'path', 'cycleway', 'pedestrian']);
+
+const FURNITURE_TAGS: [string, string, FurnitureKind][] = [
+  ['highway', 'bus_stop', 'busStop'], ['amenity', 'bench', 'bench'], ['amenity', 'waste_basket', 'bin'],
+];
 
 function crossingKind(tag: string | undefined): CrossingKind {
   if (tag?.includes('traffic_signals')) return 'signal';
@@ -83,9 +91,11 @@ export function extractFeatures(
   overrides: Overrides,
 ): ExtractResult {
   const removed = new Set(overrides.removeWays);
-  const result: ExtractResult = { roads: [], buildings: [], areas: [], waterways: [], signals: [], roadNodeIds: new Map(), crossingNodes: [] };
+  const result: ExtractResult = { roads: [], buildings: [], areas: [], waterways: [], signals: [], furniture: [], roadNodeIds: new Map(), crossingNodes: [] };
 
   for (const n of osm.nodes.values()) {
+    const furniture = FURNITURE_TAGS.find(([k, v]) => n.tags[k] === v);
+    if (furniture) result.furniture.push({ id: n.id, kind: furniture[2], position: project(n.lat, n.lon) });
     if (n.tags.highway !== 'traffic_signals') continue;
     const dir = n.tags['traffic_signals:direction'];
     result.signals.push({

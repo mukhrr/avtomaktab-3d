@@ -503,7 +503,7 @@ function twinJunctions(): DistrictData {
   const nodes = Object.entries(pos).map(([id, position]) => ({ id, position, edges: edges.filter(e => e.from === id || e.to === id).map(e => e.id) }));
   return {
     name: 'twin', origin: { lat: 0, lon: 0 }, bounds: { minX: -110, maxX: 120, minZ: -110, maxZ: 110 },
-    roads: [], buildings: [], areas: [], waterways: [], signals: [], crossings: [], controllers: [], signs: [], graph: { nodes, edges },
+    roads: [], buildings: [], areas: [], waterways: [], signals: [], crossings: [], controllers: [], signs: [], furniture: [], graph: { nodes, edges },
   };
 }
 

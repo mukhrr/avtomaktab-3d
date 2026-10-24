@@ -96,3 +96,9 @@ test('roof:shape hipped and gabled are kept, other shapes dropped', () => {
   w.tags['roof:shape'] = 'skillion';
   expect(run(none, osm).buildings.find(b => b.id === '103')?.roof).toBeUndefined();
 });
+
+test('a bus stop, a bench and a bin node become three furniture items of their kinds', () => {
+  const f = run().furniture;
+  expect(f.map(i => [i.id, i.kind])).toEqual([['30', 'busStop'], ['31', 'bench'], ['32', 'bin']]);
+  expect(f[0].position).toEqual(project(41.3117, 69.2785));
+});

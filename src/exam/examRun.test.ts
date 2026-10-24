@@ -1,4 +1,5 @@
 import type { Vec2 } from '../shared/district';
+import { shelterBoxes } from '../world/furniture';
 import { LAMP_SEED, lampPositions } from '../world/streetside';
 import { loadWorld, runExam } from './testDriver';
 
@@ -24,6 +25,10 @@ describe('exam runs on route-1 with M2 traffic (headless)', () => {
     expect(path.length).toBeGreaterThan(1000);
     const closest = path.reduce((best, [x, z]) => lamps.reduce((b, l) => Math.min(b, Math.hypot(l.x - x, l.z - z)), best), Infinity);
     expect(closest).toBeGreaterThan(1);
+    // A shelter's half-length is 2 m and it stands 1.5 m beyond the kerb, so the path stays clear of it.
+    const shelters = shelterBoxes(w.d);
+    const nearestShelter = path.reduce((best, [x, z]) => shelters.reduce((b, s) => Math.min(b, Math.hypot(s.x - x, s.z - z)), best), Infinity);
+    expect(nearestShelter).toBeGreaterThan(3);
   }, RUN_TIMEOUT);
 
   it('a driver who runs red lights fails on redLight', () => {
