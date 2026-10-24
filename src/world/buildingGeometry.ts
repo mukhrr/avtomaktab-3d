@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Building, BuildingStyle, Vec2 } from '../shared/district';
 import { LEVEL_HEIGHT } from '../../tools/city/styles';
 import { BAY_WIDTH, FACADE_CELL, FACADE_VARIANT } from './facadeAtlas';
-import { pointInPolygon } from './spatial';
+import { pointInPolygon, segmentDistance } from './spatial';
 
 const PUBLIC_GROUND_HEIGHT = 4.5;
 /** A wall this little taller than its ground floor gets one strip instead of a squashed upper floor. */
@@ -13,6 +13,8 @@ const PARAPET_HEIGHT = 0.6;
 const MIN_ROOF_HALF_WIDTH = 2;
 const HIP_HEIGHT = 2;
 const HIP_MAX_ASPECT = 3;
+/** A footprint vertex further than this from the 4-corner quad means a curved or bent side, not a rectangle. */
+const HIP_MAX_DEVIATION = 0.3;
 const CORNER_MIN_TURN = (12 * Math.PI) / 180;
 /** Convex footprint vertices this close to the chord are dropped; the chord then lies inside the footprint. */
 const CONVEX_MERGE = 0.15;
@@ -187,6 +189,8 @@ export function roofShape(b: Building): 'hipped' | 'flat' {
   if (!convex(poly)) return 'flat';
   const q = corners(poly);
   if (q.length !== 4) return 'flat';
+  const offQuad = (v: Vec2) => Math.min(...q.map((a, i) => segmentDistance(v[0], v[1], a, q[(i + 1) % 4]).d));
+  if (poly.some(v => offQuad(v) > HIP_MAX_DEVIATION)) return 'flat';
   if (b.roof) return 'hipped';
   if (b.style !== 'brick') return 'flat';
   const side = (i: number) => Math.hypot(q[(i + 1) % 4][0] - q[i][0], q[(i + 1) % 4][1] - q[i][1]);

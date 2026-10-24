@@ -138,6 +138,10 @@ describe('roofGeometry', () => {
     expect(roofShape(building(rect(12, 10), 'stucco', 6))).toBe('flat');
     expect(roofShape(building(rect(12, 10), 'stucco', 6, { roof: 'hipped' }))).toBe('hipped');
     expect(roofShape(building(L, 'public', 6, { roof: 'hipped' }))).toBe('flat');
+    const bulge: Vec2[] = [[0, 0], [28, 0], [28, 10]];
+    for (let k = 1; k < 20; k++) bulge.push([28 - (28 * k) / 20, 10 + Math.sin((Math.PI * k) / 20) * 0.6]);
+    bulge.push([0, 10]);
+    expect(roofShape(building(bulge, 'brick', 6))).toBe('flat');
   });
 
   test('a hipped roof is 2 m high and inside the footprint', () => {
