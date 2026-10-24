@@ -7,3 +7,4 @@ spike/osm.json
 .DS_Store
 .claude/
 tools/voice/.venv
+.playwright-mcp/
