@@ -7,7 +7,7 @@ export const HOTEL_HEIGHT = 71.5;
 export const LATTICE_TILE = { u: 7.2, v: 8.4 };
 const GROUND = 5.2;
 const BAND = 4.2;
-const WHITE = 0xeeebe4, PODIUM = 0x34414c, ROOF = 0x9a978f, GLASS = 0x2b3a46;
+const WHITE = 0xeeebe4, PODIUM = 0x34414c, ROOF = 0x9a978f, SCREEN = 0xd4d8d8;
 
 export function hotelUzbekistanParts(l: Landmark): LandmarkParts {
   const fp = localFootprint(l);
@@ -19,19 +19,19 @@ export function hotelUzbekistanParts(l: Landmark): LandmarkParts {
     paint(cap(fp, HOTEL_HEIGHT), ROOF),
   ]);
   const lattice = walls(fp, GROUND, latticeTop, LATTICE_TILE);
-  return { solid, textured: { geometry: lattice, texture: 'lattice', fallback: GLASS } };
+  return { solid, textured: { geometry: lattice, texture: 'lattice', fallback: SCREEN } };
 }
 
-/** White rhombus screen over dark glass with a floor slab line; the edges match so it tiles both ways. */
+/** White rhombus screen over grey-blue glass with a floor slab line; the edges match so it tiles both ways. */
 export function drawLattice(g: CanvasRenderingContext2D, size: number): void {
   const s = size;
-  g.fillStyle = '#26333d';
+  g.fillStyle = '#6d8290';
   g.fillRect(0, 0, s, s);
-  g.fillStyle = 'rgba(120,150,170,0.25)';
+  g.fillStyle = 'rgba(200,220,232,0.3)';
   g.fillRect(0, s * 0.1, s, s * 0.35);
   g.strokeStyle = '#f1eee7';
   g.lineCap = 'square';
-  g.lineWidth = s * 0.1;
+  g.lineWidth = s * 0.15;
   g.beginPath();
   for (const x0 of [-s, -s / 2, 0, s / 2, s]) {
     g.moveTo(x0, s);

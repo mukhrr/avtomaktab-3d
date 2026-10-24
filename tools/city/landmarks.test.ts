@@ -40,6 +40,12 @@ test('a building way carries the building id and footprint and faces the centre'
   expect(b.heading).toBeCloseTo(Math.atan2(-110, -10), 3);
 });
 
+test('an anchor node gives a building landmark its anchor point', () => {
+  const [b] = extractLandmarks(osm, project, { '30': 'kuranty' }, [building], { '30': '41' });
+  expect(b.anchor).toEqual([120, -0]);
+  expect(() => extractLandmarks(osm, project, { '30': 'kuranty' }, [building], { '30': '999' })).toThrow(/anchor node 999/);
+});
+
 test('an id missing from the OSM data or the buildings fails the build', () => {
   expect(() => extractLandmarks(osm, project, { '999': 'kuranty' }, [])).toThrow(/landmark 999/);
   expect(() => extractLandmarks(osm, project, { '30': 'kuranty' }, [])).toThrow(/landmark 30/);
@@ -52,6 +58,13 @@ describe('tashkent-center', () => {
     expect(new Set(d.landmarks.map(l => l.kind)).size).toBe(6);
     expect(d.landmarks.filter(l => l.kind === 'fountain')).toHaveLength(4);
     expect(d.landmarks).toHaveLength(9);
+  });
+
+  it('anchors the Kuranty tower on its clock node', () => {
+    const k = d.landmarks.find(l => l.kind === 'kuranty')!;
+    expect(k.anchor![0]).toBeCloseTo(5, 0);
+    expect(k.anchor![1]).toBeCloseTo(164, 0);
+    expect(d.landmarks.filter(l => l.anchor)).toHaveLength(1);
   });
 
   it('puts the hotel on its OSM building', () => {

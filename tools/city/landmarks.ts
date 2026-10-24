@@ -2,6 +2,8 @@ import type { Building, Landmark, LandmarkKind, Vec2 } from '../../src/shared/di
 import type { OsmData } from './osm';
 
 const PLINTH_RADIUS = 6;
+/** Landmark id to the OSM node its model is built around: the Kuranty clock stands at the west end, not the centroid. */
+export const LANDMARK_ANCHORS: Record<string, string> = { '83581462': '565346454' };
 const round = (v: number, n: number) => Math.round(v * 10 ** n) / 10 ** n;
 
 function areaCentroid(pts: Vec2[]): { c: Vec2; area: number } {
@@ -22,6 +24,7 @@ export function extractLandmarks(
   project: (lat: number, lon: number) => Vec2,
   kinds: Record<string, LandmarkKind>,
   buildings: Building[],
+  anchors: Record<string, string> = LANDMARK_ANCHORS,
 ): Landmark[] {
   const toCentre = (x: number, z: number, kind: LandmarkKind) => (kind === 'fountain' ? 0 : round(Math.atan2(-x, -z), 3));
   const out: Landmark[] = [];
@@ -47,7 +50,15 @@ export function extractLandmarks(
     const b = buildings.find(bb => bb.id === id);
     if (!b) throw new Error(`landmark ${id} (${kind}) is not an extracted building`);
     const { c } = areaCentroid(b.footprint);
-    out.push({ id, kind, x: round(c[0], 2), z: round(c[1], 2), heading: toCentre(c[0], c[1], kind), buildingId: b.id, footprint: b.footprint });
+    const landmark: Landmark = { id, kind, x: round(c[0], 2), z: round(c[1], 2), heading: toCentre(c[0], c[1], kind), buildingId: b.id, footprint: b.footprint };
+    const anchorId = anchors[id];
+    if (anchorId) {
+      const a = osm.nodes.get(anchorId);
+      if (!a) throw new Error(`landmark ${id} (${kind}) anchor node ${anchorId} is not in the OSM data`);
+      const [ax, az] = project(a.lat, a.lon);
+      landmark.anchor = [round(ax, 2), round(az, 2)];
+    }
+    out.push(landmark);
   }
   return out;
 }

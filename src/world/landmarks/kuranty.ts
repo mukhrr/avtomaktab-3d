@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import type { Landmark } from '../../shared/district';
-import { type LandmarkParts, archPanel, aroundY, box, cap, localFootprint, merge, paint, walls } from './common';
+import type { Landmark, Vec2 } from '../../shared/district';
+import { pointInPolygon } from '../spatial';
+import { type LandmarkParts, archPanel, aroundY, box, cap, localFootprint, merge, paint, toLocal, walls } from './common';
 
 const BASE = 6;
 const TOWER_HALF = 2;
@@ -13,12 +14,21 @@ const WHITE = 0xf0ece2, CREAM = 0xe2d9c4, SHADOW = 0x3c3a38, ROOF = 0x8d8a83, GR
 
 const sides = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
 
+/** The anchor in local space, pulled toward the origin until the tower's base corners sit inside the footprint. */
+export function towerCentre(l: Landmark, fp: Vec2[]): Vec2 {
+  const [ax, az] = l.anchor ? toLocal(l, l.anchor) : [0, 0];
+  const h = TOWER_HALF + 0.05;
+  for (let k = 0; k <= 20; k++) {
+    const f = 1 - k / 20, x = ax * f, z = az * f;
+    if ([[-h, -h], [h, -h], [h, h], [-h, h]].every(([dx, dz]) => pointInPolygon(x + dx, z + dz, fp))) return [x, z];
+  }
+  return [0, 0];
+}
+
 export function kurantyParts(l: Landmark): LandmarkParts {
   const fp = localFootprint(l);
+  const [tx, tz] = towerCentre(l, fp);
   const parts = [
-    paint(walls(fp, 0, BASE - 0.5), CREAM),
-    paint(walls(fp, BASE - 0.5, BASE), WHITE),
-    paint(cap(fp, BASE), ROOF),
     box(TOWER_HALF * 2 + 0.6, 0.6, TOWER_HALF * 2 + 0.6, 0, BASE + 0.3, 0, WHITE),
     box(TOWER_HALF * 2, TOWER_TOP - BASE, TOWER_HALF * 2, 0, (BASE + TOWER_TOP) / 2, 0, WHITE),
     box(CLOCK_HALF * 2, CLOCK_Y1 - CLOCK_Y0, CLOCK_HALF * 2, 0, (CLOCK_Y0 + CLOCK_Y1) / 2, 0, WHITE),
@@ -36,7 +46,15 @@ export function kurantyParts(l: Landmark): LandmarkParts {
     parts.push(aroundY(archPanel(0.8, 2.6, SHADOW), a, TOWER_HALF + 0.02, 12.5));
   }
   const faces = sides.map(a => aroundY(new THREE.PlaneGeometry(FACE, FACE), a, CLOCK_HALF + 0.03, (CLOCK_Y0 + CLOCK_Y1) / 2));
-  return { solid: merge(parts), textured: { geometry: merge(faces), texture: 'clock', fallback: 0xf6f2e8 } };
+  return {
+    solid: merge([
+      paint(walls(fp, 0, BASE - 0.5), CREAM),
+      paint(walls(fp, BASE - 0.5, BASE), WHITE),
+      paint(cap(fp, BASE), ROOF),
+      merge(parts).translate(tx, 0, tz),
+    ]),
+    textured: { geometry: merge(faces).translate(tx, 0, tz), texture: 'clock', fallback: 0xf6f2e8 },
+  };
 }
 
 /** Cream dial, dark ring, twelve ticks, hands at ten past ten. */

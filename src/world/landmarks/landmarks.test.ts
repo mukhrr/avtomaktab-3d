@@ -86,6 +86,20 @@ describe('landmark models', () => {
     expect(t).toBeLessThanOrEqual(34);
   });
 
+  it('stands the Kuranty tower on its anchor', () => {
+    const l = byKind('kuranty')[0];
+    const tower = worldVertices(buildLandmark(l)).filter(v => v.y > 10);
+    const cx = tower.reduce((s, v) => s + v.x, 0) / tower.length, cz = tower.reduce((s, v) => s + v.z, 0) / tower.length;
+    expect(Math.hypot(cx - l.anchor![0], cz - l.anchor![1])).toBeLessThan(1.5);
+  });
+
+  it('falls back to the landmark position when Kuranty has no anchor', () => {
+    const l = { ...byKind('kuranty')[0], anchor: undefined };
+    const tower = worldVertices(buildLandmark(l)).filter(v => v.y > 10);
+    const cx = tower.reduce((s, v) => s + v.x, 0) / tower.length, cz = tower.reduce((s, v) => s + v.z, 0) / tower.length;
+    expect(Math.hypot(cx - l.x, cz - l.z)).toBeLessThan(0.5);
+  });
+
   it('tops the Forums palace dome at 40.2 m and the hotel at 71.5 m', () => {
     expect(top(buildLandmark(byKind('forumsPalace')[0]))).toBeCloseTo(40.2, 1);
     expect(top(buildLandmark(byKind('hotelUzbekistan')[0]))).toBeCloseTo(71.5, 1);

@@ -131,6 +131,8 @@ export interface Landmark {
   buildingId?: string;
   footprint?: Vec2[];
   radius?: number;
+  /** A point the model is built around instead of x/z, such as the Kuranty clock node. */
+  anchor?: Vec2;
 }
 
 export interface DistrictData {
