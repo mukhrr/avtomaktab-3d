@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BuildingStyle } from '../shared/district';
-import { ATLAS_COLS, ATLAS_ROWS, BAY_WIDTH, cellRect, drawFacadeAtlas, FACADE_CELL } from './facadeAtlas';
+import { ATLAS_COLS, ATLAS_ROWS, BAY_WIDTH, cellRect, drawFacadeAtlas, FACADE_CELL, FACADE_VARIANT } from './facadeAtlas';
 
 const STYLES: BuildingStyle[] = ['panel', 'brick', 'stucco', 'public', 'tower', 'shed'];
 const CELL_PX = 256;
@@ -9,13 +9,22 @@ const H = ATLAS_ROWS * CELL_PX;
 
 describe('facade atlas layout', () => {
   it('has a unique in-range cell for every style slot', () => {
-    const all = STYLES.flatMap(s => [FACADE_CELL[s].ground, FACADE_CELL[s].upper, FACADE_CELL[s].plain]);
+    const all = [...STYLES.flatMap(s => [FACADE_CELL[s].ground, FACADE_CELL[s].upper, FACADE_CELL[s].plain]), ...Object.values(FACADE_VARIANT).map(v => v.cell)];
     expect(new Set(all).size).toBe(all.length);
     for (const i of all) {
       expect(Number.isInteger(i)).toBe(true);
       expect(i).toBeGreaterThanOrEqual(0);
       expect(i).toBeLessThan(ATLAS_COLS * ATLAS_ROWS);
     }
+  });
+
+  it('gives every variant a style, bay width and use', () => {
+    for (const v of Object.values(FACADE_VARIANT)) {
+      expect(v.bay).toBeGreaterThan(0);
+      expect(['upper', 'plain', 'parapet']).toContain(v.use);
+      if (v.style !== 'any') expect(STYLES).toContain(v.style);
+    }
+    expect(FACADE_VARIANT.panelBalcony.bay).toBe(BAY_WIDTH.panel);
   });
 
   it('uses the agreed bay widths', () => {
