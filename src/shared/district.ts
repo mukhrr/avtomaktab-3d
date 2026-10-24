@@ -12,9 +12,9 @@ export interface Road {
   points: Vec2[];
 }
 
-/** Footprint is counter-clockwise in x/z with no closing duplicate. */
 export type BuildingStyle = 'panel' | 'brick' | 'stucco' | 'public' | 'tower' | 'shed';
 
+/** Footprint is counter-clockwise in x/z with no closing duplicate. */
 export interface Building {
   id: string;
   height: number;
