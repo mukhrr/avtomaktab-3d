@@ -121,7 +121,7 @@ All times in ms. Calls and triangles did not change at all within a view (p50 eq
 Result:
 
 - High passes on every axis: worst gpu p95 5.4 ms, render cpu p95 1.8 ms (whole loop p95 under 3 ms), 84 calls, 703k triangles.
-- Low passes render cpu (1.5 ms) and triangles (493k), and misses gpu p95 (4.7 to 5.1 ms against 4) and chase-view calls (62 against 60; cockpit is 46).
+- Low, against half of high, passes render cpu (1.5 ms) and triangles (493k) and misses gpu p95 (4.7 to 5.1 ms against 4) and chase-view calls (62 against 60). Under the ruling below it is judged against M3 instead.
 
 The Task 1 baseline (gpu 7.1 / 9.4 ms) and the Task 5 figure (11.2 / 13.7 ms) were taken in the hidden, throttled browser pane. Unthrottled, the same scene measures about half of that, so neither is a reference for the budget.
 
@@ -139,7 +139,9 @@ Low's two misses, diagnosed on low chase at noon:
 | shadow map updates off | 2.0 / 4.0 |
 | mirrors off, shadow updates off, pixel ratio 0.25 | 1.0 / 3.4 |
 
-Mirror cadence does not move p95, and a near-empty frame still has a p95 of 3.4 ms with single-frame spikes to about 4 ms, so the timer has a noise floor on this machine close to low's 4 ms budget. The shadow map update is the one real cost (about 1.4 ms at p95). Low already has 1 cascade at 1024, pixel ratio 1 and mirrors every 3rd frame, so the brief's levers are spent; dropping low's shadows or going to a 512 map would change how low looks, which is a feature cut and is left for a decision. Low's 62 calls are the M3 count (61) plus the M4a sky; getting to 60 needs merging meshes (the player car alone is 15 draw calls), not value tuning.
+Mirror cadence does not move p95, and a near-empty frame still has a p95 of 3.4 ms with single-frame spikes to about 4 ms, so the timer has a noise floor on this machine close to low's 4 ms budget. The shadow map update is the one real cost (about 1.4 ms at p95). Low already has 1 cascade at 1024, pixel ratio 1 and mirrors every 3rd frame, so no tuning is applied. Low's 62 calls are the M3 count (61) plus the M4a sky.
+
+Ruling (controller, 2026-10-24): low is judged against the pre-M4a cost, M3's 61 main-pass calls plus 1 sky call, not against half of high. The timer's noise floor of about 3.4 ms p95 on the M5 makes half of high's 8 ms unmeasurable, and low is meant to look and cost like M3. Against that, low passes on calls (62). M3's own unthrottled GPU time was not measured: `main` has no GPU timer and no presets, so there is no like-for-like low figure to compare with.
 
 ### Download size
 
@@ -171,3 +173,18 @@ Same method as above, low and high, noon and evening, drive shortened to 15 s:
 | low | route-1 drive | 1.6 to 1.7 | 2.2 to 2.3 / 4.9 to 5.0 | 62 | 493k |
 
 High gpu p50 rose about 1 ms (Standard shading and the environment lookup on every building and tree) and stays within 8 ms at p95. Calls and triangles are unchanged. Low rose about 0.3 ms at p50.
+
+### Fix round 2: sky ambient on every lit material, low stays M3 (2026-10-24)
+
+`QualitySettings.skyAmbient` (false on low, true on medium and high) is fixed at page load like ground textures. With it, main builds the PMREM and `useSkyAmbient` (`src/render/litMaterials.ts`) swaps every Lambert material in the scene (buildings, trees, AI cars, pedestrians, signals, signs, water, the player car's tyres and rims) for a matte `MeshStandardMaterial` with the same colour, so all of them take the sky ambient. Without it nothing is swapped, no PMREM is built, and the hemisphere light uses the preset's `hemiWithoutSky` (noon 4, morning 4, evening 3.5), the only fill light low has, as in M3. The player car's paint and glass were Standard already in M3 and stay so on low.
+
+One caveat: the preset is fixed per load, so when the first-visit probe picks low at runtime, that visit keeps medium's materials until the next load.
+
+Perf recheck, DPR 2, unthrottled:
+
+| Preset | gpu p50 / p95 | render cpu p95 | calls | triangles | `scene.environment` |
+|---|---|---|---|---|---|
+| high (noon, evening; chase, cockpit, drive) | 3.9 to 5.2 / 4.9 to 6.5 | 0.7 to 1.7 | 84 chase / 62 cockpit | 703k | set |
+| low (same views) | 1.5 to 2.3 / 3.9 to 5.4 | 1.6 to 1.8 | 62 / 46 | 493k | null |
+
+A first high run read 13 to 27 ms gpu from the noon drive onward while other Chrome windows were busy on the same GPU; an immediate rerun gave the figures above, so that run is discarded.

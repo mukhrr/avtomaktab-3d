@@ -77,8 +77,8 @@ function addTrees(scene: THREE.Scene, d: DistrictData) {
   const trees = treePositions(d, TREE_SEED);
   const trunkGeo = new THREE.CylinderGeometry(0.18, 0.25, 3, 6).translate(0, 1.5, 0);
   const crownGeo = new THREE.IcosahedronGeometry(2.6, 0).translate(0, 5, 0);
-  const trunks = new THREE.InstancedMesh(trunkGeo, new THREE.MeshStandardMaterial({ color: 0x6b5138, roughness: 1 }), trees.length);
-  const crowns = new THREE.InstancedMesh(crownGeo, new THREE.MeshStandardMaterial({ color: 0x4f7d34, roughness: 1, flatShading: true }), trees.length);
+  const trunks = new THREE.InstancedMesh(trunkGeo, lambert(0x6b5138), trees.length);
+  const crowns = new THREE.InstancedMesh(crownGeo, new THREE.MeshLambertMaterial({ color: 0x4f7d34, flatShading: true }), trees.length);
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
   trees.forEach(([x, z], i) => {
     // Scale and rotation derived from position so they're stable between loads.

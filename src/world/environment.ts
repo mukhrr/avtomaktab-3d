@@ -70,8 +70,7 @@ export function createEnvironment(
   skyU.gain = { value: 1 };
   skyU.mieDirectionalG.value = 0.8;
 
-  const envSky = new Sky();
-  envSky.material = sky.material;
+  const envSky = new THREE.Mesh(sky.geometry, sky.material);
   envSky.scale.setScalar(ENV_SKY_SIZE);
   const envScene = new THREE.Scene();
   envScene.add(envSky);
@@ -175,7 +174,7 @@ export function createEnvironment(
     sunIntensity = p.sunIntensity;
     hemi.color.setHex(p.skyColor);
     hemi.groundColor.setHex(p.groundColor);
-    hemi.intensity = p.hemiIntensity;
+    hemi.intensity = envMaps ? p.hemiIntensity : p.hemiWithoutSky;
     fog.color.setHex(p.fogColor);
     fog.near = p.fogNear;
     fog.far = p.fogFar;
@@ -253,7 +252,6 @@ export function createEnvironment(
       envTarget = null;
       envMaps?.dispose();
       scene.environment = null;
-      envSky.geometry.dispose();
       sky.geometry.dispose();
       (sky.material as THREE.Material).dispose();
       ground.geometry.dispose();

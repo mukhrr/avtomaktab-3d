@@ -9,6 +9,8 @@ export interface QualitySettings {
   mirrorSize: [number, number];
   mirrorEvery: 1 | 2 | 3;
   groundTextures: boolean;
+  /** Image-based ambient light from the sky on every lit material; low stays on M3's Lambert and hemisphere. */
+  skyAmbient: boolean;
 }
 
 export const QUALITY: Record<Quality, QualitySettings> = {
@@ -21,6 +23,7 @@ export const QUALITY: Record<Quality, QualitySettings> = {
     mirrorSize: [128, 64],
     mirrorEvery: 3,
     groundTextures: false,
+    skyAmbient: false,
   },
   medium: {
     pixelRatioCap: 1.5,
@@ -31,6 +34,7 @@ export const QUALITY: Record<Quality, QualitySettings> = {
     mirrorSize: [256, 128],
     mirrorEvery: 2,
     groundTextures: true,
+    skyAmbient: true,
   },
   high: {
     pixelRatioCap: 2,
@@ -41,6 +45,7 @@ export const QUALITY: Record<Quality, QualitySettings> = {
     mirrorSize: [256, 128],
     mirrorEvery: 2,
     groundTextures: true,
+    skyAmbient: true,
   },
 };
 

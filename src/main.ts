@@ -26,6 +26,7 @@ import { trafficView } from './traffic/trafficView';
 import { newCabin, stepCabin } from './vehicle/cabin';
 import { InputReader } from './vehicle/input';
 import { Vehicle } from './vehicle/vehicle';
+import { useSkyAmbient } from './render/litMaterials';
 import { createProbe } from './render/probe';
 import { loadQuality, QUALITY, saveQuality, type Quality } from './render/quality';
 import { createGroundMaterials } from './world/groundMaterials';
@@ -76,7 +77,7 @@ const frameStats = new FrameStats();
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 3000);
 const groundMats = createGroundMaterials(quality);
-const env = createEnvironment(scene, camera, renderer, quality, choice.timeOfDay, groundMats.ground, new THREE.PMREMGenerator(renderer));
+const env = createEnvironment(scene, camera, renderer, quality, choice.timeOfDay, groundMats.ground, quality.skyAmbient ? new THREE.PMREMGenerator(renderer) : null);
 const { signalLamps } = buildWorld(scene, district, groundMats);
 
 const credit = document.createElement('div');
@@ -102,6 +103,7 @@ const events = new EventBus();
 const eventQueue = new RAPIER.EventQueue(true);
 const rig = new CameraRig(camera, renderer.domElement);
 const mirrors = createMirrors(renderer, scene, car.object, quality);
+if (quality.skyAmbient) useSkyAmbient(scene);
 env.setupScene(scene);
 
 const held = new Set<string>(), pressed = new Set<string>();
@@ -323,7 +325,10 @@ renderer.setAnimationLoop(() => {
   mirrors.overlay(rig.mode);
   gpuTimer?.end();
   const renderMs = performance.now() - renderStart;
-  Object.assign(lastFrame, { renderMs, steps: r.steps, mainCalls, mainTris });
+  lastFrame.renderMs = renderMs;
+  lastFrame.steps = r.steps;
+  lastFrame.mainCalls = mainCalls;
+  lastFrame.mainTris = mainTris;
 
   const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(car.object.quaternion);
   minimap.draw(p.x, p.z, Math.atan2(fwd.x, fwd.z));

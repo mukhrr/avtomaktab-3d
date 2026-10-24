@@ -7,6 +7,8 @@ export interface LightPreset {
   skyColor: number;
   groundColor: number;
   hemiIntensity: number;
+  /** Hemisphere intensity on presets without sky ambient (low), where it is the only fill light. */
+  hemiWithoutSky: number;
   fogColor: number;
   fogNear: number;
   fogFar: number;
@@ -30,6 +32,7 @@ export const TIMES_OF_DAY: Record<TimeOfDay, LightPreset> = {
     skyColor: 0xa9c8ea,
     groundColor: 0x8a7f70,
     hemiIntensity: 0.5,
+    hemiWithoutSky: 4,
     fogColor: 0xcfdbe8,
     fogNear: 120,
     fogFar: 650,
@@ -45,9 +48,10 @@ export const TIMES_OF_DAY: Record<TimeOfDay, LightPreset> = {
     utc: '2026-05-15T08:00:00Z',
     sunColor: 0xfff4e0,
     sunIntensity: 2.8,
-    skyColor: 0x9cc4f0,
-    groundColor: 0x9a9082,
+    skyColor: 0xd6e6f5,
+    groundColor: 0xa08c6c,
     hemiIntensity: 0.5,
+    hemiWithoutSky: 4,
     fogColor: 0xb6d1e6,
     fogNear: 300,
     fogFar: 1400,
@@ -66,6 +70,7 @@ export const TIMES_OF_DAY: Record<TimeOfDay, LightPreset> = {
     skyColor: 0xd8b89a,
     groundColor: 0x8a6a50,
     hemiIntensity: 1.5,
+    hemiWithoutSky: 3.5,
     fogColor: 0xe6b48c,
     fogNear: 90,
     fogFar: 500,

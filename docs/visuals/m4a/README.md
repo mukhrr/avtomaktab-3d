@@ -16,16 +16,19 @@ Maps, to compare with real panoramas:
 
 If a link lands with no panorama, the nearest street-level image is a few metres off; drag the pegman onto the same street.
 
-## Brightness check (fix round 1)
+## Brightness check
 
-`python3 tools/visual/luminance.py IMAGE asphalt=250,610,550,710 building=870,250,960,310` prints the mean luma (Rec. 709 weights on 0-255 sRGB) of each region. The asphalt region is the near carriageway, the building region is the shaded west-facing facade on the right of the avenue shot.
+`python3 tools/visual/luminance.py IMAGE car=540,430,582,466 asphalt=250,610,550,710 building=870,250,960,310` prints the mean luma (Rec. 709 weights on 0-255 sRGB) of each region. Car is the white AI car that sits at the same spot in every avenue shot (the sim is seeded), asphalt is the near carriageway, building is the west-facing facade on the right. In M3 the sun came from a fixed south-east point, so that facade is sunlit in the before shot and shaded at the real noon sun after M4a.
 
-| Avenue shot | Near asphalt | Building face |
-|---|---|---|
-| before | 41.9 | 165.2 |
-| after, noon | 48.7 (+16%) | 150.7 (-9%) |
-| after, evening | 24.8 (51% of noon) | 139.2 |
-| after, noon, first M4a take (no sky ambient) | 36.1 | 45.1 |
-| after, evening, first M4a take | 3.1 | 46.7 |
+`avenue-before.jpg` was re-taken in fix round 2 (same framing) so the AI car is in the same place as in the after shots. `avenue-low-noon.jpg` is the low preset.
 
-Targets: noon asphalt and building within 20% of before (33.5 to 50.3, 132 to 198), evening asphalt at least 40% of noon (19.5). All pass.
+| Avenue shot | Car | Near asphalt | Building face |
+|---|---|---|---|
+| before (M3) | 101.7 | 41.9 | 165.2 |
+| low, noon | 137.9 (+36%) | 44.4 (+6%) | 136.1 (-18%) |
+| high, noon | 138.1 (+36%) | 49.5 (+18%) | 152.8 (-8%) |
+| high, evening (fix round 1) | | 24.8 (50% of noon) | 139.2 |
+| high, noon, first M4a take (no sky ambient) | | 36.1 | 45.1 |
+| high, evening, first M4a take | | 3.1 | 46.7 |
+
+Targets: noon asphalt and building within 20% of before (33.5 to 50.3, 132 to 198), evening asphalt at least 40% of noon. All pass. The AI car reads brighter than in M3 on both presets: its top and back now catch more fill light.

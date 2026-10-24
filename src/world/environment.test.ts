@@ -149,4 +149,18 @@ describe('createEnvironment', () => {
     expect(mat.uniforms.saturation.value).toBe(TIMES_OF_DAY.evening.skySaturation);
     expect(mat.uniforms.gain.value).toBe(TIMES_OF_DAY.evening.skyGain);
   });
+
+  it('uses the no-sky hemisphere intensity when there is no sky ambient', () => {
+    const scene = new THREE.Scene();
+    const renderer = { toneMappingExposure: 1 } as unknown as THREE.WebGLRenderer;
+    const env = createEnvironment(scene, new THREE.PerspectiveCamera(), renderer, QUALITY.low, 'noon', new THREE.MeshLambertMaterial());
+    const hemi = () => scene.children.find((o): o is THREE.HemisphereLight => (o as THREE.HemisphereLight).isHemisphereLight)!;
+    expect(hemi().intensity).toBe(TIMES_OF_DAY.noon.hemiWithoutSky);
+    env.setTimeOfDay('evening');
+    expect(hemi().intensity).toBe(TIMES_OF_DAY.evening.hemiWithoutSky);
+    expect(scene.environment).toBeNull();
+    const lit = setup();
+    const litHemi = lit.scene.children.find((o): o is THREE.HemisphereLight => (o as THREE.HemisphereLight).isHemisphereLight)!;
+    expect(litHemi.intensity).toBe(TIMES_OF_DAY.noon.hemiIntensity);
+  });
 });
