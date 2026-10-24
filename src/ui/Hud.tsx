@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from 'rea
 import { HELP_LINES, t } from '../i18n';
 import { REDLINE_RPM } from '../vehicle/drivetrain';
 import type { Vec2 } from '../shared/district';
+import type { Quality } from '../render/quality';
 import type { StartChoice } from './choices';
 import { Debrief } from './Debrief';
 import { ExamHud } from './ExamHud';
@@ -12,7 +13,7 @@ export interface HudApp {
   roads: Vec2[][];
   routeKm: number;
   choice: () => StartChoice;
-  onStart(c: StartChoice): void;
+  onStart(c: StartChoice, quality: Quality): void;
   onRetry(): void;
   onMenu(): void;
 }
@@ -90,7 +91,7 @@ export function Hud({ store, minimap, debug, app }: { store: HudStore; minimap: 
       </div>
       <div className="minimap" ref={mapHost} />
       {s.screen === 'drive' && s.exam && <ExamHud exam={s.exam} toast={s.toast} subtitle={s.subtitle} />}
-      {s.screen === 'menu' && <StartScreen initial={app.choice()} routeKm={app.routeKm} onStart={app.onStart} />}
+      {s.screen === 'menu' && <StartScreen initial={app.choice()} routeKm={app.routeKm} quality={s.quality} loadedQuality={s.loadedQuality} probing={s.probing} onStart={app.onStart} />}
       {s.screen === 'debrief' && s.debrief && <Debrief data={s.debrief} roads={app.roads} onRetry={app.onRetry} onMenu={app.onMenu} />}
     </div>
   );

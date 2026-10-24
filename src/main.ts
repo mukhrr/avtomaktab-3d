@@ -26,7 +26,8 @@ import { trafficView } from './traffic/trafficView';
 import { newCabin, stepCabin } from './vehicle/cabin';
 import { InputReader } from './vehicle/input';
 import { Vehicle } from './vehicle/vehicle';
-import { QUALITY } from './render/quality';
+import { createProbe, PROBE_MIN_FRAMES } from './render/probe';
+import { loadQuality, QUALITY, saveQuality, type Quality } from './render/quality';
 import { createGroundMaterials } from './world/groundMaterials';
 import { buildWorld } from './world/buildWorld';
 import { createEnvironment } from './world/environment';
@@ -54,8 +55,14 @@ const NO_KEYS = new Set<string>();
 const district: DistrictData = await (await fetch(`/districts/${DISTRICT}/district.json`)).json();
 const route: ExamRoute = await (await fetch(`/districts/${DISTRICT}/routes/${ROUTE}.json`)).json();
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// Antialiasing and ground textures are fixed for the page load, so the preset is read before anything is built.
+const storedQuality = loadQuality();
+const loadedQuality: Quality = storedQuality ?? 'medium';
+const quality = QUALITY[loadedQuality];
+let choice: StartChoice = loadChoice();
+
+const renderer = new THREE.WebGLRenderer({ antialias: quality.antialias, logarithmicDepthBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, quality.pixelRatioCap));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -68,9 +75,8 @@ const frameStats = new FrameStats();
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 3000);
-const quality = QUALITY.high;
 const groundMats = createGroundMaterials(quality);
-const env = createEnvironment(scene, camera, renderer, quality, 'noon', groundMats.ground);
+const env = createEnvironment(scene, camera, renderer, quality, choice.timeOfDay, groundMats.ground);
 const { signalLamps } = buildWorld(scene, district, groundMats);
 
 const credit = document.createElement('div');
@@ -140,10 +146,11 @@ let acc = 0, pendingEdges = NO_EDGES, flippedFor = 0, frames = 0, hudT = 0;
 let simMs = 0, simSteps = 0, simT = 0, simAvg = 0;
 let cabin = newCabin(), simClock = 0;
 const hud = createHudStore();
+hud.set({ probing: storedQuality === null, quality: loadedQuality, loadedQuality });
 if (params.has('debug')) events.on(e => console.log('[event]', e));
 const minimap = createMinimap(district);
 
-let screen: Screen = 'menu', choice: StartChoice = loadChoice(), seq = 0;
+let screen: Screen = 'menu', seq = 0;
 const show = (s: Screen) => hud.set({ screen: (screen = s) });
 
 const session = new ExamSession({
@@ -179,6 +186,18 @@ function examStep(steer: number) {
   });
 }
 
+function applyQuality(q: Quality) {
+  const s = QUALITY[q];
+  renderer.setPixelRatio(Math.min(devicePixelRatio, s.pixelRatioCap));
+  renderer.setSize(innerWidth, innerHeight);
+  env.setQuality(s);
+  mirrors.setQuality(s);
+}
+
+// The probe samples the same loop that draws the start screen, so it never blocks it.
+const probe = storedQuality === null ? createProbe(frameStats) : null;
+let probeDone = probe === null;
+
 /** Runs inside the click handler, so the brief's audio starts within the user gesture. */
 function startExam() {
   hud.set({ toast: null, subtitle: null, debrief: null, exam: { lang: choice.lang, maneuver: null, distance: 0, total: 0 } });
@@ -192,8 +211,11 @@ mountHud(hud, minimap.canvas, params.has('debug'), {
   roads,
   routeKm: route.lengthM / 1000,
   choice: () => choice,
-  onStart: c => {
+  onStart: (c, q) => {
     choice = c;
+    saveQuality(q);
+    applyQuality(q);
+    env.setTimeOfDay(c.timeOfDay);
     if (c.mode === 'exam') return startExam();
     if (Math.abs(car.speed) < STOPPED) car.gearbox = c.gearbox;
     hud.set({ exam: null, toast: null, subtitle: null });
@@ -338,6 +360,17 @@ renderer.setAnimationLoop(() => {
     hudT = 0;
   }
   frameStats.add(performance.now() - cpuStart, gpuTimer?.poll() ?? null);
+  if (probe && !probeDone) {
+    const picked = probe.frame(performance.now());
+    if (picked) {
+      probeDone = true;
+      // A timed-out probe with too few frames says nothing about the machine, so it is not stored.
+      if (frameStats.summary().frames >= PROBE_MIN_FRAMES) saveQuality(picked);
+      frameStats.reset();
+      applyQuality(picked);
+      hud.set({ probing: false, quality: picked });
+    }
+  }
 });
 
 Object.assign(window, { __game: { car, env, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, cabin: () => cabin, session, hud, route, start: (c: Partial<StartChoice>) => {

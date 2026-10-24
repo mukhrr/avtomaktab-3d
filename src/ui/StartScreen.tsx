@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { t, type Lang } from '../i18n';
+import { needsReload } from '../render/probe';
+import type { Quality } from '../render/quality';
+import type { TimeOfDay } from '../render/timeOfDay';
 import { saveChoice, type StartChoice } from './choices';
 
 function Pick<T extends string>({ value, options, onPick }: { value: T; options: [T, string][]; onPick: (v: T) => void }) {
@@ -12,8 +15,19 @@ function Pick<T extends string>({ value, options, onPick }: { value: T; options:
   );
 }
 
-export function StartScreen({ initial, routeKm, onStart }: { initial: StartChoice; routeKm: number; onStart: (c: StartChoice) => void }) {
+interface StartScreenProps {
+  initial: StartChoice;
+  routeKm: number;
+  quality: Quality;
+  loadedQuality: Quality;
+  probing: boolean;
+  onStart: (c: StartChoice, quality: Quality) => void;
+}
+
+export function StartScreen({ initial, routeKm, quality, loadedQuality, probing, onStart }: StartScreenProps) {
   const [c, setC] = useState(initial);
+  const [q, setQ] = useState(quality);
+  useEffect(() => setQ(quality), [quality]);
   const L = c.lang;
   const set = (p: Partial<StartChoice>) => setC(prev => ({ ...prev, ...p }));
   const langs: [Lang, string][] = [['uz', t(L, 'lang.uz')], ['ru', t(L, 'lang.ru')]];
@@ -28,13 +42,20 @@ export function StartScreen({ initial, routeKm, onStart }: { initial: StartChoic
         <Pick value={c.lang} options={langs} onPick={lang => set({ lang })} />
         <label>{t(L, 'ui.gearbox')}</label>
         <Pick value={c.gearbox} options={[['auto', t(L, 'ui.auto')], ['manual', t(L, 'ui.manual')]]} onPick={gearbox => set({ gearbox })} />
+        <label>{t(L, 'ui.timeOfDay')}</label>
+        <Pick<TimeOfDay> value={c.timeOfDay} options={[['morning', t(L, 'ui.morning')], ['noon', t(L, 'ui.noon')], ['evening', t(L, 'ui.evening')]]} onPick={timeOfDay => set({ timeOfDay })} />
+        <label>{t(L, 'ui.quality')}</label>
+        <Pick<Quality> value={q} options={[['low', t(L, 'ui.low')], ['medium', t(L, 'ui.medium')], ['high', t(L, 'ui.high')]]} onPick={setQ} />
+        {probing && <p className="note">{t(L, 'ui.checkingGraphics')}</p>}
+        {!probing && needsReload(loadedQuality, q) && <p className="note">{t(L, 'ui.reloadForAA')}</p>}
         {c.mode === 'exam' && <p className="note">{t(L, 'ui.route', { km: routeKm.toFixed(1) })} · {t(L, 'ui.examKeys')}</p>}
         <button
           type="button"
           className="go"
+          disabled={probing}
           onClick={() => {
             saveChoice(c);
-            onStart(c);
+            onStart(c, q);
           }}
         >
           {t(L, 'ui.start')}

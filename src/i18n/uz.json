@@ -68,5 +68,15 @@
   "help.misc": "[G] avtomat/mexanika (to'xtaganda) · [C] kamera · [R] qayta boshlash · [H] yordamni yashirish",
   "hud.stalled": "Dvigatel o'chdi: ilashishni bosing (Shift) yoki neytral, keyin I",
   "hud.beltOn": "Kamar taqilgan",
-  "hud.beltOff": "Kamar taqilmagan (B)"
+  "hud.beltOff": "Kamar taqilmagan (B)",
+  "ui.timeOfDay": "Kun vaqti",
+  "ui.morning": "Ertalab",
+  "ui.noon": "Kunduz",
+  "ui.evening": "Kechqurun",
+  "ui.quality": "Grafika",
+  "ui.low": "Past",
+  "ui.medium": "O'rta",
+  "ui.high": "Yuqori",
+  "ui.reloadForAA": "Sahifa qayta yuklangandan keyin qo'llanadi",
+  "ui.checkingGraphics": "Grafika tekshirilmoqda..."
 }
