@@ -182,6 +182,8 @@ export class TrafficSim {
   private readonly byLeaving = new Map<string, Agent[]>();
   /** Rebuilt each step: changing cars by the lane (laneKey) they are crossing to or from but not indexed on. */
   private readonly beside = new Map<string, Agent[]>();
+  /** Rebuilt each step: cars on connectors by the lane (laneKey) they lead into. */
+  private readonly arriving = new Map<string, Agent[]>();
   private readonly reservations = new Map<string, Reservation>();
   /** Agents on a connector of each gated node, and on gated-node connectors into each lane (laneKey). */
   private readonly onNode = new Map<string, Set<Agent>>();
@@ -354,14 +356,14 @@ export class TrafficSim {
   /** `turn` is the connector being driven, else the one chosen for the next junction, null before choosing. */
   inspect(id: number): {
     ref: LaneRef; s: number; connectorNode: string | null; generation: number; turn: Turn | null;
-    changing: { from: LaneRef; to: LaneRef; t: number } | null;
+    changing: { from: LaneRef; to: LaneRef; t: number; back: boolean } | null;
   } | null {
     const a = this.pool[id];
     if (!a || !a.active) return null;
     const ch = a.changing;
     return {
       ref: a.ref, s: a.s, connectorNode: a.conn?.node ?? null, generation: a.generation, turn: (a.conn ?? a.nextConn)?.kind ?? null,
-      changing: ch ? { from: ch.from, to: ch.to, t: ch.t } : null,
+      changing: ch ? { from: ch.from, to: ch.to, t: ch.t, back: ch.back } : null,
     };
   }
 
@@ -370,8 +372,8 @@ export class TrafficSim {
     if (!a.conn && !a.next && !a.trapped && !a.changing && this.net.path(a.ref).length - a.s <= CHOOSE_AT) this.chooseNext(a);
     const v0 = Math.max(1, this.desiredSpeed(a));
     let ob = nearestObstacle(a, this.world, player, crossings);
+    ob = nearer(ob, this.mergerAhead(a));
     if (!a.conn) {
-      ob = nearer(ob, this.mergerAhead(a));
       if (a.changing && a.changing.t >= 0) ob = nearer(ob, nearestObstacle(this.ghost(a, this.otherLane(a)), this.world, player, crossings));
     }
     if (a.conn && a.speed > MOVING) {
@@ -411,13 +413,13 @@ export class TrafficSim {
       // Weight of the lane the car is indexed on: the old lane until halfway, the new one after.
       const own = a.ref === ch.from ? 1 - w : w;
       a.position = [p.position[0] * own + q.position[0] * (1 - own), p.position[1] * own + q.position[1] * (1 - own)];
-      const side = ch.to.lane > ch.from.lane ? 1 : -1;
+      const side = (ch.to.lane > ch.from.lane ? 1 : -1) * (ch.back ? -1 : 1);
       a.heading = p.heading + side * Math.atan2(this.world.laneWidth(ch.from.edgeId) * blendRate(ch.t, ch.dur), Math.max(a.speed, 1));
     }
   }
 
   private considerChange(a: Agent, acc: number, player: PlayerState, crossings: CrossingOccupancy): void {
-    if (a.next || a.trapped || acc < HARD_BRAKE || a.speed < MIN_CHANGE_SPEED) return;
+    if (a.next || a.trapped || acc < HARD_BRAKE || a.speed < MIN_CHANGE_SPEED || a.s < CLEAR_OF_END) return;
     const lanes = this.laneCount(a.ref);
     if (lanes < 2 || !this.clearAhead(a.ref, a.s, a.speed * (SIGNAL_TIME + CHANGE_TIME))) return;
     for (const lane of [a.ref.lane + 1, a.ref.lane - 1]) {
@@ -425,7 +427,7 @@ export class TrafficSim {
       const to: LaneRef = { ...a.ref, lane };
       const input = this.assess(a, to, acc, player, crossings);
       if (!input || !mobil(input)) continue;
-      a.changing = { from: a.ref, to, t: -SIGNAL_TIME, dur: CHANGE_TIME };
+      a.changing = { from: a.ref, to, t: -SIGNAL_TIME, dur: CHANGE_TIME, back: false };
       // Lane 0 is rightmost, so a higher lane is to the left.
       a.indicator = lane > a.ref.lane ? 'left' : 'right';
       return;
@@ -435,10 +437,27 @@ export class TrafficSim {
   private stepChange(a: Agent, dt: number, acc: number, player: PlayerState, crossings: CrossingOccupancy): void {
     const ch = a.changing!;
     const before = ch.t;
-    ch.t += dt;
+    // Across the lanes the car moves with its forward speed, so one standing in a queue does not slide sideways.
+    const rate = before < 0 ? 1 : Math.min(1, a.speed / MIN_CHANGE_SPEED);
+    if (ch.back) {
+      ch.t -= dt * rate;
+      if (ch.t <= 0) {
+        a.changing = null;
+        a.indicator = null;
+      }
+      return;
+    }
+    ch.t += dt * rate;
+    if (before >= 0 && a.ref === ch.from) {
+      const input = this.assess(a, ch.to, acc, player, crossings);
+      if (!input || !mobilSafe(input)) {
+        ch.back = true;
+        return;
+      }
+    }
     if (before < 0 && ch.t >= 0) {
       // The gap is judged again as the car starts across: the player or another car may have moved into it.
-      const input = acc < HARD_BRAKE || a.next || !this.clearAhead(a.ref, a.s, a.speed * CHANGE_TIME)
+      const input = acc < HARD_BRAKE || a.next || a.s < CLEAR_OF_END || !this.clearAhead(a.ref, a.s, a.speed * CHANGE_TIME)
         ? null : this.assess(a, ch.to, acc, player, crossings);
       if (!input || !mobilSafe(input)) {
         a.changing = null;
@@ -457,10 +476,10 @@ export class TrafficSim {
     a.ref = ch.to;
   }
 
-  /** Ends the change where it stands: a car still signalling stays in its lane, one already moving lands in the new one. */
+  /** Ends the change where it stands: a car signalling or returning stays in its lane, one moving across lands in the new one. */
   private endChange(a: Agent): void {
     const ch = a.changing;
-    if (ch && ch.t >= 0 && a.ref === ch.from) this.swapLane(a);
+    if (ch && ch.t >= 0 && !ch.back && a.ref === ch.from) this.swapLane(a);
     a.changing = null;
     a.indicator = null;
   }
@@ -508,9 +527,19 @@ export class TrafficSim {
   private playerClear(a: Agent, to: LaneRef, s: number, player: PlayerState): boolean {
     const path = this.net.path(to);
     if (dist(player.position, a.position) > path.length + player.length) return true;
-    const ps = project(path.points, player.position);
+    let ps = project(path.points, player.position);
     const at = pointAt(path.points, ps);
-    if (dist(at.position, player.position) >= this.world.laneWidth(to.edgeId) / 2 + player.width / 2) return true;
+    const half = this.world.laneWidth(to.edgeId) / 2 + player.width / 2;
+    const [dx, dz] = [player.position[0] - at.position[0], player.position[1] - at.position[1]];
+    const along = dx * Math.sin(at.heading) + dz * Math.cos(at.heading);
+    if (ps === 0 && along < 0) {
+      // Still in the junction behind the lane start: one heading into the lane counts at its distance short of it.
+      const across = Math.abs(dx * Math.cos(at.heading) - dz * Math.sin(at.heading));
+      if (across >= 2 * half || Math.abs(wrapAngle(player.heading - at.heading)) >= Math.PI / 2) return true;
+      ps = -Math.hypot(dx, dz);
+    } else if (dist(at.position, player.position) >= half) {
+      return true;
+    }
     const vp = Math.max(0, player.speed * Math.cos(player.heading - at.heading));
     const halves = (a.length + player.length) / 2;
     if (ps < s) {
@@ -545,15 +574,18 @@ export class TrafficSim {
     const out: Occupant[] = [];
     for (const b of this.byPiece.get(laneKey(ref)) ?? []) if (b !== skip) out.push({ a: b, s: b.s });
     for (const b of this.beside.get(laneKey(ref)) ?? []) if (b !== skip) out.push({ a: b, s: this.mapS(b.ref, b.s, ref) });
+    for (const b of this.arriving.get(laneKey(ref)) ?? []) if (b.conn) out.push({ a: b, s: b.s - b.conn.length });
     return out.sort((x, y) => x.s - y.s);
   }
 
   /** Nearest car moving across into, or still partly in, the agent's lane ahead of it. */
   private mergerAhead(a: Agent): Obstacle | null {
     let best: Obstacle | null = null;
-    for (const b of this.beside.get(laneKey(a.ref)) ?? []) {
-      if (b === a || !b.changing || b.changing.t < 0) continue;
-      const d = this.mapS(b.ref, b.s, a.ref) - a.s;
+    const lane = a.conn ? a.conn.to : a.ref;
+    const s = a.conn ? a.s - a.conn.length : a.s;
+    for (const b of this.beside.get(laneKey(lane)) ?? []) {
+      if (b === a || !b.changing || b.changing.t <= 0) continue;
+      const d = this.mapS(b.ref, b.s, lane) - s;
       if (d <= 0) continue;
       const gap = d - (a.length + b.length) / 2;
       if (!best || gap < best.gap) best = { gap, speed: b.speed };
@@ -869,6 +901,7 @@ export class TrafficSim {
     this.byPiece.clear();
     this.byLeaving.clear();
     this.beside.clear();
+    this.arriving.clear();
     const push = (m: Map<string, Agent[]>, k: string, a: Agent) => {
       const list = m.get(k);
       if (list) list.push(a);
@@ -879,6 +912,7 @@ export class TrafficSim {
       if (a.conn) {
         push(this.byPiece, a.conn.key, a);
         push(this.byLeaving, laneKey(a.conn.from), a);
+        push(this.arriving, laneKey(a.conn.to), a);
       } else {
         push(this.byPiece, laneKey(a.ref), a);
         if (a.changing) push(this.beside, laneKey(this.otherLane(a)), a);

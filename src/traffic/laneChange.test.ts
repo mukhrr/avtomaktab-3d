@@ -38,6 +38,13 @@ function setup(count = 0, seed = 1) {
 const E0: LaneRef = { edgeId: 'e', dir: 1, lane: 0 };
 const E1: LaneRef = { edgeId: 'e', dir: 1, lane: 1 };
 const W0: LaneRef = { edgeId: 'w', dir: -1, lane: 0 };
+const W1: LaneRef = { edgeId: 'w', dir: -1, lane: 1 };
+
+function polyLength(pts: Vec2[]): number {
+  let d = 0;
+  for (let i = 1; i < pts.length; i++) d += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  return d;
+}
 
 function lateral(points: Vec2[], p: Vec2): number {
   const at = pointAt(points, project(points, p)).position;
@@ -184,6 +191,7 @@ describe('lane changes on a two-lane edge', () => {
           expect(Math.abs(ch.from.lane - ch.to.lane)).toBe(1);
           if (ch.t >= 0 && before && before.gen === st.generation && before.t < 0) {
             starts++;
+            expect(st.s).toBeGreaterThanOrEqual(CLEAR_OF_END);
             const ref = st.ref;
             const s = st.s;
             const len = c.net.path(ref).length;
@@ -199,4 +207,97 @@ describe('lane changes on a two-lane edge', () => {
     expect(starts).toBeGreaterThan(0);
     expect(c.sim.laneChanges).toBeGreaterThanOrEqual(starts);
   }, 60_000);
+
+  /** A car behind a slow leader on e lane 0, once its left indicator is on, with the w approach green. */
+  function signalling(c: ReturnType<typeof setup>) {
+    c.signals.update(27);
+    c.sim.place(E0, 45, { carClass: 'nexia', speed: 2.5, factor: 0.15 });
+    const id = c.sim.place(E0, 28, { carClass: 'nexia', speed: 4 });
+    for (let k = 0; k < 600 && !c.sim.agents[id].indicator; k++) c.step();
+    expect(c.sim.agents[id].indicator).toBe('left');
+    return id;
+  }
+
+  test('a car on a connector into the target lane is a follower: it never has to brake harder than 4 m/s2', () => {
+    for (const back of [25, 30, 35]) {
+      const c = setup();
+      const id = signalling(c);
+      const inc = c.sim.place(W1, c.net.path(W1).length - back, { carClass: 'nexia', speed: 16, route: [E1] });
+      let prev = c.sim.agents[inc].speed;
+      for (let t = 0; t < 8; t += DT) {
+        c.step();
+        const v = c.sim.agents[inc].speed;
+        expect((prev - v) / DT).toBeLessThan(4.2);
+        prev = v;
+      }
+      expect(c.sim.inspect(id)).not.toBeNull();
+    }
+  });
+
+  test('a player still in the junction behind the target lane counts for the 2 s headway', () => {
+    const c = setup();
+    const id = signalling(c);
+    const run = [...c.net.path(W1).points, ...c.net.connector(W1, E1), ...c.net.path(E1).points];
+    const startAt = c.net.path(W1).length + polyLength(c.net.connector(W1, E1));
+    const lane1 = c.net.path(E1).points;
+    // Timed to be 6 m short of the lane, still in the junction, when the car would start across.
+    let u = startAt - SIGNAL_TIME * 22 - 6, prevT: number | null = null;
+    for (let t = 0; t < 6; t += DT) {
+      u += 22 * DT;
+      const p = pointAt(run, u);
+      const player: PlayerState = { position: p.position, heading: p.heading, speed: 22, length: 4.5, width: 1.8 };
+      c.step(player);
+      const ct = c.sim.inspect(id)!.changing;
+      if (ct && ct.t >= 0 && !ct.back && (prevT === null || prevT < 0)) {
+        const gap = project(lane1, c.sim.agents[id].position) - (u - startAt) - NEXIA / 2 - player.length / 2;
+        expect(gap).toBeGreaterThanOrEqual(PLAYER_HEADWAY * player.speed);
+      }
+      prevT = ct?.t ?? null;
+    }
+  });
+
+  test('a player closing the gap during the move sends the car back to its lane, indicator on until it is back', () => {
+    const c = setup();
+    const id = signalling(c);
+    const lane0 = c.net.path(E0).points, lane1 = c.net.path(E1).points;
+    while ((c.sim.inspect(id)!.changing?.t ?? -1) < 0.3) c.step();
+    let back = false, ps = project(lane1, c.sim.agents[id].position) - 20;
+    for (let t = 0; t < 6; t += DT) {
+      ps += 12 * DT;
+      const p = pointAt(lane1, ps);
+      c.step({ position: p.position, heading: p.heading, speed: 12, length: 4.5, width: 1.8 });
+      const ch = c.sim.inspect(id)!.changing;
+      if (ch?.back) back = true;
+      if (ch) expect(c.sim.agents[id].indicator).toBe('left');
+      if (ps > project(lane1, c.sim.agents[id].position) - 10) break;
+    }
+    expect(back).toBe(true);
+    expect(c.sim.inspect(id)!.ref).toEqual(E0);
+    for (let k = 0; k < 120 && c.sim.inspect(id)!.changing; k++) c.step();
+    expect(c.sim.inspect(id)!.changing).toBeNull();
+    expect(c.sim.agents[id].indicator).toBeNull();
+    expect(lateral(lane0, c.sim.agents[id].position)).toBeLessThan(0.05);
+  });
+
+  test('a car that stops during the move does not slide sideways', () => {
+    const c = setup();
+    const id = signalling(c);
+    const lane0 = c.net.path(E0).points;
+    while ((c.sim.inspect(id)!.changing?.t ?? -1) < 0.3) c.step();
+    const ahead = pointAt(lane0, project(lane0, c.sim.agents[id].position) + 9);
+    const player: PlayerState = { position: ahead.position, heading: ahead.heading, speed: 0, length: 4.5, width: 1.8 };
+    let prev: number | null = null, stopped = 0;
+    for (let t = 0; t < 6; t += DT) {
+      c.step(player);
+      const lat = lateral(lane0, c.sim.agents[id].position);
+      if (c.sim.agents[id].speed < 0.01) {
+        stopped++;
+        if (prev !== null) expect(Math.abs(lat - prev)).toBeLessThan(1e-3);
+        prev = lat;
+      } else {
+        prev = null;
+      }
+    }
+    expect(stopped).toBeGreaterThan(60);
+  });
 });

@@ -58,11 +58,11 @@ Rules that see the same mistake twice charge it once: redLight hides stopLinePas
 
 | driver | result |
 |---|---|
-| careful | finished, 0 points, about 760 s of sim time |
+| careful | finished, 0 points, about 1230 s of sim time (about 4 min of it held in the jam ring near (-230, 50)) |
 | runs red lights | failed on redLight, its only violation |
 | never indicates | 11 noIndicator over the whole route (6 turns, 5 lane changes on 22813507:0) and 1 noIndicatorPullOff; the exam fails on the fifth noIndicator |
 
-The three runs take about 45 s together. Other seeds: 3, 7 and 11 finish with 0 points, 9 with 20 (stoppedOnCrossing behind a car stopping in a junction, see the Task 11 report).
+The three runs take about 45 s together. Other seeds with M4d lane changes: 3, 7, 9 and 11 all finish with 0 points (712, 618, 618 and 667 s).
 
 ## Tuning log
 

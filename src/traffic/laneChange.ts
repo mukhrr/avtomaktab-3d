@@ -17,12 +17,16 @@ export const MIN_CHANGE_SPEED = 3;
 export const PLAYER_HEADWAY = 2;
 export const LANE_CHANGE_SEED = 1000;
 
-/** `t` runs from -SIGNAL_TIME while the indicator shows to `dur` when the car is in the new lane. */
+/**
+ * `t` runs from -SIGNAL_TIME while the indicator shows to `dur` when the car is in the new lane. With `back` the gap
+ * closed before halfway and `t` runs down to 0, the car returning to `from`.
+ */
 export interface LaneChange {
   from: LaneRef;
   to: LaneRef;
   t: number;
   dur: number;
+  back: boolean;
 }
 
 export interface FollowerAccel {
