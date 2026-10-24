@@ -10,6 +10,7 @@
 - That material samples a canvas-drawn atlas, picking the cell from per-vertex style and floor attributes. Its shader patch is chained with the CSM patch by the lighting rig.
 - Aryks and lamps are placed procedurally along avenues by pure functions and drawn instanced.
 - Bus stops, benches and bins come from OSM nodes.
+- Road signs are already 3D plates on poles since M3, so M4b leaves them as they are.
 
 **Tech Stack:** TypeScript 5.6, three 0.169.0, Rapier 0.14 (static colliders for furniture), Vitest 2.1, the `tools/city` pipeline (`npm run city:build`).
 
