@@ -298,7 +298,7 @@ renderer.setAnimationLoop(() => {
     if (session.active) examStep(c.steer);
   }
   signalLamps.update(signals);
-  carsView.update(traffic.agents);
+  carsView.update(traffic.agents, signals.time);
   pedsView.update(peds.peds);
 
   const p = car.object.position, b = district.bounds;

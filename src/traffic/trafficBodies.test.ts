@@ -9,7 +9,7 @@ import { approachSpeeds, closingSpeed, TrafficBodies } from './trafficBodies';
 const idle: Controls = { throttle: 0, brake: 0, clutch: 0, steer: 0, handbrake: false, shiftUp: false, shiftDown: false, ignition: false, toggleLeft: false, toggleRight: false, toggleHazard: false, toggleBelt: false, glance: null };
 
 const agent = (over: Partial<AgentView>): AgentView => ({
-  id: 0, active: true, position: [0, 0], heading: 0, carClass: 'cobalt', colour: 0, braking: false, speed: 0, ...over,
+  id: 0, active: true, position: [0, 0], heading: 0, carClass: 'cobalt', colour: 0, braking: false, speed: 0, indicator: null, ...over,
 });
 
 async function flatWorld() {

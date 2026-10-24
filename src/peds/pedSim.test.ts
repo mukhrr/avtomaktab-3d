@@ -8,7 +8,7 @@ const DT = 1 / 30;
 const AWAY: PlayerState = { position: [-40, 60], heading: 0, speed: 0, length: 4.5, width: 1.8 };
 
 function car(position: Vec2, heading: number, speed: number): AgentView {
-  return { id: 1, active: true, position, heading, carClass: 'nexia', colour: 0, braking: false, speed };
+  return { id: 1, active: true, position, heading, carClass: 'nexia', colour: 0, braking: false, speed, indicator: null };
 }
 
 /** Test network with its zebra replaced by a signal crossing on edge e, 40 m from the cross. */

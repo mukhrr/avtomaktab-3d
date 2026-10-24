@@ -35,6 +35,7 @@ export interface AgentView {
   colour: number;
   braking: boolean;
   speed: number;
+  indicator: 'left' | 'right' | null;
 }
 
 export interface CrossingOccupancy {
@@ -701,7 +702,7 @@ export class TrafficSim {
     const p = pointAt(this.net.path(ref).points, s);
     const a: Agent = {
       id, active: true, position: p.position, heading: p.heading, carClass,
-      colour: pickPaint(this.rand(), carClass), braking: false, speed: 0,
+      colour: pickPaint(this.rand(), carClass), braking: false, speed: 0, indicator: null,
       ref, s, conn: null, next: null, nextConn: null, route: [], trapped: false,
       factor: 0.85 + 0.15 * this.rand(), length: CAR_CLASSES[carClass].length,
       generation: (this.pool[id]?.generation ?? 0) + 1, still: 0, rest: 0, stopDone: false,
