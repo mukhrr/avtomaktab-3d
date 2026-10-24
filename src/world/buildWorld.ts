@@ -3,8 +3,7 @@ import type { DistrictData, GraphEdge, Road } from '../shared/district';
 import { FOOT_KINDS } from '../../tools/city/extract';
 import { addBuildings } from './buildings';
 import { dashes, edgeMarkings } from './markings';
-import type { QualitySettings } from '../render/quality';
-import { createGroundMaterials, GROUND_TILE } from './groundMaterials';
+import { GROUND_TILE, type GroundSurface } from './groundMaterials';
 import { addMerged, polygonGeometry, ribbonGeometry, worldUVs } from './meshes';
 import { junctionPolygon, junctionTrim, trimEdge } from './roadGeometry';
 import { addCrossings } from './crossings';
@@ -19,8 +18,7 @@ const TREE_SEED = 7;
 
 const lambert = (color: number) => new THREE.MeshLambertMaterial({ color });
 
-export function buildWorld(scene: THREE.Scene, d: DistrictData, q: QualitySettings): { signalLamps: SignalLamps } {
-  const mats = createGroundMaterials(q);
+export function buildWorld(scene: THREE.Scene, d: DistrictData, mats: Record<GroundSurface, THREE.Material>): { signalLamps: SignalLamps } {
   const uv = (g: THREE.BufferGeometry, k: keyof typeof GROUND_TILE) => worldUVs(g, GROUND_TILE[k]);
   const roads = new Map(d.roads.map(r => [r.id, r]));
   const edges = new Map(d.graph.edges.map(e => [e.id, e]));

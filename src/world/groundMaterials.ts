@@ -19,14 +19,32 @@ export const GROUND_TILE: Record<GroundSurface, number> = Object.fromEntries(
 export function createGroundMaterial(q: QualitySettings, name: GroundSurface, loader: THREE.TextureLoader = new THREE.TextureLoader()): THREE.Material {
   const s = SURFACES[name];
   if (!q.groundTextures) return new THREE.MeshLambertMaterial({ color: s.color });
+  const mat = new THREE.MeshStandardMaterial({ color: s.tint, roughness: s.roughness, metalness: 0 });
+  // uv = (x, z) makes the tangent frame left-handed, so GL normal maps need green flipped.
+  mat.normalScale.set(1, -1);
+  let failed = false;
+  const fallBack = () => {
+    mat.map = null;
+    mat.normalMap = null;
+    mat.color.set(s.color);
+    mat.needsUpdate = true;
+  };
+  const onError = () => {
+    if (!failed) console.warn(`ground texture missing for ${name}, using flat colour`);
+    failed = true;
+    fallBack();
+  };
   const tex = (kind: 'color' | 'normal') => {
-    const t = loader.load(`/textures/${name}_${kind}.jpg`);
+    const t = loader.load(`/textures/${name}_${kind}.jpg`, undefined, undefined, onError);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.anisotropy = 4;
     t.colorSpace = kind === 'color' ? THREE.SRGBColorSpace : THREE.LinearSRGBColorSpace;
     return t;
   };
-  return new THREE.MeshStandardMaterial({ color: s.tint, map: tex('color'), normalMap: tex('normal'), roughness: s.roughness, metalness: 0 });
+  mat.map = tex('color');
+  mat.normalMap = tex('normal');
+  if (failed) fallBack();
+  return mat;
 }
 
 export function createGroundMaterials(q: QualitySettings, loader?: THREE.TextureLoader): Record<GroundSurface, THREE.Material> {

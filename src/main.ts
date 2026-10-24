@@ -27,6 +27,7 @@ import { newCabin, stepCabin } from './vehicle/cabin';
 import { InputReader } from './vehicle/input';
 import { Vehicle } from './vehicle/vehicle';
 import { QUALITY } from './render/quality';
+import { createGroundMaterials } from './world/groundMaterials';
 import { buildWorld } from './world/buildWorld';
 import { createEnvironment } from './world/environment';
 import { nearestLane } from './world/spawn';
@@ -67,8 +68,9 @@ const frameStats = new FrameStats();
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 3000);
-const env = createEnvironment(scene, QUALITY.high);
-const { signalLamps } = buildWorld(scene, district, QUALITY.high);
+const groundMats = createGroundMaterials(QUALITY.high);
+const env = createEnvironment(scene, groundMats.ground);
+const { signalLamps } = buildWorld(scene, district, groundMats);
 
 const credit = document.createElement('div');
 credit.textContent = '© OpenStreetMap contributors';

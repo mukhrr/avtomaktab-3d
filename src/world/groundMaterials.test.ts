@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { QUALITY } from '../render/quality';
 import { createGroundMaterials } from './groundMaterials';
@@ -50,10 +50,23 @@ describe('createGroundMaterials', () => {
       expect(mat).toBeInstanceOf(THREE.MeshStandardMaterial);
       expect(mat.map!.wrapS).toBe(THREE.RepeatWrapping);
       expect(mat.map!.colorSpace).toBe(THREE.SRGBColorSpace);
+      expect(mat.normalScale.toArray()).toEqual([1, -1]);
       expect(mat.normalMap!.wrapT).toBe(THREE.RepeatWrapping);
       expect(mat.normalMap!.colorSpace).toBe(THREE.LinearSRGBColorSpace);
     }
     const names = ['asphalt', 'sidewalk', 'curb', 'grass', 'ground'];
     expect([...loaded].sort()).toEqual(names.flatMap(n => [`/textures/${n}_color.jpg`, `/textures/${n}_normal.jpg`]).sort());
+  });
+
+  it('falls back to the flat colour when a texture fails to load', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const failing = { load: (_u: string, _l: unknown, _p: unknown, onError: () => void) => { onError(); return new THREE.Texture(); } } as unknown as THREE.TextureLoader;
+    const m = createGroundMaterials(QUALITY.high, failing);
+    const a = m.asphalt as THREE.MeshStandardMaterial;
+    expect(a.map).toBeNull();
+    expect(a.normalMap).toBeNull();
+    expect(a.color.getHex()).toBe(0x3d4045);
+    expect(warn).toHaveBeenCalledTimes(5);
+    warn.mockRestore();
   });
 });
