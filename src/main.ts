@@ -68,8 +68,9 @@ const frameStats = new FrameStats();
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 3000);
-const groundMats = createGroundMaterials(QUALITY.high);
-const env = createEnvironment(scene, groundMats.ground);
+const quality = QUALITY.high;
+const groundMats = createGroundMaterials(quality);
+const env = createEnvironment(scene, camera, renderer, quality, 'noon', groundMats.ground);
 const { signalLamps } = buildWorld(scene, district, groundMats);
 
 const credit = document.createElement('div');
@@ -94,7 +95,8 @@ const pedsView = pedView(scene, CROSSERS + WALKERS);
 const events = new EventBus();
 const eventQueue = new RAPIER.EventQueue(true);
 const rig = new CameraRig(camera, renderer.domElement);
-const mirrors = createMirrors(renderer, scene, car.object);
+const mirrors = createMirrors(renderer, scene, car.object, quality);
+env.setupScene(scene);
 
 const held = new Set<string>(), pressed = new Set<string>();
 addEventListener('keydown', e => {
@@ -279,6 +281,7 @@ renderer.setAnimationLoop(() => {
   if (orbit) orbit.update();
   else rig.update(car.object, car.speed, dt);
   env.follow(p.x, p.z);
+  env.update();
   gpuTimer?.begin();
   mirrors.update(rig.mode);
   const preCalls = renderer.info.render.calls;
@@ -337,7 +340,7 @@ renderer.setAnimationLoop(() => {
   frameStats.add(performance.now() - cpuStart, gpuTimer?.poll() ?? null);
 });
 
-Object.assign(window, { __game: { car, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, cabin: () => cabin, session, hud, route, start: (c: Partial<StartChoice>) => {
+Object.assign(window, { __game: { car, env, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, cabin: () => cabin, session, hud, route, start: (c: Partial<StartChoice>) => {
   choice = { ...choice, ...c };
   if (choice.mode === 'exam') startExam();
   else show('drive');

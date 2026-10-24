@@ -15,7 +15,7 @@ export interface LightPreset {
   rayleigh: number;
 }
 
-// 2026-05-15 in Tashkent (UTC+5): 08:30, 13:00 and 18:45 local.
+// 2026-05-15 in Tashkent (UTC+5): 08:30, 13:00 and 18:00 local.
 export const TIMES_OF_DAY: Record<TimeOfDay, LightPreset> = {
   morning: {
     utc: '2026-05-15T03:30:00Z',
@@ -46,12 +46,12 @@ export const TIMES_OF_DAY: Record<TimeOfDay, LightPreset> = {
     rayleigh: 1.2,
   },
   evening: {
-    utc: '2026-05-15T13:45:00Z',
-    sunColor: 0xff9a4d,
-    sunIntensity: 2.0,
-    skyColor: 0xe0a77d,
-    groundColor: 0x6f5b4c,
-    hemiIntensity: 0.55,
+    utc: '2026-05-15T13:00:00Z',
+    sunColor: 0xffa860,
+    sunIntensity: 2.6,
+    skyColor: 0xb8bcc8,
+    groundColor: 0x7a6656,
+    hemiIntensity: 1.1,
     fogColor: 0xe6b48c,
     fogNear: 90,
     fogFar: 500,
