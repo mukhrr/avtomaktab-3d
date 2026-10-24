@@ -78,6 +78,6 @@ Production build via `vite preview`, `/?debug`, free drive, chase view, 20 s at 
 | Main-pass triangles | ~493k |
 | Draw calls, all passes | 64 |
 
-CPU is the loop body's own work time (`performance.now()` around the whole `setAnimationLoop` callback); GPU is an `EXT_disjoint_timer_query_webgl2` query around the mirror passes and the main pass, with disjoint results discarded. Neither depends on the frame interval.
+CPU is the loop body's own work time (`performance.now()` around the whole `setAnimationLoop` callback); GPU is an `EXT_disjoint_timer_query_webgl2` query around the mirror passes and the main pass, with disjoint results discarded. GPU time does not depend on the frame interval; CPU time includes up to 5 fixed sim steps when frames are long (`MAX_STEPS` in `src/physics/loop.ts`), so a throttled pane overstates it.
 
 Limits: the in-app browser pane was hidden and throttled to about 1 fps, so the window held roughly 20 frames, not 300, and cpu p95 is a few samples (cold JIT included). Treat cpu as indicative; gpu is steadier. Re-run on the laptop for numbers to budget against. Main-pass calls read 61 against M2's 56 for the same view.
