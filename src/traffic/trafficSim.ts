@@ -5,7 +5,7 @@ import { SignSystem } from '../sim/signs';
 import { nearestLane } from '../world/spawn';
 import { DEFAULT_DRIVER, idmAccel, turnSpeed } from './idm';
 import { pointAt, type LaneNetwork, type LaneRef } from './lanes';
-import { CAR_CLASSES, type CarClass } from './carClasses';
+import { CAR_CLASSES, pickClass, pickPaint, type CarClass } from './carClasses';
 import { approachKey, laneKey, nearestObstacle, type LookaheadWorld } from './lookahead';
 import { classifyTurn, endHeading, project, turnBetween, wrapAngle, type Turn } from './turns';
 
@@ -131,9 +131,6 @@ const CONTACT_MARGIN = 1;
 const SPAWN_ATTEMPTS = 30;
 const BRAKING = -1;
 const DEFAULT_KMH = 60;
-const COLOURS = [0xf2f2f2, 0x1c1c1c, 0xb8bcc2, 0x7a1f24, 0x1f3f7a, 0x2f5d3a, 0xd8c9a3, 0x5a5a5a];
-const CLASSES = Object.keys(CAR_CLASSES) as CarClass[];
-const WEIGHT_SUM = CLASSES.reduce((s, c) => s + CAR_CLASSES[c].weight, 0);
 
 const polyLength = (pts: Vec2[]) => {
   let d = 0;
@@ -324,7 +321,7 @@ export class TrafficSim {
 
   /** Puts an agent at path distance `s` on `ref`; `route` overrides the random choice at the next junctions. */
   place(ref: LaneRef, s: number, opts: { speed?: number; carClass?: CarClass; route?: LaneRef[] } = {}): number {
-    const a = this.create(ref, s, opts.carClass ?? this.pickClass(), opts.speed);
+    const a = this.create(ref, s, opts.carClass ?? pickClass(this.rand()), opts.speed);
     a.route = [...(opts.route ?? [])];
     return a.id;
   }
@@ -683,7 +680,7 @@ export class TrafficSim {
       if (fromPlayer < minDist || fromPlayer > SPAWN_MAX) continue;
       // Euclidean spacing also bounds spacing along the lane, which is never shorter.
       if (this.pool.some(a => a.active && dist(a.position, position) < SPAWN_SPACING)) continue;
-      this.create(ref, s, this.pickClass());
+      this.create(ref, s, pickClass(this.rand()));
       missing--;
     }
   }
@@ -698,22 +695,13 @@ export class TrafficSim {
     return this.spawnLanes[lo].ref;
   }
 
-  private pickClass(): CarClass {
-    let x = this.rand() * WEIGHT_SUM;
-    for (const c of CLASSES) {
-      x -= CAR_CLASSES[c].weight;
-      if (x < 0) return c;
-    }
-    return CLASSES[CLASSES.length - 1];
-  }
-
   private create(ref: LaneRef, s: number, carClass: CarClass, speed?: number): Agent {
     let id = this.pool.findIndex(a => !a.active);
     if (id < 0) id = this.pool.length;
     const p = pointAt(this.net.path(ref).points, s);
     const a: Agent = {
       id, active: true, position: p.position, heading: p.heading, carClass,
-      colour: COLOURS[Math.floor(this.rand() * COLOURS.length)], braking: false, speed: 0,
+      colour: pickPaint(this.rand(), carClass), braking: false, speed: 0,
       ref, s, conn: null, next: null, nextConn: null, route: [], trapped: false,
       factor: 0.85 + 0.15 * this.rand(), length: CAR_CLASSES[carClass].length,
       generation: (this.pool[id]?.generation ?? 0) + 1, still: 0, rest: 0, stopDone: false,
