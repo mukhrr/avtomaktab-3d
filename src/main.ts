@@ -22,6 +22,9 @@ import { SignalSystem } from './sim/signals';
 import { LaneNetwork } from './traffic/lanes';
 import { approachSpeeds, closingSpeed, TrafficBodies } from './traffic/trafficBodies';
 import { TrafficSim, type PlayerState } from './traffic/trafficSim';
+import { HornMonitor } from './traffic/horn';
+import { Sfx } from './audio/sfx';
+import { MapMatcher } from './exam/mapMatch';
 import { trafficView } from './traffic/trafficView';
 import { newCabin, stepCabin } from './vehicle/cabin';
 import { InputReader } from './vehicle/input';
@@ -206,6 +209,22 @@ let probeDone = probe === null;
 // True while the shown pick is only a fallback from a probe that measured nothing; Start must not store it.
 let pickUnmeasured = false;
 
+const horns = new HornMonitor({ matcher: new MapMatcher(district, net), signals, net });
+let sfx: Sfx | null = null;
+const camDir = new THREE.Vector3();
+
+/** Called from click handlers only: browsers keep an AudioContext suspended until a user gesture. */
+function unlockAudio() {
+  const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!Ctor) return;
+  try {
+    sfx ??= new Sfx(new Ctor());
+    void sfx.ctx.resume();
+  } catch {
+    sfx = null;
+  }
+}
+
 /** Runs inside the click handler, so the brief's audio starts within the user gesture. */
 function startExam() {
   hud.set({ toast: null, subtitle: null, debrief: null, exam: { lang: choice.lang, maneuver: null, distance: 0, total: 0 } });
@@ -220,6 +239,7 @@ mountHud(hud, minimap.canvas, params.has('debug'), {
   routeKm: route.lengthM / 1000,
   choice: () => choice,
   onStart: (c, q) => {
+    unlockAudio();
     choice = c;
     if (!(pickUnmeasured && q === hud.get().quality)) {
       saveQuality(q);
@@ -233,7 +253,10 @@ mountHud(hud, minimap.canvas, params.has('debug'), {
     hud.set({ exam: null, toast: null, subtitle: null });
     show('drive');
   },
-  onRetry: startExam,
+  onRetry: () => {
+    unlockAudio();
+    startExam();
+  },
   onMenu: () => {
     session.silence();
     show('menu');
@@ -296,6 +319,11 @@ renderer.setAnimationLoop(() => {
       }
     }
     if (session.active) examStep(c.steer);
+  }
+  if (sfx && driving) {
+    camera.getWorldDirection(camDir);
+    const listener = { position: [camera.position.x, camera.position.z] as [number, number], heading: Math.atan2(camDir.x, camDir.z) };
+    for (const h of horns.update(dt, playerState(), traffic.agents, signals, listener)) sfx.horn(h.volume, h.pan);
   }
   signalLamps.update(signals);
   carsView.update(traffic.agents, signals.time);
