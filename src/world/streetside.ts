@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import type { Crossing, DistrictData, GraphEdge, Vec2 } from '../shared/district';
+import type { Crossing, DistrictData, Furniture, GraphEdge, Vec2 } from '../shared/district';
 import { FOOT_KINDS } from '../../tools/city/extract';
 import { rng } from '../sim/rng';
 import { batchChunks, groupByChunk } from './chunks';
@@ -90,6 +90,7 @@ interface Context {
   footways: Grid<Seg>;
   footEnds: Grid<Vec2>;
   buildings: Grid<Vec2[]>;
+  shelters: Furniture[];
 }
 
 function context(d: DistrictData): Context {
@@ -114,6 +115,7 @@ function context(d: DistrictData): Context {
     footways: segGrid(feet),
     footEnds,
     buildings: boxGrid(d.buildings.map(b => b.footprint), f => f),
+    shelters: d.furniture.filter(f => f.kind === 'busStop'),
   };
 }
 
@@ -140,6 +142,7 @@ function inBuilding(c: Context, x: number, z: number): boolean {
 }
 
 function arykBlocked(c: Context, x: number, z: number, tx: number, tz: number): boolean {
+  if (c.shelters.some(f => pointInShelter(f, x, z, SHELTER_GAP))) return true;
   if (roadClearance(c, x, z, 20) < KERB + ARYK_WIDTH / 2) return true;
   if (nearJunction(c, x, z, JUNCTION_GAP + ARYK_WIDTH / 2)) return true;
   if (nearCrossing(c, x, z, ARYK_CROSSING_GAP)) return true;
@@ -164,10 +167,23 @@ function offsetLines(points: Vec2[], off: number): Vec2[][] {
   return [left, right];
 }
 
+type ArykRun = { points: Vec2[]; width: number };
+// Render and physics both ask for these; the district object is immutable once loaded.
+const arykCache = new WeakMap<DistrictData, ArykRun[]>();
+const lampCache = new WeakMap<DistrictData, Map<number, Lamp[]>>();
+
 /** Concrete-edged channels beside the avenues, between the kerb and the tree row. */
-export function aryks(d: DistrictData): { points: Vec2[]; width: number }[] {
+export function aryks(d: DistrictData): ArykRun[] {
+  const hit = arykCache.get(d);
+  if (hit) return hit;
+  const out = computeAryks(d);
+  arykCache.set(d, out);
+  return out;
+}
+
+function computeAryks(d: DistrictData): ArykRun[] {
   const c = context(d);
-  const out: { points: Vec2[]; width: number }[] = [];
+  const out: ArykRun[] = [];
   for (const e of c.avenues) {
     for (const line of offsetLines(e.points, e.width / 2 + ARYK_OFFSET)) {
       let run: Vec2[] = [], runLength = 0, tail: Vec2 | null = null;
@@ -231,6 +247,16 @@ function partner(c: Context, e: GraphEdge, x: number, z: number, tx: number, tz:
  * lamp in the median; other roads alternate sides, starting on a side drawn from `seed`.
  */
 export function lampPositions(d: DistrictData, seed: number): Lamp[] {
+  const bySeed = lampCache.get(d) ?? new Map<number, Lamp[]>();
+  lampCache.set(d, bySeed);
+  const hit = bySeed.get(seed);
+  if (hit) return hit;
+  const out = computeLamps(d, seed);
+  bySeed.set(seed, out);
+  return out;
+}
+
+function computeLamps(d: DistrictData, seed: number): Lamp[] {
   const c = context(d);
   const rand = rng(seed);
   const edges = new Map(d.graph.edges.map(e => [e.id, e]));
@@ -253,9 +279,8 @@ export function lampPositions(d: DistrictData, seed: number): Lamp[] {
     for (const l of placed.query(x, z, r)) if ((double === undefined || l.double === double) && Math.hypot(l.x - x, l.z - z) < r) return true;
     return false;
   };
-  const stops = d.furniture.filter(f => f.kind === 'busStop');
   const free = (x: number, z: number) => {
-    if (stops.some(f => pointInShelter(f, x, z, SHELTER_GAP))) return false;
+    if (c.shelters.some(f => pointInShelter(f, x, z, SHELTER_GAP))) return false;
     if (roadClearance(c, x, z, 20) < LAMP_ROAD_GAP) return false;
     if (nearJunction(c, x, z, JUNCTION_GAP) || nearCrossing(c, x, z, LAMP_CROSSING_GAP) || inBuilding(c, x, z)) return false;
     for (const [px, pz] of poles.query(x, z, POLE_GAP)) if (Math.hypot(px - x, pz - z) < POLE_GAP) return false;

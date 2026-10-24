@@ -257,3 +257,16 @@ The batched world costs about 2 ms of high's gpu p50, most of it in the vertex-c
 | Total `dist/` | 7,919,334 | 7,972,625 |
 
 M4b adds 53 KB (code and the style, level and furniture fields in `district.json`) and no downloaded assets; facades and furniture are drawn in code, so `CREDITS.md` is unchanged.
+
+### World build time
+
+Spec: world generation under 2 s. `aryks()` (~107 ms) and `lampPositions()` (~124 ms) used to run 2 to 3 times each (render, physics, and lamps recomputing aryks); both are now computed once per district object.
+
+Method: Vite dev server, in-app Chrome on an Apple M5, a fresh `district.json` fetch per run, `createFacadeTexture()` + `buildWorld()` + `createPhysics()` timed with `performance.now()` (Rapier already initialised, ground materials stubbed so no texture downloads). Four runs each, unminified dev modules.
+
+| | build | physics | total |
+|---|---|---|---|
+| before | 2.19 to 2.39 s | 0.74 to 0.84 s | 2.9 to 3.2 s |
+| after | 1.80 to 1.98 s | 0.03 to 0.09 s | 1.9 to 2.1 s |
+
+The machine was noisy: one extra before-run read 0.7 s total and one after-run 0.2 s, both discarded as outliers. Production build is faster than dev modules but was not timed separately.

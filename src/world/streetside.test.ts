@@ -6,6 +6,7 @@ import { signPose } from './signs';
 import { Grid, pointInPolygon, segmentDistance } from './spatial';
 import { aryks, arykGeometry, crossingFrame, lampGeometry, lampPositions, LAMP_SEED } from './streetside';
 import { TREE_SEED, treePositions } from './vegetation';
+import { pointInShelter } from '../shared/shelter';
 
 const d: DistrictData = JSON.parse(readFileSync(new URL('../../public/districts/tashkent-center/district.json', import.meta.url), 'utf8'));
 const edges = new Map(d.graph.edges.map(e => [e.id, e]));
@@ -75,6 +76,12 @@ describe('aryks on the real district', () => {
     for (const r of runs)
       for (const [x, z] of dense(r.points))
         for (const e of grid.query(x, z, 1)) expect(Math.hypot(e[0] - x, e[1] - z) < 1, `${x},${z}`).toBe(false);
+  });
+
+  it('no sample lies inside a bus shelter box plus 0.8 m', () => {
+    const stops = d.furniture.filter(f => f.kind === 'busStop');
+    expect(stops.length).toBeGreaterThan(20);
+    for (const r of runs) for (const p of dense(r.points)) for (const f of stops) expect(pointInShelter(f, p[0], p[1], 0.8), `${p} vs ${f.x},${f.z}`).toBe(false);
   });
 
   it('sits at width / 2 + 1.6 beside its avenue', () => {
@@ -152,6 +159,12 @@ describe('street lamps on the real district', () => {
       expect(kerbs[0]).toBeGreaterThanOrEqual(1 - 0.05);
       expect(kerbs[1] - kerbs[0]).toBeLessThan(1);
     }
+  });
+
+  it('computes once per district and seed', () => {
+    expect(lampPositions(d, LAMP_SEED)).toBe(lamps);
+    expect(aryks(d)).toBe(aryks(d));
+    expect(lampPositions(d, LAMP_SEED + 1)).not.toBe(lamps);
   });
 
   it('is deterministic for a seed', () => {

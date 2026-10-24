@@ -7,7 +7,7 @@ import { LAMP_SEED, lampPositions } from '../world/streetside';
 /** Road surface height; the ground collider top sits here so wheels rest on the asphalt. */
 export const DRIVE_SURFACE_Y = 0.09;
 const GROUND_MARGIN = 500;
-const LAMP_RADIUS = 0.12;
+const LAMP_RADIUS = 0.2;
 const LAMP_HEIGHT = 8;
 
 export async function createPhysics(d: DistrictData): Promise<{ world: RAPIER.World; ground: RAPIER.Collider }> {
