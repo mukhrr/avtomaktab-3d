@@ -270,3 +270,38 @@ Method: Vite dev server, in-app Chrome on an Apple M5, a fresh `district.json` f
 | after | 1.80 to 1.98 s | 0.03 to 0.09 s | 1.9 to 2.1 s |
 
 The machine was noisy: one extra before-run read 0.7 s total and one after-run 0.2 s, both discarded as outliers. Production build is faster than dev modules but was not timed separately.
+
+## Milestone 4c
+
+### Budget check (Task 4, 2026-10-24)
+
+Budgets: high at most 8 ms gpu p95 and 120 main-pass calls, low at most +6 calls over before M4c, all landmarks under 120k triangles.
+
+Method as in M4a and M4b: production builds served by `vite preview`, Playwright Chromium (Chrome for Testing, build 1243) on Apple M5 in a visible window, 1280x720 CSS at pixel ratio 2, preset from `avtomaktab.quality`, `?debug`, noon, samples from `window.__game.lastFrame` every frame for 4.5 s after a 1.5 s warm-up. Views: chase at the spawn, and the square orbit framing (`?cam=-110,45,150&look=0,0`). "Before" is 30f5ed8 (M4c plan only), built and served from a scratch worktree at the same time as the branch; runs were interleaved (before, after, after, before). Cells give the range over two runs.
+
+High (gpu is not usable, see below):
+
+| View | gpu p50 / p95 before | gpu p50 / p95 after | render cpu p95 before / after | calls before / after | triangles before / after |
+|---|---|---|---|---|---|
+| chase, spawn | 17.1 to 19.3 / 19.0 to 21.5 | 17.2 to 19.3 / 19.0 to 21.5 | 1.2 to 1.5 / 1.3 to 1.5 | 83 / 95 | 615k / 658k |
+| square orbit | 16.1 to 17.8 / 17.9 to 20.3 | 16.2 to 16.5 / 18.1 to 18.6 | 1.2 to 1.6 / 1.3 to 1.4 | 83 / 94 | 625k / 669k |
+
+Low:
+
+| View | gpu p50 / p95 before | gpu p50 / p95 after | calls before / after | triangles before / after |
+|---|---|---|---|---|
+| chase, spawn | 1.2 to 1.5 / 3.5 to 3.9 | 1.4 / 4.0 to 4.5 | 63 / 69 | 374k / 397k |
+| square orbit | 1.2 to 1.4 / 4.3 to 4.4 | 1.3 to 1.4 / 3.5 to 4.1 | 63 / 68 | 377k / 398k |
+
+All times in ms.
+
+Result:
+
+- Landmarks add 43k triangles in high chase and 22k in low, against 120k allowed.
+- Calls: high 95 (120 allowed). Low +6 in chase (69) and +5 in the orbit view, exactly at the +6 limit.
+- Absolute gpu time could not be measured. During this check another Chrome window kept the GPU busy (WindowServer and Chrome's GPU process at 30% or more), and high read 16 to 19 ms p50 on both sides, against 6.6 in the M4b run. The before and after runs share the same disturbance, so the difference is usable: high gpu p50 and p95 changed by 0 to +0.3 ms (chase) and about 0 (orbit). Added to M4b's 7.6 ms chase p95 that predicts roughly 7.6 to 7.9 ms, inside 8 ms but with a thin margin. Re-run high on a quiet machine to confirm the absolute figure.
+- Low gpu p95 sits at the timer noise floor noted in M4a (3.4 ms or more), with changes of +0.1 to +0.6 ms in chase and none in orbit.
+
+### Tuning (Task 4)
+
+No values changed. Calls and triangles are within budget and the measured gpu deltas are small, so lathe segments and colonnade column count were left as built.
