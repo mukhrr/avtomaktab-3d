@@ -94,4 +94,12 @@ describe('createEnvironment', () => {
     env.setQuality(QUALITY.low);
     expect(lambert.defines?.USE_CSM).toBeUndefined();
   });
+
+  it.each([QUALITY.low, QUALITY.medium, QUALITY.high])('keeps shadow bias under 0.1 m in world units (cascades %#)', q => {
+    const { scene } = setup(q);
+    for (const l of shadowLights(scene)) {
+      expect(Math.abs(l.shadow.bias) * l.shadow.camera.far).toBeLessThan(0.1);
+      expect(l.shadow.camera.far).toBeLessThanOrEqual(1000);
+    }
+  });
 });

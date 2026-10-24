@@ -12,7 +12,9 @@ const LON = 69.2797;
 const SHADOW_HALF_SIZE = 120;
 const SUN_DISTANCE = 300;
 const SKY_SIZE = 2500;
-const SHADOW_BIAS = -0.0002;
+// three's bias is in [0, 1] of the shadow camera depth, so it is set as metres divided by that camera's far.
+const SHADOW_BIAS_M = 0.05;
+const CSM_LIGHT_FAR = 1000;
 const SHADOW_NORMAL_BIAS = 0.03;
 
 export interface Environment {
@@ -106,7 +108,7 @@ export function createEnvironment(
       single = new THREE.DirectionalLight();
       single.castShadow = true;
       single.shadow.mapSize.set(next.shadowMapSize, next.shadowMapSize);
-      single.shadow.bias = SHADOW_BIAS;
+      single.shadow.bias = -SHADOW_BIAS_M / (2 * SUN_DISTANCE);
       single.shadow.normalBias = SHADOW_NORMAL_BIAS;
       Object.assign(single.shadow.camera, {
         left: -SHADOW_HALF_SIZE, right: SHADOW_HALF_SIZE, top: SHADOW_HALF_SIZE, bottom: -SHADOW_HALF_SIZE, near: 1, far: 2 * SUN_DISTANCE,
@@ -124,13 +126,13 @@ export function createEnvironment(
         lightDirection: toSun.clone().negate(),
         lightIntensity: sunIntensity,
         lightNear: 1,
-        lightFar: 2000,
+        lightFar: CSM_LIGHT_FAR,
         lightMargin: 200,
       });
       // Fading hides the jump in shadow resolution where one cascade hands over to the next.
       csm.fade = true;
       for (const l of csm.lights) {
-        l.shadow.bias = SHADOW_BIAS;
+        l.shadow.bias = -SHADOW_BIAS_M / CSM_LIGHT_FAR;
         l.shadow.normalBias = SHADOW_NORMAL_BIAS;
       }
       csm.updateFrustums();
