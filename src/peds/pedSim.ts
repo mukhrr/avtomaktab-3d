@@ -2,6 +2,7 @@ import { FOOT_KINDS } from '../../tools/city/extract';
 import type { DistrictData, Vec2 } from '../shared/district';
 import { rng } from '../sim/rng';
 import type { SignalSystem } from '../sim/signals';
+import { CAR_CLASSES } from '../traffic/carClasses';
 import type { AgentView, CrossingOccupancy, PlayerState } from '../traffic/trafficSim';
 import { pointAlong } from '../world/roadGeometry';
 
@@ -71,6 +72,13 @@ const ZEBRA_GAP = 2;
 const UNMARKED_GAP = 4;
 const CAR_CORRIDOR = 5;
 const CAR_TAIL = 3;
+/** A car whose front has stood this close to an unsignalled crossing for WAITER_STARVED gets the next gap: new crossers wait for it. */
+const WAITER_REACH = 6;
+const WAITER_STARVED = 3;
+const WAITER_STILL = 0.5;
+const WAITER_PASSED = 2;
+const WAITER_GONE = 30;
+const PLAYER_KEY = -1;
 const HIT_MARGIN = 0.3;
 const HIT_SPEED = 1;
 const CROSS_SPEED: [number, number] = [1.2, 1.5];
@@ -194,6 +202,9 @@ export class PedSim implements CrossingOccupancy {
   /** Walker spawn samples taken during the last step. */
   spawnAttempts = 0;
   private readonly clear = new Map<number, boolean>();
+  private readonly standing = new Map<number, Map<number, number>>();
+  /** Unsignalled crossing index to the car new crossers wait for. */
+  private readonly yieldTo = new Map<number, number>();
   private readonly roadsAt: (p: Vec2) => string[];
 
   constructor(d: DistrictData, opts: { crossers: number; walkers: number; seed: number }) {
@@ -235,6 +246,7 @@ export class PedSim implements CrossingOccupancy {
 
   step(dt: number, player: PlayerState, cars: readonly AgentView[], signals: SignalSystem): void {
     this.clear.clear();
+    this.watchWaiters(dt, player, cars);
     for (const p of this.pool) {
       if (!p.active) continue;
       if (p.kind === 'crosser') this.stepCrosser(p, dt, player, cars, signals);
@@ -378,10 +390,44 @@ export class PedSim implements CrossingOccupancy {
       const gap = x.kind === 'zebra' ? ZEBRA_GAP : UNMARKED_GAP;
       const blocked = (c: { position: Vec2; heading: number; speed: number }) =>
         timeToArrival(c.position, c.heading, c.speed, x.centre) < gap;
-      ok = !cars.some(c => c.active && blocked(c)) && (x.kind === 'zebra' || !blocked(player));
+      ok = !this.yieldTo.has(k) && !cars.some(c => c.active && blocked(c)) && (x.kind === 'zebra' || !blocked(player));
     }
     this.clear.set(k, ok);
     return ok;
+  }
+
+  private watchWaiters(dt: number, player: PlayerState, cars: readonly AgentView[]): void {
+    const along = (x: CrossingGeom, c: { position: Vec2; heading: number }) =>
+      (x.centre[0] - c.position[0]) * Math.sin(c.heading) + (x.centre[1] - c.position[1]) * Math.cos(c.heading);
+    const kerbs = (x: CrossingGeom): [Vec2, Vec2] => [
+      [x.centre[0] - x.normal[0] * x.half, x.centre[1] - x.normal[1] * x.half],
+      [x.centre[0] + x.normal[0] * x.half, x.centre[1] + x.normal[1] * x.half],
+    ];
+    const all = [...cars.filter(c => c.active).map(c => ({ key: c.id, c, half: CAR_CLASSES[c.carClass].length / 2 })),
+      { key: PLAYER_KEY, c: player, half: player.length / 2 }];
+    for (const [k, key] of this.yieldTo) {
+      const x = this.crossings[k], v = all.find(e => e.key === key);
+      if (!v || along(x, v.c) < -(v.half + WAITER_PASSED) || segDist(v.c.position, ...kerbs(x)) > WAITER_GONE) this.yieldTo.delete(k);
+    }
+    const watched = new Set<number>();
+    for (const p of this.pool) if (p.active && p.kind === 'crosser' && this.crossings[p.crossing].kind !== 'signal') watched.add(p.crossing);
+    for (const k of this.standing.keys()) if (!watched.has(k) || this.yieldTo.has(k)) this.standing.delete(k);
+    for (const k of watched) {
+      if (this.yieldTo.has(k)) continue;
+      const x = this.crossings[k], [ka, kb] = kerbs(x), times = this.standing.get(k) ?? new Map<number, number>();
+      this.standing.set(k, times);
+      for (const { key, c, half } of all) {
+        const front: Vec2 = [c.position[0] + Math.sin(c.heading) * half, c.position[1] + Math.cos(c.heading) * half];
+        if (Math.abs(c.speed) >= WAITER_STILL || dist(c.position, x.centre) > x.half + half + WAITER_REACH
+          || along(x, c) <= 0 || segDist(front, ka, kb) > WAITER_REACH) {
+          times.delete(key);
+          continue;
+        }
+        const t = (times.get(key) ?? 0) + dt;
+        times.set(key, t);
+        if (t >= WAITER_STARVED) this.yieldTo.set(k, key);
+      }
+    }
   }
 
   private stepWalker(p: Ped, dt: number, player: PlayerState): void {
