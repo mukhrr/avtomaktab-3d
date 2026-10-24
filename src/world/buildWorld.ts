@@ -56,7 +56,7 @@ export function buildWorld(scene: THREE.Scene, d: DistrictData, mats: Record<Gro
   const footways = d.roads.filter((r: Road) => FOOT_KINDS.has(r.kind));
   addMerged(scene, d.areas.filter(a => a.kind === 'green').map(a => uv(polygonGeometry(a.outline, Y.green), 'grass')), mats.grass);
   addMerged(scene, [
-    ...d.areas.filter(a => a.kind === 'water').map(a => polygonGeometry(a.outline, Y.water)),
+    ...waterAreas(d).map(a => polygonGeometry(a.outline, Y.water)),
     ...d.waterways.map(w => ribbonGeometry(w.points, w.width, Y.water)),
   ], lambert(0x4f8fb0));
   addMerged(scene, footways.map(r => uv(ribbonGeometry(r.points, r.width, Y.sidewalk), 'sidewalk')), mats.sidewalk);
@@ -108,4 +108,10 @@ function addTrees(scene: THREE.Scene, d: DistrictData) {
   }), false));
   tree.dispose();
   scene.add(batchChunks(chunks, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })));
+}
+
+/** Fountain basins draw their own water, and the OSM polygon would show past the round rim. */
+export function waterAreas(d: DistrictData): DistrictData['areas'] {
+  const fountains = new Set(d.landmarks.filter(l => l.kind === 'fountain').map(l => l.id));
+  return d.areas.filter(a => a.kind === 'water' && !fountains.has(a.id));
 }

@@ -297,9 +297,10 @@ All times in ms.
 
 Result:
 
-- Landmarks add 43k triangles in high chase and 22k in low, against 120k allowed.
+- Landmarks add 43k main-pass triangles in high chase and 22k in low.
 - Calls: high 95 (120 allowed). Low +6 in chase (69) and +5 in the orbit view, exactly at the +6 limit.
-- Absolute gpu time could not be measured. During this check another Chrome window kept the GPU busy (WindowServer and Chrome's GPU process at 30% or more), and high read 16 to 19 ms p50 on both sides, against 6.6 in the M4b run. The before and after runs share the same disturbance, so the difference is usable: high gpu p50 and p95 changed by 0 to +0.3 ms (chase) and about 0 (orbit). Added to M4b's 7.6 ms chase p95 that predicts roughly 7.6 to 7.9 ms, inside 8 ms but with a thin margin. Re-run high on a quiet machine to confirm the absolute figure.
+- Absolute gpu time could not be measured. During this check another Chrome window kept the GPU busy (WindowServer and Chrome's GPU process at 30% or more), and high read 16 to 19 ms p50 on both sides, against 6.6 in the M4b run. Run-to-run spread within each side was about 2.5 ms at p95, so no change from the landmarks is measurable within that noise. The high 8 ms gpu p95 budget is open until high is re-run on a quiet machine.
+- Low chase read 69 calls (+6) in this run and 68 (+5) in the Task 3 run; orbit read 68. Triangle counts above are main-pass triangles including shadow cascades; the landmark models themselves are about 11.5k triangles against the 120k model budget.
 - Low gpu p95 sits at the timer noise floor noted in M4a (3.4 ms or more), with changes of +0.1 to +0.6 ms in chase and none in orbit.
 
 ### Tuning (Task 4)
