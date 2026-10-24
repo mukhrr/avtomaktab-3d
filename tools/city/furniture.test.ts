@@ -48,3 +48,15 @@ test('items on a crossing strip are dropped, bus stops slide clear along the roa
 test('a bus stop mapped far from any road is dropped', () => {
   expect(place(at('b3', 'busStop', 50, 120)).dropped.busStop).toBe(1);
 });
+
+test('a bus stop whose shelter would stand in a building slides along the road to a free spot', () => {
+  const building = [[10, 5], [30, 5], [30, 12], [10, 12]] as [number, number][];
+  const r = placeFurniture([at('b4', 'busStop', 20, 0)], [edge, side], nodes, [zebra], kinds, [building]);
+  expect(r.items).toHaveLength(1);
+  expect(r.items[0].x).toBeGreaterThan(30);
+});
+
+test('a bus stop with no building-free slot within reach is dropped', () => {
+  const wall = [[-50, 4], [200, 4], [200, 12], [-50, 12]] as [number, number][];
+  expect(placeFurniture([at('b5', 'busStop', 20, 0)], [edge, side], nodes, [zebra], kinds, [wall]).dropped.busStop).toBe(1);
+});

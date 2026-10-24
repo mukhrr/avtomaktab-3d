@@ -41,7 +41,7 @@ export function buildDistrict(xml: string, config: DistrictConfig, overrides: Ov
   }
   validateSigns(signs, graph.edges);
   const built = buildControllers(features.signals, graph.edges, graph.nodes, crossingsOffJunctions(crossings, graph.edges, graph.nodes));
-  const furniture = placeFurniture(rawFurniture, graph.edges, graph.nodes, built.crossings, new Map(features.roads.map(r => [r.id, r.kind])));
+  const furniture = placeFurniture(rawFurniture, graph.edges, graph.nodes, built.crossings, new Map(features.roads.map(r => [r.id, r.kind])), features.buildings.map(b => b.footprint));
   for (const kind of ['busStop', 'bench', 'bin'] as const) {
     const n = furniture.items.filter(i => i.kind === kind).length;
     log(`${kind}: ${n} placed, ${furniture.moved[kind]} moved, ${furniture.dropped[kind]} dropped`);

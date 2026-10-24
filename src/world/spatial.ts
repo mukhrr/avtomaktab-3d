@@ -40,3 +40,16 @@ export function segmentDistance(x: number, z: number, a: Vec2, b: Vec2): { d: nu
   const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz || 1)));
   return { d: Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t), t };
 }
+
+function segmentsCross(a: Vec2, b: Vec2, c: Vec2, d: Vec2): boolean {
+  const side = (p: Vec2, q: Vec2, r: Vec2) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
+  return side(a, b, c) * side(a, b, d) < 0 && side(c, d, a) * side(c, d, b) < 0;
+}
+
+/** True when two simple polygons share any area: a vertex inside the other, or crossing edges. */
+export function polygonsOverlap(p: Vec2[], q: Vec2[]): boolean {
+  if (p.some(v => pointInPolygon(v[0], v[1], q)) || q.some(v => pointInPolygon(v[0], v[1], p))) return true;
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++)
+    for (let k = 0, l = q.length - 1; k < q.length; l = k++) if (segmentsCross(p[j], p[i], q[l], q[k])) return true;
+  return false;
+}

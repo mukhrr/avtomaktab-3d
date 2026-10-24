@@ -1,13 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { DistrictData, FurnitureKind } from '../shared/district';
-import { SHELTER_LENGTH } from '../../tools/city/furniture';
+import { SHELTER_DEPTH, SHELTER_HEIGHT, SHELTER_LENGTH } from '../shared/shelter';
 import { paint } from './streetside';
-
-export { SHELTER_LENGTH };
-
-const SHELTER_DEPTH = 1.6;
-const SHELTER_HEIGHT = 2.5;
 
 export interface ShelterBox { x: number; z: number; heading: number; halfLength: number; halfDepth: number; halfHeight: number }
 
@@ -30,7 +25,7 @@ const merge = (parts: THREE.BufferGeometry[]) => {
 export function shelterGeometry(): { body: THREE.BufferGeometry; glass: THREE.BufferGeometry } {
   const frame = 0x4a4f54, roof = 0x3b6ea5, panel = 0xc9c2b2, wood = 0x8a6a45;
   const body = merge([
-    box(4.2, 0.1, 1.9, 0, 2.45, 0.1, roof),
+    box(SHELTER_LENGTH, 0.1, SHELTER_DEPTH, 0, 2.45, 0, roof),
     ...[-1.95, 1.95].flatMap(x => [-0.7, 0.7].map(z => box(0.08, 2.4, 0.08, x, 1.2, z, frame))),
     box(0.05, 1.9, 1.4, 1.95, 1.2, 0, panel),
     box(1.8, 0.06, 0.4, -0.5, 0.45, -0.45, wood),

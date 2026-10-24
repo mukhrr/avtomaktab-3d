@@ -5,6 +5,7 @@ import { FOOT_KINDS } from '../../tools/city/extract';
 import { rng } from '../sim/rng';
 import { batchChunks, groupByChunk } from './chunks';
 import { junctionPolygon, junctionTrim, pointAlong, ribbon } from './roadGeometry';
+import { pointInShelter } from '../shared/shelter';
 import { signalPose } from './signals';
 import { signPose } from './signs';
 import { Grid, pointInPolygon, segmentDistance } from './spatial';
@@ -27,6 +28,7 @@ const LAMP_CROSSING_GAP = 3;
 const POLE_GAP = 2;
 const ARYK_GAP = 0.2;
 const LAMP_DEDUPE = 6;
+const SHELTER_GAP = 0.8;
 const MEDIAN_DEDUPE = 16;
 const PAIR_RANGE = 30;
 const MIN_MEDIAN = 2;
@@ -251,7 +253,9 @@ export function lampPositions(d: DistrictData, seed: number): Lamp[] {
     for (const l of placed.query(x, z, r)) if ((double === undefined || l.double === double) && Math.hypot(l.x - x, l.z - z) < r) return true;
     return false;
   };
+  const stops = d.furniture.filter(f => f.kind === 'busStop');
   const free = (x: number, z: number) => {
+    if (stops.some(f => pointInShelter(f, x, z, SHELTER_GAP))) return false;
     if (roadClearance(c, x, z, 20) < LAMP_ROAD_GAP) return false;
     if (nearJunction(c, x, z, JUNCTION_GAP) || nearCrossing(c, x, z, LAMP_CROSSING_GAP) || inBuilding(c, x, z)) return false;
     for (const [px, pz] of poles.query(x, z, POLE_GAP)) if (Math.hypot(px - x, pz - z) < POLE_GAP) return false;

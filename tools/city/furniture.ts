@@ -1,10 +1,10 @@
 import type { Crossing, Furniture, FurnitureKind, GraphEdge, GraphNode, Vec2 } from '../../src/shared/district';
 import { junctionPolygon, junctionTrim } from '../../src/world/roadGeometry';
-import { Grid, pointInPolygon, segmentDistance } from '../../src/world/spatial';
+import { SHELTER_LENGTH, shelterCorners } from '../../src/shared/shelter';
+import { Grid, pointInPolygon, polygonsOverlap, segmentDistance } from '../../src/world/spatial';
 import { crossingFrame, type CrossingFrame } from '../../src/world/streetside';
 import { FOOT_KINDS, type RawFurniture } from './extract';
 
-export const SHELTER_LENGTH = 4;
 const STOP_SETBACK = 1.5;
 const STOP_CLEARANCE: [number, number] = [1, 2.5];
 const MIN_CLEARANCE = 0.8;
@@ -12,7 +12,7 @@ const SEARCH = 150;
 /** A stop mapped further than this from any road is a mapping error, not a stop to snap. */
 const STOP_REACH = 30;
 const SLIDE_STEP = 2;
-const SLIDE_MAX = 20;
+const SLIDE_MAX = 16;
 const JUNCTION_MARGIN = 0.5;
 const CROSSING_MARGIN = 1;
 const MOVED = 0.25;
@@ -45,7 +45,7 @@ function frameGap(f: CrossingFrame, x: number, z: number): number {
  * placed in the open. Only roads cars drive on count as carriageway; a bench on a footway is fine.
  */
 export function placeFurniture(
-  raw: RawFurniture[], edges: GraphEdge[], nodes: GraphNode[], crossings: Crossing[], roadKind: Map<string, string>,
+  raw: RawFurniture[], edges: GraphEdge[], nodes: GraphNode[], crossings: Crossing[], roadKind: Map<string, string>, footprints: Vec2[][] = [],
 ): FurnitureResult {
   const byId = new Map(edges.map(e => [e.id, e]));
   const road = new Grid<Seg>();
@@ -62,6 +62,11 @@ export function placeFurniture(
     if (!junctionTrim(n, touching).size) continue;
     const poly = junctionPolygon(n, touching), xs = poly.map(p => p[0]), zs = poly.map(p => p[1]);
     junctions.add(Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs), poly);
+  }
+  const buildings = new Grid<Vec2[]>();
+  for (const f of footprints) {
+    const xs = f.map(p => p[0]), zs = f.map(p => p[1]);
+    buildings.add(Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs), f);
   }
   const strips = new Grid<CrossingFrame>();
   for (const c of crossings) {
@@ -111,6 +116,8 @@ export function placeFurniture(
       if ((nearest(sx, sz)?.clearance ?? Infinity) < MIN_CLEARANCE) return null;
       if (inJunction(sx, sz, JUNCTION_MARGIN) || onCrossing(sx, sz, CROSSING_MARGIN)) return null;
     }
+    const box = shelterCorners({ x: px, z: pz, heading }, 0);
+    for (const f of buildings.query(px, pz, SHELTER_LENGTH)) if (polygonsOverlap(box, f)) return null;
     return { x: px, z: pz, heading };
   };
 

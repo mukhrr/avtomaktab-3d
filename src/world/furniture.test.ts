@@ -4,7 +4,11 @@ import { junctionPolygon, junctionTrim } from './roadGeometry';
 import { FOOT_KINDS } from '../../tools/city/extract';
 import { pointInPolygon, segmentDistance } from './spatial';
 import { crossingFrame } from './streetside';
-import { shelterBoxes, SHELTER_LENGTH } from './furniture';
+import { shelterCorners, pointInShelter, SHELTER_LENGTH } from '../shared/shelter';
+import { shelterBoxes } from './furniture';
+import { lampPositions, LAMP_SEED } from './streetside';
+import { polygonsOverlap } from './spatial';
+import { TREE_SEED, treePositions } from './vegetation';
 
 const d: DistrictData = JSON.parse(readFileSync(new URL('../../public/districts/tashkent-center/district.json', import.meta.url), 'utf8'));
 const edges = new Map(d.graph.edges.map(e => [e.id, e]));
@@ -68,5 +72,16 @@ describe('furniture on the real district', () => {
         expect(polygons.some(p => pointInPolygon(x, z, p))).toBe(false);
       }
     }
+  });
+
+  it('no shelter box overlaps a building footprint', () => {
+    for (const f of d.furniture.filter(f => f.kind === 'busStop'))
+      for (const b of d.buildings) expect(polygonsOverlap(shelterCorners(f, 0), b.footprint), `${f.id} in ${b.id}`).toBe(false);
+  });
+
+  it('no lamp or tree stands inside a shelter box plus 0.8 m', () => {
+    const stops = d.furniture.filter(f => f.kind === 'busStop');
+    const poles = [...lampPositions(d, LAMP_SEED).map(l => [l.x, l.z]), ...treePositions(d, TREE_SEED)];
+    for (const [x, z] of poles) for (const f of stops) expect(pointInShelter(f, x, z, 0.8), `${f.id} ${x},${z}`).toBe(false);
   });
 });
