@@ -4,9 +4,9 @@ import { DRIVE_SURFACE_Y } from '../physics/world';
 import type { Controls } from '../vehicle/drivetrain';
 import { Vehicle } from '../vehicle/vehicle';
 import type { AgentView } from './trafficSim';
-import { closingSpeed, TrafficBodies } from './trafficBodies';
+import { approachSpeeds, closingSpeed, TrafficBodies } from './trafficBodies';
 
-const idle: Controls = { throttle: 0, brake: 0, clutch: 0, steer: 0, handbrake: false, shiftUp: false, shiftDown: false, ignition: false };
+const idle: Controls = { throttle: 0, brake: 0, clutch: 0, steer: 0, handbrake: false, shiftUp: false, shiftDown: false, ignition: false, toggleLeft: false, toggleRight: false, toggleHazard: false, toggleBelt: false, glance: null };
 
 const agent = (over: Partial<AgentView>): AgentView => ({
   id: 0, active: true, position: [0, 0], heading: 0, carClass: 'cobalt', colour: 0, braking: false, speed: 0, ...over,
@@ -69,4 +69,16 @@ test('an AI car at 10 m/s hitting a stationary player reports a closing speed ne
   expect(reported).not.toBeNull();
   expect(reported!).toBeGreaterThan(8);
   expect(reported!).toBeLessThan(12);
+});
+
+test('approachSpeeds tells a rear-ending AI car from the player driving into one', () => {
+  const player = { position: [0, 0] as [number, number], heading: 0, speed: 1.5, length: 4.48, width: 1.74 };
+  const behind = { position: [0, -4.5] as [number, number], heading: 0, speed: 5 };
+  const ahead = { position: [0, 4.5] as [number, number], heading: 0, speed: 0 };
+  const r = approachSpeeds(player, behind as never);
+  expect(r.player).toBeCloseTo(-1.5, 5);
+  expect(r.other).toBeCloseTo(5, 5);
+  const into = approachSpeeds(player, ahead as never);
+  expect(into.player).toBeCloseTo(1.5, 5);
+  expect(into.other).toBeCloseTo(0, 5);
 });

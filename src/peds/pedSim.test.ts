@@ -70,6 +70,19 @@ test('a zebra crosser waits for a car 15 m away at 12 m/s and crosses when it is
   expect(c.sim.occupied('z1')).toBe(true);
 });
 
+test('curbWaiting is true while a crosser holds at the curb and false once it steps out', () => {
+  const c = setup(testNetwork(), { crossers: 1, walkers: 0 });
+  const near = car([-55, 0], Math.PI / 2, 12);
+  c.step();
+  for (let i = 0; i < 60; i++) c.step(AWAY, [near]);
+  expect(c.sim.curbWaiting('z1')).toBe(true);
+  expect(c.sim.occupied('z1')).toBe(false);
+  c.step(AWAY, [car([-100, 0], Math.PI / 2, 12)]);
+  expect(c.sim.curbWaiting('z1')).toBe(false);
+  expect(c.sim.occupied('z1')).toBe(true);
+  expect(c.sim.curbWaiting('nope')).toBe(false);
+});
+
 test('a car already past the crossing, or one stopped far away, does not block', () => {
   const c = setup(testNetwork(), { crossers: 1, walkers: 0 });
   c.step();
@@ -260,4 +273,40 @@ test('spawning does nothing without footways in range and is capped per step', (
   c.step({ ...AWAY, position: [-60, 30] });
   expect(c.sim.spawnAttempts).toBeGreaterThan(0);
   expect(c.sim.spawnAttempts).toBeLessThanOrEqual(20);
+});
+
+describe('clearNear', () => {
+  it('removes pedestrians within the radius and keeps the rest', () => {
+    const { sim, step } = setup(testNetwork(), { crossers: 0, walkers: 20 });
+    for (let i = 0; i < 5; i++) step();
+    const active = sim.peds.filter(p => p.active);
+    expect(active.length).toBeGreaterThan(1);
+    const centre = active[0].position.slice() as Vec2;
+    sim.clearNear(centre, 15);
+    for (const p of sim.peds) if (p.active) expect(dist(p.position, centre)).toBeGreaterThanOrEqual(15);
+    expect(sim.peds.some(p => p.active)).toBe(active.some(p => dist(p.position, centre) >= 15));
+  });
+});
+
+test.each([
+  // The first leaves along the pavement; at the second there is no pavement off the kerb ends, so nobody walks on.
+  ['a road-wide zebra 8 m from the junction', -8, 7, true],
+  ['a narrow zebra in the junction mouth, its kerb ends on the cross road', -3, 3, false],
+])('crossers leaving %s stay off every carriageway once off the band', (_, x, width, walkOn) => {
+  const d = testNetwork();
+  d.crossings = [{ id: 'j1', position: [x, 0], kind: 'zebra', edgeId: 'w', at: -x, width }];
+  const c = setup(d, { crossers: 20, walkers: 0 });
+  const roads = d.roads.filter(r => r.kind !== 'footway');
+  const w = roads.find(r => r.id === 'w')!;
+  let checked = 0;
+  for (let i = 0; i < 60 * 30; i++) {
+    c.step();
+    for (const p of c.sim.peds) {
+      // The band itself: waiting at its ends and walking across it is where a crosser is meant to be on the road.
+      if (!p.active || (Math.abs(p.position[0] - x) <= 2.5 && Math.abs(p.position[1]) <= w.width / 2)) continue;
+      checked++;
+      for (const r of roads) expect(distToPolyline(p.position, r.points)).toBeGreaterThan(r.width / 2);
+    }
+  }
+  expect(checked > 0).toBe(walkOn);
 });

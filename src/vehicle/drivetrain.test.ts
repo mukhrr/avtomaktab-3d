@@ -1,6 +1,6 @@
 import { engineTorque, stepDrivetrain, type Controls, type DrivetrainState } from './drivetrain';
 
-const idle: Controls = { throttle: 0, brake: 0, clutch: 0, steer: 0, handbrake: false, shiftUp: false, shiftDown: false, ignition: false };
+const idle: Controls = { throttle: 0, brake: 0, clutch: 0, steer: 0, handbrake: false, shiftUp: false, shiftDown: false, ignition: false, toggleLeft: false, toggleRight: false, toggleHazard: false, toggleBelt: false, glance: null };
 const manual = (gear: number): DrivetrainState => ({ gearbox: 'manual', gear, rpm: 800, running: true });
 
 test('torque curve', () => {

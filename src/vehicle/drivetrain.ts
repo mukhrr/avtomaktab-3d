@@ -8,7 +8,15 @@ export interface Controls {
   shiftUp: boolean;
   shiftDown: boolean;
   ignition: boolean;
+  toggleLeft: boolean;
+  toggleRight: boolean;
+  toggleHazard: boolean;
+  toggleBelt: boolean;
+  /** Held: which mirror the driver is checking, from keys, right stick or mouse look. */
+  glance: Glance | null;
 }
+
+export type Glance = 'left' | 'rear' | 'right';
 
 export type Gearbox = 'manual' | 'auto';
 

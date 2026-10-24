@@ -1,0 +1,126 @@
+{
+  "exam.brief": {
+    "uz": "Xavfsizlik kamarini taqing, ko'zgularni sozlang. Yo'lga chiqishdan oldin ko'rsatkichni yoqing.",
+    "ru": "Пристегните ремень, настройте зеркала. Перед началом движения включите указатель поворота."
+  },
+  "exam.start": {
+    "uz": "Yo'lga chiqing",
+    "ru": "Начинайте движение"
+  },
+  "exam.turnLeftAhead": {
+    "uz": "Keyingi chorrahada chapga burilamiz",
+    "ru": "На следующем перекрёстке поворачиваем налево"
+  },
+  "exam.turnLeftNow": {
+    "uz": "Hozir chapga buriling",
+    "ru": "Поворачивайте налево"
+  },
+  "exam.turnRightAhead": {
+    "uz": "Keyingi chorrahada o'ngga burilamiz",
+    "ru": "На следующем перекрёстке поворачиваем направо"
+  },
+  "exam.turnRightNow": {
+    "uz": "Hozir o'ngga buriling",
+    "ru": "Поворачивайте направо"
+  },
+  "exam.straight": {
+    "uz": "Chorrahada to'g'ri davom eting",
+    "ru": "На перекрёстке продолжайте прямо"
+  },
+  "exam.uturn": {
+    "uz": "Imkon bo'lsa, orqaga qayriling",
+    "ru": "Где возможно, развернитесь"
+  },
+  "exam.reroute": {
+    "uz": "Yo'nalish o'zgardi, yangi yo'ldan boramiz",
+    "ru": "Маршрут изменён, едем по новому пути"
+  },
+  "exam.finishAhead": {
+    "uz": "Manzil oldinda",
+    "ru": "Конечная точка впереди"
+  },
+  "exam.stopHere": {
+    "uz": "Shu yerda to'xtang",
+    "ru": "Остановитесь здесь"
+  },
+  "exam.passed": {
+    "uz": "Imtihondan o'tdingiz",
+    "ru": "Экзамен сдан"
+  },
+  "exam.failed": {
+    "uz": "Imtihondan o'tolmadingiz",
+    "ru": "Экзамен не сдан"
+  },
+  "penalty.redLight": {
+    "uz": "Qizil chiroqqa o'tdi",
+    "ru": "Проезд на красный сигнал"
+  },
+  "penalty.yellowEntry": {
+    "uz": "Sariq chiroqda chorrahaga kirdi",
+    "ru": "Выезд на перекрёсток на жёлтый"
+  },
+  "penalty.stopLinePast": {
+    "uz": "To'xtash chizig'idan o'tib to'xtadi",
+    "ru": "Остановка за стоп-линией"
+  },
+  "penalty.noFullStopAtStopSign": {
+    "uz": "STOP belgisida to'xtamadi",
+    "ru": "Нет остановки у знака STOP"
+  },
+  "penalty.pedestrianNotYielded": {
+    "uz": "Piyodaga yo'l bermadi",
+    "ru": "Не уступил пешеходу"
+  },
+  "penalty.vehicleNotYielded": {
+    "uz": "Ustunlikka ega transportga yo'l bermadi",
+    "ru": "Не уступил дорогу транспорту"
+  },
+  "penalty.oncomingLane": {
+    "uz": "Qarama-qarshi qatnov bo'lagiga chiqdi",
+    "ru": "Выезд на встречную полосу"
+  },
+  "penalty.wrongWayOneway": {
+    "uz": "Bir tomonlama yo'lda teskari yurdi",
+    "ru": "Встречное движение по односторонней дороге"
+  },
+  "penalty.noEntry": {
+    "uz": "\"Kirish taqiqlangan\" belgisidan o'tdi",
+    "ru": "Проезд под знак «Въезд запрещён»"
+  },
+  "penalty.turnRestriction": {
+    "uz": "Burilish taqiqlangan joyda burildi",
+    "ru": "Поворот в запрещённом месте"
+  },
+  "penalty.collisionCar": {
+    "uz": "Transport vositasiga urildi",
+    "ru": "Столкновение с автомобилем"
+  },
+  "penalty.collisionPedestrian": {
+    "uz": "Piyodaga urildi",
+    "ru": "Наезд на пешехода"
+  },
+  "penalty.collisionObstacle": {
+    "uz": "To'siqqa urildi",
+    "ru": "Столкновение с препятствием"
+  },
+  "penalty.speedingSevere": {
+    "uz": "Tezlikni keskin oshirdi",
+    "ru": "Грубое превышение скорости"
+  },
+  "penalty.noIndicator": {
+    "uz": "Burilish ko'rsatkichini yoqmadi",
+    "ru": "Не включил поворотник"
+  },
+  "penalty.noMirrorCheck": {
+    "uz": "Ko'zguga qaramadi",
+    "ru": "Не посмотрел в зеркало"
+  },
+  "penalty.wrongLaneForTurn": {
+    "uz": "Burilish uchun noto'g'ri qatordan burildi",
+    "ru": "Поворот из неправильной полосы"
+  },
+  "penalty.stoppedOnCrossing": {
+    "uz": "Piyodalar o'tish joyida to'xtadi",
+    "ru": "Остановка на пешеходном переходе"
+  }
+}

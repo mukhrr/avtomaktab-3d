@@ -9,8 +9,9 @@ const NEXIA = CAR_CLASSES.nexia.length;
 const AWAY: PlayerState = { position: [100, 60], heading: 0, speed: 0, length: 4.5, width: 1.8 };
 const FREE: CrossingOccupancy = { occupied: () => false };
 
-function setup(count = 0, seed = 1) {
+function setup(count = 0, seed = 1, edit?: (d: DistrictData) => void) {
   const d = testNetwork();
+  edit?.(d);
   const net = new LaneNetwork(d);
   const signals = new SignalSystem(d);
   const sim = new TrafficSim(d, net, signals, { count, seed });
@@ -272,21 +273,109 @@ test('stops for a person on an unmarked crossing', () => {
   expect(sim.agents[id].speed).toBeLessThan(0.1);
 });
 
-test('a car standing still for over 60 s is despawned only when it is out of the player\'s sight', () => {
+test('a car standing still for over 60 s is despawned when the player is far away', () => {
   const blocked: CrossingOccupancy = { occupied: id => id === 'z1' };
-  const run = (player: PlayerState) => {
+  const c = setup();
+  const id = c.sim.place(W, 10, { carClass: 'nexia' });
+  const alive: boolean[] = [];
+  for (let t = 0; t < 80; t += DT) {
+    c.step(AWAY, blocked);
+    if (Math.abs(t - 50) < DT / 2 || Math.abs(t - 79) < DT / 2) alive.push(c.sim.agents[id].active);
+  }
+  expect(Math.hypot(AWAY.position[0] + 40, AWAY.position[1])).toBeGreaterThan(120);
+  expect(alive).toEqual([true, false]);
+});
+
+describe('a jam beside the player', () => {
+  const blocked: CrossingOccupancy = { occupied: id => id === 'z1' };
+  /** A car held at z1 (stopped from about 12 s), then the player placed relative to it; alive at each checkpoint. */
+  const run = (place: (car: Vec2) => PlayerState, checks = [80, 140]) => {
     const c = setup();
     const id = c.sim.place(W, 10, { carClass: 'nexia' });
+    for (let t = 0; t < 10; t += DT) c.step(AWAY, blocked);
+    const player = place([...c.sim.agents[id].position] as Vec2);
     const alive: boolean[] = [];
-    for (let t = 0; t < 80; t += DT) {
+    for (let t = 10; t < checks[checks.length - 1] + 1; t += DT) {
       c.step(player, blocked);
-      if (Math.abs(t - 50) < DT / 2 || Math.abs(t - 79) < DT / 2) alive.push(c.sim.agents[id].active);
+      if (checks.some(k => Math.abs(t - k) < DT / 2)) alive.push(c.sim.agents[id].active);
     }
     return alive;
   };
-  expect(Math.hypot(AWAY.position[0] + 40, AWAY.position[1])).toBeGreaterThan(120);
-  expect(run(AWAY)).toEqual([true, false]);
-  expect(run({ ...AWAY, position: [-40, 30] })).toEqual([true, true]);
+  const east = (x: number, z: number): PlayerState => ({ ...AWAY, position: [x, z], heading: Math.PI / 2 });
+
+  it('clears a car behind the player after 60 s', () => {
+    expect(run(([x, z]) => east(x + 10, z + 5))).toEqual([false, false]);
+  });
+
+  it('keeps a car beside the player past 60 s and clears it after 120 s', () => {
+    expect(run(([x, z]) => east(x, z + 4))).toEqual([true, false]);
+  });
+
+  it('keeps a car 30 m ahead past 60 s and clears it after 120 s', () => {
+    expect(run(([x, z]) => east(x - 30, z + 5))).toEqual([true, false]);
+  });
+
+  it('clears a car standing within 15 m in front of the player only as a last resort, after 240 s', () => {
+    expect(run(([x, z]) => east(x - 10, z), [140, 230, 260])).toEqual([true, true, false]);
+  });
+
+  it('never clears a car the player is touching', () => {
+    expect(run(([x, z]) => east(x, z + 1.8), [140, 260])).toEqual([true, true]);
+  });
+});
+
+test('passes a standing player angled in the oncoming lane who is beside, not on, its path', () => {
+  const c = setup();
+  const player: PlayerState = { position: [100, -1.75], heading: -Math.PI / 2 + 0.61, speed: 0, length: 4.5, width: 1.8 };
+  const id = c.sim.place(E, 20, { carClass: 'nexia', speed: 10, route: [{ edgeId: 'tE', dir: 1, lane: 0 }] });
+  for (let t = 0; t < 20; t += DT) {
+    c.step(player);
+    const a = c.sim.agents[id];
+    if (!a.active) break;
+    expect(boxesOverlap(corners(a.position, a.heading, NEXIA, CAR_CLASSES.nexia.width),
+      corners(player.position, player.heading, player.length, player.width))).toBe(false);
+  }
+  expect(c.sim.agents[id].position[0]).toBeGreaterThan(120);
+});
+
+test('still queues behind that player once it starts to move', () => {
+  const c = setup();
+  const player: PlayerState = { position: [100, -1.75], heading: -Math.PI / 2 + 0.61, speed: 1, length: 4.5, width: 1.8 };
+  const id = c.sim.place(E, 20, { carClass: 'nexia', speed: 10 });
+  for (let t = 0; t < 20; t += DT) c.step(player);
+  expect(c.sim.agents[id].position[0]).toBeLessThan(100);
+});
+
+test('turns right only from the rightmost lane and left only from the leftmost', () => {
+  const twoLanes = (d: DistrictData) => {
+    const w = d.graph.edges.find(e => e.id === 'w')!;
+    w.lanesBackward = 2;
+    w.width = 10.5;
+    // Carry n and s on past their ends so turning into them is not a dead end, which free choice avoids.
+    for (const [arm, end, to] of [['n', [0, -120], [60, -120]], ['s', [0, 120], [60, 120]]] as const) {
+      const node = d.graph.nodes.find(x => x.id === arm)!;
+      const id = `${arm}X`;
+      d.graph.edges.push({ ...d.graph.edges.find(e => e.id === arm)!, id, roadId: id, from: arm, to: `${arm}2`, points: [[...end], [...to]], nodeIds: [arm, `${arm}2`] });
+      d.graph.nodes.push({ id: `${arm}2`, position: [...to], edges: [id] });
+      node.edges.push(id);
+    }
+  };
+  const seen = new Set<string>();
+  const c = setup(0, 1, twoLanes);
+  for (let k = 0; k < 40; k++) {
+    for (const lane of [0, 1]) {
+      const ref: LaneRef = { ...W, lane };
+      const id = c.sim.place(ref, c.net.path(ref).length - 35, { carClass: 'nexia' });
+      c.step();
+      const turn = c.sim.inspect(id)!.turn;
+      c.sim.clearNear(c.sim.agents[id].position, 1);
+      seen.add(`${lane}:${turn}`);
+      if (lane === 1) expect(turn).not.toBe('right');
+      if (lane === 0) expect(turn).not.toBe('left');
+    }
+  }
+  expect(seen).toContain('0:right');
+  expect(seen).toContain('1:left');
 });
 
 test('a car already inside the 3 m setback of an occupied zebra still stops before it', () => {
@@ -414,7 +503,7 @@ function twinJunctions(): DistrictData {
   const nodes = Object.entries(pos).map(([id, position]) => ({ id, position, edges: edges.filter(e => e.from === id || e.to === id).map(e => e.id) }));
   return {
     name: 'twin', origin: { lat: 0, lon: 0 }, bounds: { minX: -110, maxX: 120, minZ: -110, maxZ: 110 },
-    roads: [], buildings: [], areas: [], waterways: [], signals: [], crossings: [], controllers: [], graph: { nodes, edges },
+    roads: [], buildings: [], areas: [], waterways: [], signals: [], crossings: [], controllers: [], signs: [], graph: { nodes, edges },
   };
 }
 
@@ -519,4 +608,15 @@ test('a same-approach stream over 10 s never shares a wide unsignalled T, and th
   expect(streamOnNode).toBeGreaterThan(10);
   expect(crossEntered).toBeGreaterThanOrEqual(0);
   expect(crossEntered).toBeLessThan(15);
+});
+
+describe('clearNear', () => {
+  it('removes cars within the radius and keeps the rest', () => {
+    const { net, sim } = setup();
+    const near = sim.place(N, 10), far = sim.place({ edgeId: 'e', dir: 1, lane: 0 }, 150);
+    const at = pointAt(net.path(N).points, 12).position;
+    sim.clearNear(at, 20);
+    expect(sim.agents[near].active).toBe(false);
+    expect(sim.agents[far].active).toBe(true);
+  });
 });

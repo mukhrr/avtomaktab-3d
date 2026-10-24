@@ -6,6 +6,7 @@ import { dashes, edgeMarkings } from './markings';
 import { addMerged, polygonGeometry, ribbonGeometry } from './meshes';
 import { junctionPolygon, junctionTrim, trimEdge } from './roadGeometry';
 import { addCrossings } from './crossings';
+import { addSigns } from './signs';
 import { addSignals, type SignalLamps } from './signals';
 import { treePositions } from './vegetation';
 
@@ -59,6 +60,7 @@ export function buildWorld(scene: THREE.Scene, d: DistrictData): { signalLamps: 
   addBuildings(scene, d.buildings);
   addTrees(scene, d);
   addCrossings(scene, d);
+  addSigns(scene, d);
   return { signalLamps: addSignals(scene, d) };
 }
 

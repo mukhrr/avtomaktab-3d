@@ -16,3 +16,49 @@
 .hud .minimap { position: absolute; right: 16px; bottom: 16px; width: 200px; height: 200px; }
 .hud .minimap canvas { width: 100%; height: 100%; border-radius: 50%; border: 2px solid #fff8; }
 @media (max-width: 600px) { .hud .minimap { width: 120px; height: 120px; } .hud .tach { width: 110px; } }
+.hud .cabin { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 22px; }
+.hud .cabin .arrow { color: #fff3; text-shadow: none; }
+.hud .cabin .arrow.blink { color: #3ddc5a; animation: hud-blink 0.667s steps(1) infinite; }
+.hud .cabin .hazard { color: #fff3; text-shadow: none; }
+.hud .cabin .hazard.blink { color: #ff4d3a; animation: hud-blink 0.667s steps(1) infinite; }
+.hud .cabin .belt { font-size: 18px; padding: 0 4px; border-radius: 4px; }
+.hud .cabin .belt.off { background: #ff4d3a; }
+.hud .cabin .mirrors { display: flex; gap: 4px; }
+.hud .cabin .mirrors i { width: 14px; height: 8px; border-radius: 2px; background: #fff3; }
+.hud .cabin .mirrors i.on { background: #fff; }
+@keyframes hud-blink { 0% { opacity: 1; } 50% { opacity: 0.15; } }
+.hud .overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #0008; pointer-events: auto; text-shadow: none; }
+.hud .card { background: #15181cf0; border-radius: 10px; padding: 20px 24px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow: auto; box-sizing: border-box; }
+.hud .card h1 { margin: 0 0 4px; font-size: 26px; }
+.hud .card label { display: block; margin: 14px 0 6px; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.7; }
+.hud .practice { display: inline-block; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #ffb02e; }
+.hud .start { width: 360px; }
+.hud .pick { display: flex; gap: 6px; }
+.hud .pick button, .hud .card button { flex: 1; font: inherit; font-size: 15px; color: #fff; background: #ffffff14; border: 1px solid #ffffff30; border-radius: 6px; padding: 8px 12px; cursor: pointer; }
+.hud .pick button.on { background: #3d8bff; border-color: #3d8bff; }
+.hud .card button.go { background: #3ddc5a; border-color: #3ddc5a; color: #08210f; font-weight: 700; }
+.hud .start button.go { width: 100%; margin-top: 18px; padding: 10px; }
+.hud .start .note { margin: 12px 0 0; font-size: 13px; opacity: 0.75; }
+.hud .exam { left: 50%; top: 16px; transform: translateX(-50%); text-align: center; min-width: 160px; }
+.hud .exam .next { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 22px; font-weight: 700; }
+.hud .exam .dir { font-size: 30px; }
+.hud .exam .points { font-size: 15px; }
+.hud .toast { position: absolute; left: 50%; top: 34%; transform: translateX(-50%); padding: 8px 14px; border-radius: 6px; font-size: 17px; font-weight: 700; color: #111; text-shadow: none; }
+.hud .toast.tier-fail { background: #ff4d3a; color: #fff; }
+.hud .toast.tier-high { background: #ffb02e; }
+.hud .toast.tier-low { background: #f2d74e; }
+.hud .subtitle { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); max-width: 70vw; padding: 6px 12px; border-radius: 6px; background: #000b; font-size: 18px; text-align: center; text-shadow: none; }
+.hud .debrief h1.pass { color: #3ddc5a; }
+.hud .debrief h1.fail { color: #ff4d3a; }
+.hud .debrief .facts { display: flex; flex-wrap: wrap; gap: 18px; margin: 6px 0 14px; font-size: 15px; }
+.hud .debrief .body { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.hud .debrief canvas { border-radius: 6px; max-width: 100%; height: auto !important; }
+.hud .debrief .list { min-width: 260px; max-width: 420px; }
+.hud .debrief h2 { margin: 0 0 8px; font-size: 16px; }
+.hud .debrief ol { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+.hud .debrief li { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid #ffffff14; }
+.hud .debrief li i { flex: none; width: 20px; height: 20px; border-radius: 50%; color: #111; font-style: normal; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.hud .debrief li .time { opacity: 0.6; font-variant-numeric: tabular-nums; }
+.hud .debrief li .text { flex: 1; }
+.hud .debrief .buttons { display: flex; gap: 10px; margin-top: 16px; }
+@media (max-width: 600px) { .hud .start { width: 100%; } .hud .debrief .list { min-width: 0; } }

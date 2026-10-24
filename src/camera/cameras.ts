@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { Glance } from '../vehicle/drivetrain';
 
 export type CameraMode = 'chase' | 'cockpit' | 'top';
 
@@ -18,6 +19,24 @@ const RECENTRE_RATE = 6;
 /** Car body meshes live on this layer so the cockpit camera can hide them. */
 export const CAR_LAYER = 1;
 
+const GLANCE_YAW = THREE.MathUtils.degToRad(35);
+const REAR_PITCH = THREE.MathUtils.degToRad(10);
+const REAR_YAW = THREE.MathUtils.degToRad(15);
+// Head pose a keyboard or stick glance turns to; chosen to put each mirror in the middle of the view.
+const GLANCE_POSE: Record<Glance, { yaw: number; pitch: number }> = {
+  left: { yaw: THREE.MathUtils.degToRad(60), pitch: 0 },
+  right: { yaw: THREE.MathUtils.degToRad(-60), pitch: 0 },
+  rear: { yaw: 0, pitch: THREE.MathUtils.degToRad(20) },
+};
+const GLANCE_RATE = 12;
+
+/** Which mirror a cockpit mouse look amounts to; yaw positive = left, pitch positive = up. */
+export function lookGlance(yaw: number, pitch: number): Glance | null {
+  if (yaw > GLANCE_YAW) return 'left';
+  if (yaw < -GLANCE_YAW) return 'right';
+  return pitch > REAR_PITCH && Math.abs(yaw) <= REAR_YAW ? 'rear' : null;
+}
+
 export const nextMode = (m: CameraMode): CameraMode => MODES[(MODES.indexOf(m) + 1) % MODES.length];
 
 export function chaseOffset(_heading: number, speed: number): { back: number; up: number } {
@@ -26,6 +45,8 @@ export function chaseOffset(_heading: number, speed: number): { back: number; up
 
 export class CameraRig {
   mode: CameraMode = 'chase';
+  /** Keyboard or stick glance; takes over from mouse look while set. */
+  glance: Glance | null = null;
   private yaw = 0;
   private pitch = 0;
   private dragging = false;
@@ -44,9 +65,14 @@ export class CameraRig {
     });
   }
 
-  /** Head yaw in cockpit view, radians, positive = looking left. Used for mirror checks in M3. */
+  /** Head yaw in cockpit view, radians, positive = looking left. */
   get headYaw(): number {
     return this.mode === 'cockpit' ? this.yaw : 0;
+  }
+
+  /** Head pitch in cockpit view, radians, positive = looking up. */
+  get headPitch(): number {
+    return this.mode === 'cockpit' ? this.pitch : 0;
   }
 
   cycle(): void {
@@ -59,7 +85,11 @@ export class CameraRig {
   update(car: THREE.Object3D, speed: number, dt: number): void {
     const p = car.position;
     if (this.mode === 'cockpit') {
-      if (!this.dragging) {
+      if (this.glance) {
+        const k = 1 - Math.exp(-dt * GLANCE_RATE), pose = GLANCE_POSE[this.glance];
+        this.yaw += (pose.yaw - this.yaw) * k;
+        this.pitch += (pose.pitch - this.pitch) * k;
+      } else if (!this.dragging) {
         const k = Math.exp(-dt * RECENTRE_RATE);
         this.yaw *= k;
         this.pitch *= k;

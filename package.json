@@ -12,7 +12,8 @@
     "test": "vitest run",
     "city:fetch": "tsx tools/city/fetch.ts",
     "bench:sim": "tsx tools/bench/sim.ts",
-    "city:build": "tsx tools/city/build.ts"
+    "city:build": "tsx tools/city/build.ts",
+    "exam:route": "tsx tools/exam/route.ts"
   },
   "keywords": [],
   "author": "",

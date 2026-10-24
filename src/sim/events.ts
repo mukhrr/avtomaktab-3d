@@ -1,5 +1,9 @@
 export type GameEvent =
-  | { type: 'collision'; with: 'car' | 'building'; speed: number; time: number }
+  | {
+    type: 'collision'; with: 'car' | 'building'; speed: number; time: number;
+    /** Car contacts: how fast each moved toward the other's centre at contact, m/s (negative: away). */
+    approach?: { player: number; other: number };
+  }
   | { type: 'pedestrianHit'; pedId: number; speed: number; time: number };
 
 const QUEUE_CAP = 256;

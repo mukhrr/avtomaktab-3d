@@ -33,3 +33,35 @@ test('keyboard clutch drops in instantly and releases gradually', () => {
   expect(released).toBeGreaterThan(0.5);
   expect(released).toBeLessThan(1);
 });
+
+test('Z, X, V, B fire once per press', () => {
+  const r = new InputReader();
+  const c = r.read(new Set(['KeyZ', 'KeyV']), new Set(['KeyZ', 'KeyX', 'KeyV', 'KeyB']), [null], 1 / 60);
+  expect([c.toggleLeft, c.toggleRight, c.toggleHazard, c.toggleBelt]).toEqual([true, true, true, true]);
+  const d = r.read(new Set(['KeyZ']), none, [null], 1 / 60);
+  expect([d.toggleLeft, d.toggleRight, d.toggleHazard, d.toggleBelt]).toEqual([false, false, false, false]);
+});
+
+test('holding 1, 2, 3 glances left, rear, right', () => {
+  const r = new InputReader();
+  expect(r.read(new Set(['Digit1']), none, [null], 1 / 60).glance).toBe('left');
+  expect(r.read(new Set(['Digit2']), none, [null], 1 / 60).glance).toBe('rear');
+  expect(r.read(new Set(['Digit3']), none, [null], 1 / 60).glance).toBe('right');
+  expect(r.read(none, none, [null], 1 / 60).glance).toBeNull();
+});
+
+test('pad D-pad and stick click fire on the press edge only', () => {
+  const r = new InputReader();
+  const c = r.read(none, none, [pad({ 14: 1, 15: 1, 13: 1, 10: 1 })], 1 / 60);
+  expect([c.toggleLeft, c.toggleRight, c.toggleHazard, c.toggleBelt]).toEqual([true, true, true, true]);
+  const d = r.read(none, none, [pad({ 14: 1, 15: 1, 13: 1, 10: 1 })], 1 / 60);
+  expect([d.toggleLeft, d.toggleRight, d.toggleHazard, d.toggleBelt]).toEqual([false, false, false, false]);
+});
+
+test('right stick past 0.6 glances left, up (rear) or right', () => {
+  const r = new InputReader();
+  expect(r.read(none, none, [pad({}, [0, 0, -0.7, 0])], 1 / 60).glance).toBe('left');
+  expect(r.read(none, none, [pad({}, [0, 0, 0, -0.7])], 1 / 60).glance).toBe('rear');
+  expect(r.read(none, none, [pad({}, [0, 0, 0.7, 0])], 1 / 60).glance).toBe('right');
+  expect(r.read(none, none, [pad({}, [0, 0, 0.5, 0.5])], 1 / 60).glance).toBeNull();
+});
