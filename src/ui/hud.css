@@ -37,6 +37,7 @@
 .hud .pick button, .hud .card button { flex: 1; font: inherit; font-size: 15px; color: #fff; background: #ffffff14; border: 1px solid #ffffff30; border-radius: 6px; padding: 8px 12px; cursor: pointer; }
 .hud .pick button.on { background: #3d8bff; border-color: #3d8bff; }
 .hud .card button.go { background: #3ddc5a; border-color: #3ddc5a; color: #08210f; font-weight: 700; }
+.hud .card button:disabled { opacity: 0.5; cursor: default; }
 .hud .start button.go { width: 100%; margin-top: 18px; padding: 10px; }
 .hud .start .note { margin: 12px 0 0; font-size: 13px; opacity: 0.75; }
 .hud .exam { left: 50%; top: 16px; transform: translateX(-50%); text-align: center; min-width: 160px; }

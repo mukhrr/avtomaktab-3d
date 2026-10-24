@@ -2,6 +2,7 @@ import type { ExamResult } from '../exam/examiner';
 import type { Tier } from '../exam/penalties';
 import type { Maneuver } from '../exam/route';
 import type { Lang } from '../i18n';
+import type { Quality } from '../render/quality';
 import type { Vec2 } from '../shared/district';
 import type { Gearbox } from '../vehicle/drivetrain';
 
@@ -35,6 +36,12 @@ export interface HudState {
   street: string;
   fps: number;
   drawCalls: number;
+  mainCalls: number;
+  mainTris: number;
+  cpuP50: number;
+  cpuP95: number;
+  gpuP50: number | null;
+  gpuP95: number | null;
   activeCars?: number;
   activePeds?: number;
   controllers?: number;
@@ -44,6 +51,9 @@ export interface HudState {
   belt: boolean;
   glance: 'left' | 'rear' | 'right' | null;
   screen: Screen;
+  probing: boolean;
+  quality: Quality;
+  loadedQuality: Quality;
   exam: ExamHudState | null;
   toast: Toast | null;
   subtitle: Subtitle | null;
@@ -60,7 +70,7 @@ export const gearLabel = (gearbox: Gearbox, gear: number): string =>
   gear === -1 ? 'R' : gear === 0 ? 'N' : gearbox === 'auto' ? `D${gear}` : String(gear);
 
 export function createHudStore(): HudStore {
-  let state: HudState = { speedKmh: 0, gear: 'N', rpm: 0, running: true, gearbox: 'auto', street: '', fps: 0, drawCalls: 0, indicator: null, hazard: false, belt: false, glance: null, screen: 'menu', exam: null, toast: null, subtitle: null, debrief: null };
+  let state: HudState = { speedKmh: 0, gear: 'N', rpm: 0, running: true, gearbox: 'auto', street: '', fps: 0, drawCalls: 0, mainCalls: 0, mainTris: 0, cpuP50: 0, cpuP95: 0, gpuP50: null, gpuP95: null, indicator: null, hazard: false, belt: false, glance: null, screen: 'menu', probing: false, quality: 'medium', loadedQuality: 'medium', exam: null, toast: null, subtitle: null, debrief: null };
   const listeners = new Set<() => void>();
   return {
     set(p) {

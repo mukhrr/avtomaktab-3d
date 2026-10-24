@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { DistrictData } from './shared/district';
 import { CameraRig, CAR_LAYER, lookGlance } from './camera/cameras';
 import { createMirrors } from './camera/mirrors';
+import { createGpuTimer, FrameStats } from './render/frameStats';
 import { fixedSteps, NO_EDGES, splitControls, STEP } from './physics/loop';
 import { ExamSession } from './exam/session';
 import { loadPenalties } from './exam/penalties';
@@ -25,6 +26,10 @@ import { trafficView } from './traffic/trafficView';
 import { newCabin, stepCabin } from './vehicle/cabin';
 import { InputReader } from './vehicle/input';
 import { Vehicle } from './vehicle/vehicle';
+import { useSkyAmbient } from './render/litMaterials';
+import { afterProbe, createProbe } from './render/probe';
+import { loadQuality, QUALITY, saveQuality, type Quality } from './render/quality';
+import { createGroundMaterials } from './world/groundMaterials';
 import { buildWorld } from './world/buildWorld';
 import { createEnvironment } from './world/environment';
 import { nearestLane } from './world/spawn';
@@ -51,8 +56,14 @@ const NO_KEYS = new Set<string>();
 const district: DistrictData = await (await fetch(`/districts/${DISTRICT}/district.json`)).json();
 const route: ExamRoute = await (await fetch(`/districts/${DISTRICT}/routes/${ROUTE}.json`)).json();
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// Antialiasing and ground textures are fixed for the page load, so the preset is read before anything is built.
+const storedQuality = loadQuality();
+const loadedQuality: Quality = storedQuality ?? 'medium';
+const quality = QUALITY[loadedQuality];
+let choice: StartChoice = loadChoice();
+
+const renderer = new THREE.WebGLRenderer({ antialias: quality.antialias, logarithmicDepthBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, quality.pixelRatioCap));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -60,11 +71,14 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 // Mirrors render several times per frame; count draw calls for the whole frame.
 renderer.info.autoReset = false;
 document.body.prepend(renderer.domElement);
+const gpuTimer = createGpuTimer(renderer.getContext() as WebGL2RenderingContext);
+const frameStats = new FrameStats();
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 3000);
-const env = createEnvironment(scene);
-const { signalLamps } = buildWorld(scene, district);
+const groundMats = createGroundMaterials(quality);
+const env = createEnvironment(scene, camera, renderer, quality, choice.timeOfDay, groundMats.ground, quality.skyAmbient ? new THREE.PMREMGenerator(renderer) : null);
+const { signalLamps } = buildWorld(scene, district, groundMats);
 
 const credit = document.createElement('div');
 credit.textContent = '© OpenStreetMap contributors';
@@ -88,7 +102,9 @@ const pedsView = pedView(scene, CROSSERS + WALKERS);
 const events = new EventBus();
 const eventQueue = new RAPIER.EventQueue(true);
 const rig = new CameraRig(camera, renderer.domElement);
-const mirrors = createMirrors(renderer, scene, car.object);
+const mirrors = createMirrors(renderer, scene, car.object, quality);
+if (quality.skyAmbient) useSkyAmbient(scene);
+env.setupScene(scene);
 
 const held = new Set<string>(), pressed = new Set<string>();
 addEventListener('keydown', e => {
@@ -128,14 +144,17 @@ function resetToLane() {
 }
 
 const clock = new THREE.Clock();
+/** Read by perf tooling through window.__game; cpu frame time alone mixes in catch-up sim steps. */
+const lastFrame = { renderMs: 0, steps: 0, mainCalls: 0, mainTris: 0, frameMs: 0, gpuMs: null as number | null };
 let acc = 0, pendingEdges = NO_EDGES, flippedFor = 0, frames = 0, hudT = 0;
 let simMs = 0, simSteps = 0, simT = 0, simAvg = 0;
 let cabin = newCabin(), simClock = 0;
 const hud = createHudStore();
+hud.set({ probing: storedQuality === null, quality: loadedQuality, loadedQuality });
 if (params.has('debug')) events.on(e => console.log('[event]', e));
 const minimap = createMinimap(district);
 
-let screen: Screen = 'menu', choice: StartChoice = loadChoice(), seq = 0;
+let screen: Screen = 'menu', seq = 0;
 const show = (s: Screen) => hud.set({ screen: (screen = s) });
 
 const session = new ExamSession({
@@ -171,6 +190,20 @@ function examStep(steer: number) {
   });
 }
 
+function applyQuality(q: Quality) {
+  const s = QUALITY[q];
+  renderer.setPixelRatio(Math.min(devicePixelRatio, s.pixelRatioCap));
+  renderer.setSize(innerWidth, innerHeight);
+  env.setQuality(s);
+  mirrors.setQuality(s);
+}
+
+// The probe samples the same loop that draws the start screen, so it never blocks it.
+const probe = storedQuality === null ? createProbe() : null;
+let probeDone = probe === null;
+// True while the shown pick is only a fallback from a probe that measured nothing; Start must not store it.
+let pickUnmeasured = false;
+
 /** Runs inside the click handler, so the brief's audio starts within the user gesture. */
 function startExam() {
   hud.set({ toast: null, subtitle: null, debrief: null, exam: { lang: choice.lang, maneuver: null, distance: 0, total: 0 } });
@@ -184,8 +217,15 @@ mountHud(hud, minimap.canvas, params.has('debug'), {
   roads,
   routeKm: route.lengthM / 1000,
   choice: () => choice,
-  onStart: c => {
+  onStart: (c, q) => {
     choice = c;
+    if (!(pickUnmeasured && q === hud.get().quality)) {
+      saveQuality(q);
+      pickUnmeasured = false;
+    }
+    hud.set({ quality: q });
+    applyQuality(q);
+    env.setTimeOfDay(c.timeOfDay);
     if (c.mode === 'exam') return startExam();
     if (Math.abs(car.speed) < STOPPED) car.gearbox = c.gearbox;
     hud.set({ exam: null, toast: null, subtitle: null });
@@ -205,6 +245,7 @@ function resetOrAbandon() {
 }
 
 renderer.setAnimationLoop(() => {
+  const cpuStart = performance.now();
   const dt = clock.getDelta();
   renderer.info.reset();
   const driving = screen === 'drive';
@@ -271,10 +312,23 @@ renderer.setAnimationLoop(() => {
 
   if (orbit) orbit.update();
   else rig.update(car.object, car.speed, dt);
+  const renderStart = performance.now();
   env.follow(p.x, p.z);
+  env.update();
+  gpuTimer?.begin();
   mirrors.update(rig.mode);
+  const preCalls = renderer.info.render.calls;
+  const preTris = renderer.info.render.triangles;
   renderer.render(scene, camera);
+  const mainCalls = renderer.info.render.calls - preCalls;
+  const mainTris = renderer.info.render.triangles - preTris;
   mirrors.overlay(rig.mode);
+  gpuTimer?.end();
+  const renderMs = performance.now() - renderStart;
+  lastFrame.renderMs = renderMs;
+  lastFrame.steps = r.steps;
+  lastFrame.mainCalls = mainCalls;
+  lastFrame.mainTris = mainTris;
 
   const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(car.object.quaternion);
   minimap.draw(p.x, p.z, Math.atan2(fwd.x, fwd.z));
@@ -289,6 +343,7 @@ renderer.setAnimationLoop(() => {
   }
   if (hudT >= HUD_INTERVAL) {
     const t = car.drivetrain;
+    const ft = frameStats.summary();
     hud.set({
       speedKmh: Math.round(Math.abs(car.speed) * 3.6),
       gear: gearLabel(t.gearbox, t.gear),
@@ -298,6 +353,12 @@ renderer.setAnimationLoop(() => {
       street: nearestLane(district, p.x, p.z, STREET_RADIUS)?.edge.name ?? '',
       fps: Math.round(frames / hudT),
       drawCalls: renderer.info.render.calls,
+      mainCalls,
+      mainTris,
+      cpuP50: ft.cpuP50,
+      cpuP95: ft.cpuP95,
+      gpuP50: ft.gpuP50,
+      gpuP95: ft.gpuP95,
       activeCars: traffic.agents.filter(a => a.active).length,
       activePeds: peds.peds.filter(q => q.active).length,
       controllers: district.controllers.length,
@@ -314,9 +375,25 @@ renderer.setAnimationLoop(() => {
     frames = 0;
     hudT = 0;
   }
+  const gpuSample = gpuTimer?.poll() ?? null;
+  lastFrame.frameMs = performance.now() - cpuStart;
+  lastFrame.gpuMs = gpuSample;
+  frameStats.add(lastFrame.frameMs, gpuSample);
+  if (probe && !probeDone) {
+    const result = probe.frame(performance.now(), renderMs, gpuSample, r.steps);
+    if (result) {
+      probeDone = true;
+      if (result.measured) saveQuality(result.quality);
+      if (afterProbe(loadedQuality, result) === 'reload') return location.reload();
+      else pickUnmeasured = true;
+      frameStats.reset();
+      applyQuality(result.quality);
+      hud.set({ probing: false, quality: result.quality });
+    }
+  }
 });
 
-Object.assign(window, { __game: { car, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, cabin: () => cabin, session, hud, route, start: (c: Partial<StartChoice>) => {
+Object.assign(window, { __game: { car, env, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, cabin: () => cabin, lastFrame, session, hud, route, start: (c: Partial<StartChoice>) => {
   choice = { ...choice, ...c };
   if (choice.mode === 'exam') startExam();
   else show('drive');

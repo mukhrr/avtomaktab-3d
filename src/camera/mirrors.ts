@@ -1,8 +1,6 @@
 import * as THREE from 'three';
+import type { QualitySettings } from '../render/quality';
 import type { CameraMode } from './cameras';
-
-const TARGET_W = 256;
-const TARGET_H = 128;
 
 interface MirrorSpec { name: string; eye: [number, number, number]; yaw: number; quad: [number, number, number]; quadSize: [number, number] }
 
@@ -14,10 +12,12 @@ const SPECS: MirrorSpec[] = [
 ];
 
 /** Live mirrors: three cameras into render targets, shown as glass in cockpit view or as a strip on top of the screen otherwise. */
-export function createMirrors(renderer: THREE.WebGLRenderer, scene: THREE.Scene, car: THREE.Object3D) {
+export function createMirrors(renderer: THREE.WebGLRenderer, scene: THREE.Scene, car: THREE.Object3D, q: QualitySettings) {
+  let [targetW, targetH] = q.mirrorSize;
+  let every: number = q.mirrorEvery;
   const mirrors = SPECS.map(spec => {
-    const target = new THREE.WebGLRenderTarget(TARGET_W, TARGET_H);
-    const cam = new THREE.PerspectiveCamera(spec.name === 'rear' ? 45 : 35, TARGET_W / TARGET_H, 0.3, 600);
+    const target = new THREE.WebGLRenderTarget(targetW, targetH);
+    const cam = new THREE.PerspectiveCamera(spec.name === 'rear' ? 45 : 35, targetW / targetH, 0.3, 600);
     cam.layers.enableAll();
     cam.position.set(...spec.eye);
     // Default camera looks along -z, which is backwards for a car facing +z; yaw toes the side mirrors outward.
@@ -50,7 +50,7 @@ export function createMirrors(renderer: THREE.WebGLRenderer, scene: THREE.Scene,
     update(mode: CameraMode): void {
       const cockpit = mode === 'cockpit';
       mirrors.forEach(m => (m.glass.visible = cockpit));
-      if (frame++ % 2) return;
+      if (frame++ % every) return;
       const shadows = renderer.shadowMap.autoUpdate;
       renderer.shadowMap.autoUpdate = false;
       for (const m of mirrors) {
@@ -67,7 +67,7 @@ export function createMirrors(renderer: THREE.WebGLRenderer, scene: THREE.Scene,
     overlay(mode: CameraMode): void {
       if (mode === 'cockpit') return;
       const aspect = renderer.domElement.width / renderer.domElement.height;
-      const w = 0.22, h = (w * aspect * TARGET_H) / TARGET_W, y = 1 - h / 2 - 0.03;
+      const w = 0.22, h = (w * aspect * targetH) / targetW, y = 1 - h / 2 - 0.03;
       const order = ['left', 'rear', 'right'];
       hudQuads.forEach((q, i) => {
         q.scale.set(w, h, 1);
@@ -78,6 +78,16 @@ export function createMirrors(renderer: THREE.WebGLRenderer, scene: THREE.Scene,
       renderer.clearDepth();
       renderer.render(hudScene, hudCam);
       renderer.autoClear = autoClear;
+    },
+
+    setQuality(next: QualitySettings): void {
+      [targetW, targetH] = next.mirrorSize;
+      every = next.mirrorEvery;
+      for (const m of mirrors) {
+        m.target.setSize(targetW, targetH);
+        m.cam.aspect = targetW / targetH;
+        m.cam.updateProjectionMatrix();
+      }
     },
 
     dispose(): void {

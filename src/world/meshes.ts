@@ -21,6 +21,17 @@ export function polygonGeometry(outline: Vec2[], y: number): THREE.BufferGeometr
   return g;
 }
 
+export function worldUVs(g: THREE.BufferGeometry, tile: number): THREE.BufferGeometry {
+  const pos = g.getAttribute('position');
+  const uv = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) {
+    uv[i * 2] = pos.getX(i) / tile;
+    uv[i * 2 + 1] = pos.getZ(i) / tile;
+  }
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  return g;
+}
+
 export function addMerged(scene: THREE.Scene, geoms: THREE.BufferGeometry[], material: THREE.Material): THREE.Mesh | null {
   if (!geoms.length) return null;
   const mesh = new THREE.Mesh(mergeGeometries(geoms, false), material);

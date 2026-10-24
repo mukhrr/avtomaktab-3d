@@ -40,3 +40,10 @@ test('the controls help names every key that costs points when unknown, in both 
 test('Uzbek uses the plain apostrophe', () => {
   expect(Object.values(uzStrings).join('')).not.toMatch(/[‘’ʻʼ]/);
 });
+
+test('the picker labels exist in both languages', () => {
+  for (const key of ['ui.timeOfDay', 'ui.morning', 'ui.noon', 'ui.evening', 'ui.quality', 'ui.low', 'ui.medium', 'ui.high', 'ui.reloadForAA', 'ui.checkingGraphics']) {
+    expect(uzStrings).toHaveProperty([key]);
+    expect(ruStrings).toHaveProperty([key]);
+  }
+});

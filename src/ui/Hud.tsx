@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from 'rea
 import { HELP_LINES, t } from '../i18n';
 import { REDLINE_RPM } from '../vehicle/drivetrain';
 import type { Vec2 } from '../shared/district';
+import type { Quality } from '../render/quality';
 import type { StartChoice } from './choices';
 import { Debrief } from './Debrief';
 import { ExamHud } from './ExamHud';
@@ -12,7 +13,7 @@ export interface HudApp {
   roads: Vec2[][];
   routeKm: number;
   choice: () => StartChoice;
-  onStart(c: StartChoice): void;
+  onStart(c: StartChoice, quality: Quality): void;
   onRetry(): void;
   onMenu(): void;
 }
@@ -65,7 +66,7 @@ export function Hud({ store, minimap, debug, app }: { store: HudStore; minimap: 
           {HELP_LINES.map((k, i) => <Fragment key={k}>{i > 0 && <br />}{keyed(t(L, k))}</Fragment>)}
         </div>
       )}
-      {debug && <div className="panel stats">{s.fps} fps · {s.drawCalls} draw calls · {s.activeCars ?? 0} cars · {s.activePeds ?? 0} peds · {s.controllers ?? 0} controllers · sim {(s.simMs ?? 0).toFixed(2)} ms</div>}
+      {debug && <div className="panel stats">{s.fps} fps · cpu {s.cpuP50.toFixed(1)}/{s.cpuP95.toFixed(1)} ms · {s.gpuP50 === null || s.gpuP95 === null ? 'gpu n/a' : `gpu ${s.gpuP50.toFixed(1)}/${s.gpuP95.toFixed(1)} ms`} · main {s.mainCalls} calls {(s.mainTris / 1000).toFixed(0)}k tris · {s.drawCalls} draw calls (all passes) · {s.activeCars ?? 0} cars · {s.activePeds ?? 0} peds · {s.controllers ?? 0} controllers · sim {(s.simMs ?? 0).toFixed(2)} ms</div>}
       <div className="dash">
         <div className="speed">{s.speedKmh}<small> km/h</small></div>
         <div className="row">
@@ -90,7 +91,7 @@ export function Hud({ store, minimap, debug, app }: { store: HudStore; minimap: 
       </div>
       <div className="minimap" ref={mapHost} />
       {s.screen === 'drive' && s.exam && <ExamHud exam={s.exam} toast={s.toast} subtitle={s.subtitle} />}
-      {s.screen === 'menu' && <StartScreen initial={app.choice()} routeKm={app.routeKm} onStart={app.onStart} />}
+      {s.screen === 'menu' && <StartScreen initial={app.choice()} routeKm={app.routeKm} quality={s.quality} loadedQuality={s.loadedQuality} probing={s.probing} onStart={app.onStart} />}
       {s.screen === 'debrief' && s.debrief && <Debrief data={s.debrief} roads={app.roads} onRetry={app.onRetry} onMenu={app.onMenu} />}
     </div>
   );
