@@ -65,7 +65,7 @@ export function Hud({ store, minimap, debug, app }: { store: HudStore; minimap: 
           {HELP_LINES.map((k, i) => <Fragment key={k}>{i > 0 && <br />}{keyed(t(L, k))}</Fragment>)}
         </div>
       )}
-      {debug && <div className="panel stats">{s.fps} fps · {s.drawCalls} draw calls · {s.activeCars ?? 0} cars · {s.activePeds ?? 0} peds · {s.controllers ?? 0} controllers · sim {(s.simMs ?? 0).toFixed(2)} ms</div>}
+      {debug && <div className="panel stats">{s.fps} fps · cpu {s.cpuP50.toFixed(1)}/{s.cpuP95.toFixed(1)} ms · {s.gpuP50 === null || s.gpuP95 === null ? 'gpu n/a' : `gpu ${s.gpuP50.toFixed(1)}/${s.gpuP95.toFixed(1)} ms`} · main {s.mainCalls} calls {(s.mainTris / 1000).toFixed(0)}k tris · {s.drawCalls} draw calls (all passes) · {s.activeCars ?? 0} cars · {s.activePeds ?? 0} peds · {s.controllers ?? 0} controllers · sim {(s.simMs ?? 0).toFixed(2)} ms</div>}
       <div className="dash">
         <div className="speed">{s.speedKmh}<small> km/h</small></div>
         <div className="row">

@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { DistrictData } from './shared/district';
 import { CameraRig, CAR_LAYER, lookGlance } from './camera/cameras';
 import { createMirrors } from './camera/mirrors';
+import { createGpuTimer, FrameStats } from './render/frameStats';
 import { fixedSteps, NO_EDGES, splitControls, STEP } from './physics/loop';
 import { ExamSession } from './exam/session';
 import { loadPenalties } from './exam/penalties';
@@ -60,6 +61,8 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 // Mirrors render several times per frame; count draw calls for the whole frame.
 renderer.info.autoReset = false;
 document.body.prepend(renderer.domElement);
+const gpuTimer = createGpuTimer(renderer.getContext() as WebGL2RenderingContext);
+const frameStats = new FrameStats();
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 3000);
@@ -205,6 +208,7 @@ function resetOrAbandon() {
 }
 
 renderer.setAnimationLoop(() => {
+  const cpuStart = performance.now();
   const dt = clock.getDelta();
   renderer.info.reset();
   const driving = screen === 'drive';
@@ -272,9 +276,15 @@ renderer.setAnimationLoop(() => {
   if (orbit) orbit.update();
   else rig.update(car.object, car.speed, dt);
   env.follow(p.x, p.z);
+  gpuTimer?.begin();
   mirrors.update(rig.mode);
+  const preCalls = renderer.info.render.calls;
+  const preTris = renderer.info.render.triangles;
   renderer.render(scene, camera);
+  const mainCalls = renderer.info.render.calls - preCalls;
+  const mainTris = renderer.info.render.triangles - preTris;
   mirrors.overlay(rig.mode);
+  gpuTimer?.end();
 
   const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(car.object.quaternion);
   minimap.draw(p.x, p.z, Math.atan2(fwd.x, fwd.z));
@@ -289,6 +299,7 @@ renderer.setAnimationLoop(() => {
   }
   if (hudT >= HUD_INTERVAL) {
     const t = car.drivetrain;
+    const ft = frameStats.summary();
     hud.set({
       speedKmh: Math.round(Math.abs(car.speed) * 3.6),
       gear: gearLabel(t.gearbox, t.gear),
@@ -298,6 +309,12 @@ renderer.setAnimationLoop(() => {
       street: nearestLane(district, p.x, p.z, STREET_RADIUS)?.edge.name ?? '',
       fps: Math.round(frames / hudT),
       drawCalls: renderer.info.render.calls,
+      mainCalls,
+      mainTris,
+      cpuP50: ft.cpuP50,
+      cpuP95: ft.cpuP95,
+      gpuP50: ft.gpuP50,
+      gpuP95: ft.gpuP95,
       activeCars: traffic.agents.filter(a => a.active).length,
       activePeds: peds.peds.filter(q => q.active).length,
       controllers: district.controllers.length,
@@ -314,6 +331,7 @@ renderer.setAnimationLoop(() => {
     frames = 0;
     hudT = 0;
   }
+  frameStats.add(performance.now() - cpuStart, gpuTimer?.poll() ?? null);
 });
 
 Object.assign(window, { __game: { car, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, cabin: () => cabin, session, hud, route, start: (c: Partial<StartChoice>) => {

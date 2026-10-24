@@ -63,3 +63,21 @@ The `?debug` panel shows `renderer.info.render.calls` for the whole frame, which
 ### If the laptop check misses 60 fps
 
 M1's order still applies (shadow map size, tree crown triangles, mirror targets). Headless sim cost is small next to a 16.7 ms frame, but the in-browser figure is unmeasured; if the laptop check misses, cut walkers to 60, then cars to 40, then lookahead 80 to 60 m.
+
+## Milestone 4a
+
+### Baseline (before M4a)
+
+Production build via `vite preview`, `/?debug`, free drive, chase view, 20 s at the spawn. The debug panel now shows cpu and gpu p50/p95 over the last 300 frames, plus main-pass draw calls and triangles (the `renderer.render(scene, camera)` call alone, shadow pass included, mirror target passes excluded).
+
+| Metric | Value |
+|---|---|
+| cpu p50 / p95 | 11.1 / 29.3 ms |
+| gpu p50 / p95 | 7.1 / 9.4 ms |
+| Main-pass draw calls | 61 |
+| Main-pass triangles | ~493k |
+| Draw calls, all passes | 64 |
+
+CPU is the loop body's own work time (`performance.now()` around the whole `setAnimationLoop` callback); GPU is an `EXT_disjoint_timer_query_webgl2` query around the mirror passes and the main pass, with disjoint results discarded. Neither depends on the frame interval.
+
+Limits: the in-app browser pane was hidden and throttled to about 1 fps, so the window held roughly 20 frames, not 300, and cpu p95 is a few samples (cold JIT included). Treat cpu as indicative; gpu is steadier. Re-run on the laptop for numbers to budget against. Main-pass calls read 61 against M2's 56 for the same view.
