@@ -15,6 +15,16 @@
 
 Car triangles per class (paint + fixed): spark 428, nexia 432, cobalt 432, lacetti 584, damas 424, taxi 444, bus 460.
 
+## Task 5: before and after at the M4a avenue framing
+
+High preset, noon, `?cam=-25,6,145&look=-52,310`, 1280x720 at pixel ratio 1, HUD hidden (the mirror strip stays), sim 12 s after start, 60 cars active. Before is d35575e (end of M4c).
+
+| Before M4d | After M4d |
+|---|---|
+| ![before](traffic-before-noon.jpg) | ![after](traffic-after-noon.jpg) |
+
+Cars are small at this distance (the avenue shot looks down 150 m of road); the class models are shown close up in the Task 2 shots above.
+
 ## Main-pass cost
 
 `window.__game.lastFrame.mainCalls` in free drive at spawn, noon, after 4 s. Traffic and pedestrians measured by hiding their six scene objects. Main pass includes the shadow cascades.

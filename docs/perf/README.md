@@ -306,3 +306,39 @@ Result:
 ### Tuning (Task 4)
 
 No values changed. Calls and triangles are within budget and the measured gpu deltas are small, so lathe segments and colonnade column count were left as built.
+
+## Milestone 4d (traffic)
+
+### Budget check (Task 5, 2026-10-24)
+
+Budgets: high at most 8 ms gpu p95 and 120 main-pass calls; low at most +6 calls over before M4d; traffic and pedestrians at most 10 calls.
+
+Method as in M4a to M4c: production builds served by `vite preview` (before and after side by side), Playwright Chromium (Chrome for Testing, build 1243) on Apple M5 in a visible window, 1280x720 CSS at pixel ratio 2, preset from `avtomaktab.quality`, `?debug`, noon, `window.__game.lastFrame` sampled every frame for 4.5 s after a 1.5 s warm-up. "Before" is d35575e (end of M4c) built from a scratch worktree (removed afterwards). Views: chase at the spawn, and the M4a avenue framing (`?cam=-25,6,145&look=-52,310`) with all 60 cars active. Runs interleaved (before, after, after, before); cells give the range over the two runs. Times in ms.
+
+High:
+
+| View | gpu p50 / p95 before | gpu p50 / p95 after | calls before / after | triangles before / after |
+|---|---|---|---|---|
+| chase, spawn | 8.8 to 14.5 / 11.0 to 15.7 | 11.6 to 17.6 / 14.4 to 19.9 | 95 / 96 | 658k / 695k |
+| avenue | 6.0 / 7.1 | 8.8 to 8.9 / 10.3 to 10.5 | 74 / 75 | 569k / 604k |
+
+Low:
+
+| View | gpu p50 / p95 before | gpu p50 / p95 after | calls before / after | triangles before / after |
+|---|---|---|---|---|
+| chase, spawn | 1.8 to 2.0 / 4.6 to 5.0 | 1.8 to 2.0 / 4.6 to 4.9 | 69 / 70 | 396k / 395k |
+| avenue | 1.5 to 1.6 / 4.7 to 4.9 | 1.9 / 4.7 to 4.9 | 49 / 50 | 347k / 346k |
+
+Render cpu p95 is 0.9 to 1.3 on both sides, unchanged.
+
+Result:
+
+- Calls pass. High 96 (120 allowed). Low +1 in both views (limit +6). Traffic and pedestrians together are 9 calls on high (hiding their scene objects drops 75 to 66 on the avenue), 7 on low, under the 10 cap.
+- Low gpu is unchanged within noise (p95 sits at the timer floor, see M4a).
+- High gpu is not within budget at the avenue: p95 10.3 to 10.5 after against 7.1 before, a real change of about +2.8 ms p50 and +3.2 ms p95 (the before runs repeat to 0.1 ms there). The chase view cannot be read: another Chrome window kept the GPU busy again (Chrome at about 30% cpu, WindowServer 14%) and the same build moved by 6 ms between runs.
+- The cost is not triangles. Hiding the car batch removes only about 14k main-pass triangles (604k to 590k) but 2 to 3 ms of gpu p50 (about 7.7 to 5.2 in the quieter rounds). Switching off `castShadow` on the car batch recovers most of it (to about 5.6 to 6.0), so the cost sits in the batch's shadow-cascade passes. Pedestrians and lamps measured as no change. Lowering triangles per class or pedestrian detail would not buy it back, so neither was touched.
+- Open: the 8 ms high p95 budget at a traffic-heavy view is not met on this machine, and a quiet re-run is needed to see how much of the +3 ms is real on a clean GPU. A shadow proxy (one cheap box instance per car casting the shadow, batch not casting) is the first thing to try, not done here because the machine was too noisy to verify it.
+
+### Tuning (Task 5)
+
+No values changed: calls are in budget and the one gpu overrun is not triangle bound.
