@@ -1,10 +1,12 @@
-import type { Area, Building, CrossingKind, Road, Signal, Vec2, Waterway } from '../../src/shared/district';
+import type { Area, Building, BuildingStyle, CrossingKind, Road, Signal, Vec2, Waterway } from '../../src/shared/district';
 import type { OsmData, OsmWay } from './osm';
+import { classifyBuilding, LEVEL_HEIGHT, levelsFor, minAreaRect } from './styles';
 
 export interface Overrides {
   removeWays: string[];
   roads: Record<string, Partial<Pick<Road, 'width' | 'lanes' | 'oneway' | 'maxspeed' | 'name'>>>;
   buildingHeights: Record<string, number>;
+  buildingStyles: Record<string, BuildingStyle>;
 }
 
 export type SignalDirection = 'forward' | 'backward' | 'both';
@@ -28,7 +30,6 @@ const DEFAULT_WIDTH: Record<string, number> = {
 };
 const LINK_WIDTH = 6;
 const LANE_WIDTH = 3.5;
-const LEVEL_HEIGHT = 3.2;
 const SLOW_KINDS = new Set(['living_street', 'service']);
 const GREEN_LEISURE = new Set(['park', 'garden']);
 const GREEN_LANDUSE = new Set(['grass', 'forest', 'recreation_ground']);
@@ -136,7 +137,12 @@ export function extractFeatures(
       if (!footprint) continue;
       const tagged = leadingNumber(t.height) ?? (leadingNumber(t['building:levels']) ?? NaN) * LEVEL_HEIGHT;
       const height = overrides.buildingHeights[w.id] ?? (Number.isFinite(tagged) ? tagged : 8 + (hash(w.id) % 5) * LEVEL_HEIGHT);
-      result.buildings.push({ id: w.id, height, footprint });
+      const { longSide, shortSide } = minAreaRect(footprint);
+      const style = overrides.buildingStyles[w.id] ?? classifyBuilding({
+        tags: t, height, footprintArea: Math.abs(signedArea(footprint)), longSide, shortSide,
+      });
+      const roof = t['roof:shape'] === 'hipped' || t['roof:shape'] === 'gabled' ? t['roof:shape'] : undefined;
+      result.buildings.push({ id: w.id, height, levels: levelsFor(height), style, ...(roof ? { roof } : {}), footprint });
       continue;
     }
 

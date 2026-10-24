@@ -5,7 +5,7 @@ import { extractFeatures, signedArea, type Overrides } from './extract';
 
 const xml = readFileSync(new URL('./fixtures/mini.osm.xml', import.meta.url), 'utf8');
 const project = makeProjection({ lat: 41.3111, lon: 69.2797 });
-const none: Overrides = { removeWays: [], roads: {}, buildingHeights: {} };
+const none: Overrides = { removeWays: [], roads: {}, buildingHeights: {}, buildingStyles: {} };
 const run = (overrides = none, osm = parseOsm(xml)) => extractFeatures(osm, project, overrides);
 
 test('oneway primary gets kind defaults', () => {
@@ -44,7 +44,7 @@ test('ways with unresolved nodes are skipped', () => {
 });
 
 test('overrides change lanes, heights and remove ways', () => {
-  const f = run({ removeWays: ['100'], roads: { '101': { lanes: 3 } }, buildingHeights: { '103': 40 } });
+  const f = run({ removeWays: ['100'], roads: { '101': { lanes: 3 } }, buildingHeights: { '103': 40 }, buildingStyles: { '103': 'tower' } });
   expect(f.roads.find(r => r.id === '100')).toBeUndefined();
   expect(f.roads.find(r => r.id === '101')?.width).toBe(10.5);
   expect(f.buildings.find(b => b.id === '103')?.height).toBe(40);
@@ -77,4 +77,22 @@ test('crossing tags map to signal, zebra or unmarked; nodes off car roads are dr
   osm.ways.find(w => w.id === '100')!.nodeIds.push('20', '21', '22', '23');
   const kinds = Object.fromEntries(run(none, osm).crossingNodes.map(c => [c.id, c.kind]));
   expect(kinds).toEqual({ '17': 'signal', '20': 'zebra', '21': 'zebra', '22': 'unmarked', '23': 'unmarked' });
+});
+
+test('buildings carry levels and a classified style, and an override wins', () => {
+  const f = run();
+  const b = f.buildings.find(b => b.id === '103')!;
+  expect(b.levels).toBe(4);
+  expect(b.style).toBe('stucco');
+  const o = run({ ...none, buildingStyles: { '103': 'tower' } });
+  expect(o.buildings.find(b => b.id === '103')?.style).toBe('tower');
+});
+
+test('roof:shape hipped and gabled are kept, other shapes dropped', () => {
+  const osm = parseOsm(xml);
+  const w = osm.ways.find(w => w.id === '103')!;
+  w.tags['roof:shape'] = 'hipped';
+  expect(run(none, osm).buildings.find(b => b.id === '103')?.roof).toBe('hipped');
+  w.tags['roof:shape'] = 'skillion';
+  expect(run(none, osm).buildings.find(b => b.id === '103')?.roof).toBeUndefined();
 });

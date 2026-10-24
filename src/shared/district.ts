@@ -13,9 +13,15 @@ export interface Road {
 }
 
 /** Footprint is counter-clockwise in x/z with no closing duplicate. */
+export type BuildingStyle = 'panel' | 'brick' | 'stucco' | 'public' | 'tower' | 'shed';
+
 export interface Building {
   id: string;
   height: number;
+  levels: number;
+  style: BuildingStyle;
+  /** From OSM roof:shape, only for the two shapes the renderer draws. */
+  roof?: 'hipped' | 'gabled';
   footprint: Vec2[];
 }
 
