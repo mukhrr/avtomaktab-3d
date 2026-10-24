@@ -17,7 +17,7 @@ export function testDistrict(): DistrictData {
     roads: [avenue, street],
     buildings: [{ id: 'b', height: 10, levels: 3, style: 'brick', footprint: [[-40, 20], [-20, 20], [-20, 40], [-40, 40]] }],
     areas: [{ id: 'park', kind: 'green', outline: [[0, 30], [40, 30], [40, 70], [0, 70]] }],
-    waterways: [], signals: [], crossings: [], controllers: [], signs: [], furniture: [],
+    waterways: [], signals: [], crossings: [], controllers: [], signs: [], furniture: [], landmarks: [],
     graph: { nodes: [], edges: [edge(avenue, 1, 1), edge(street, 2, 0)] },
   };
 }

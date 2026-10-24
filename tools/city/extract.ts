@@ -1,4 +1,4 @@
-import type { Area, Building, BuildingStyle, CrossingKind, FurnitureKind, Road, Signal, Vec2, Waterway } from '../../src/shared/district';
+import type { Area, Building, BuildingStyle, CrossingKind, FurnitureKind, LandmarkKind, Road, Signal, Vec2, Waterway } from '../../src/shared/district';
 import type { OsmData, OsmWay } from './osm';
 import { classifyBuilding, LEVEL_HEIGHT, levelsFor, minAreaRect } from './styles';
 
@@ -7,6 +7,7 @@ export interface Overrides {
   roads: Record<string, Partial<Pick<Road, 'width' | 'lanes' | 'oneway' | 'maxspeed' | 'name'>>>;
   buildingHeights: Record<string, number>;
   buildingStyles: Record<string, BuildingStyle>;
+  landmarks?: Record<string, LandmarkKind>;
 }
 
 export type SignalDirection = 'forward' | 'backward' | 'both';
