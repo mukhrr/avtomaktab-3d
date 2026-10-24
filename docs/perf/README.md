@@ -81,3 +81,74 @@ Production build via `vite preview`, `/?debug`, free drive, chase view, 20 s at 
 CPU is the loop body's own work time (`performance.now()` around the whole `setAnimationLoop` callback); GPU is an `EXT_disjoint_timer_query_webgl2` query around the mirror passes and the main pass, with disjoint results discarded. GPU time does not depend on the frame interval; CPU time includes up to 5 fixed sim steps when frames are long (`MAX_STEPS` in `src/physics/loop.ts`), so a throttled pane overstates it.
 
 Limits: the in-app browser pane was hidden and throttled to about 1 fps, so the window held roughly 20 frames, not 300, and cpu p95 is a few samples (cold JIT included). Treat cpu as indicative; gpu is steadier. Re-run on the laptop for numbers to budget against. Main-pass calls read 61 against M2's 56 for the same view.
+
+### Budget check (Task 7, 2026-10-24)
+
+Budgets: high at most 8 ms cpu and gpu p95, 120 main-pass draw calls, 1.5 M triangles; low at most half (4 ms, 4 ms, 60, 750k).
+
+Method. Production build (`npm run build && npx vite preview --port 4173`), Playwright Chromium (Chrome 155) on Apple M5, ANGLE Metal, a visible window running at about 120 Hz, viewport 1280x720 CSS at device pixel ratio 2 (so high renders 2560x1440, medium 1920x1080, low 1280x720). Each preset is loaded fresh from `avtomaktab.quality`; time of day set with `env.setTimeOfDay`. Per view: 1.5 s warm-up, then every frame for 3.5 s (parked views, about 420 frames) or 28.5 s (drive, about 3,400 frames). The drive teleports the car along `session.routeLine` from the route-1 start at 12 m/s with `car.reset` each frame, so the camera moves like a real drive but the physics does no driving work. Samples come from `window.__game.lastFrame`, filled every frame by `main.ts`:
+
+- render cpu: `env.follow` through `gpuTimer.end`, mirrors and the main pass included;
+- sim and other cpu: whole loop body minus render (sim steps, view updates, minimap, HUD);
+- gpu: `EXT_disjoint_timer_query_webgl2` around mirrors and the main pass;
+- steps: fixed 60 Hz sim steps run that frame. At 120 Hz the mean was 0.5 and the max 1 in every run, so no catch-up steps inflate cpu here.
+
+Two earlier runs in the same session are discarded: one wrote the wrong localStorage key (every preset ran as medium), one ran at pixel ratio 1.
+
+| Preset | Time | View | render cpu p50 / p95 | sim+other cpu p50 / p95 | gpu p50 / p95 | main-pass calls | main-pass triangles |
+|---|---|---|---|---|---|---|---|
+| low | noon | chase, spawn | 0.6 / 1.5 | 0.6 / 2.3 | 2.1 / 5.1 | 62 | 493k |
+| low | noon | cockpit, spawn | 0.5 / 1.4 | 0.5 / 2.5 | 2.3 / 5.0 | 46 | 492k |
+| low | noon | chase, route-1 drive | 0.6 / 1.5 | 0.7 / 2.6 | 2.0 / 4.7 | 62 | 493k |
+| low | evening | chase, spawn | 0.6 / 1.4 | 0.6 / 2.5 | 2.3 / 4.7 | 62 | 493k |
+| low | evening | cockpit, spawn | 0.5 / 1.5 | 0.9 / 2.7 | 2.3 / 5.1 | 46 | 492k |
+| low | evening | chase, route-1 drive | 0.6 / 1.5 | 0.7 / 2.4 | 2.0 / 4.7 | 62 | 493k |
+| medium | noon | chase, spawn | 0.8 / 1.8 | 0.5 / 2.0 | 3.9 / 5.5 | 73 | 598k |
+| medium | noon | cockpit, spawn | 0.7 / 1.6 | 0.6 / 2.2 | 4.2 / 5.0 | 54 | 597k |
+| medium | noon | chase, route-1 drive | 0.8 / 1.7 | 0.6 / 2.2 | 3.7 / 5.5 | 73 | 598k |
+| medium | evening | chase, spawn | 0.7 / 1.7 | 0.6 / 2.1 | 4.3 / 4.9 | 73 | 598k |
+| medium | evening | cockpit, spawn | 0.7 / 1.7 | 0.8 / 2.1 | 3.6 / 5.7 | 54 | 597k |
+| medium | evening | chase, route-1 drive | 0.8 / 1.8 | 0.6 / 2.1 | 3.8 / 5.2 | 73 | 598k |
+| high | noon | chase, spawn | 0.7 / 1.6 | 0.6 / 1.8 | 4.2 / 5.4 | 84 | 703k |
+| high | noon | cockpit, spawn | 0.7 / 1.5 | 0.5 / 1.9 | 4.3 / 4.9 | 62 | 703k |
+| high | noon | chase, route-1 drive | 0.8 / 1.7 | 0.6 / 2.1 | 3.9 / 5.2 | 84 | 703k |
+| high | evening | chase, spawn | 0.7 / 1.6 | 0.5 / 2.0 | 4.6 / 4.9 | 84 | 703k |
+| high | evening | cockpit, spawn | 0.7 / 1.6 | 0.6 / 2.0 | 4.4 / 5.2 | 62 | 703k |
+| high | evening | chase, route-1 drive | 0.8 / 1.8 | 0.6 / 2.0 | 4.0 / 5.1 | 84 | 703k |
+
+All times in ms. Calls and triangles did not change at all within a view (p50 equals max), because every world mesh is merged or instanced over the whole district and is never frustum culled.
+
+Result:
+
+- High passes on every axis: worst gpu p95 5.4 ms, render cpu p95 1.8 ms (whole loop p95 under 3 ms), 84 calls, 703k triangles.
+- Low passes render cpu (1.5 ms) and triangles (493k), and misses gpu p95 (4.7 to 5.1 ms against 4) and chase-view calls (62 against 60; cockpit is 46).
+
+The Task 1 baseline (gpu 7.1 / 9.4 ms) and the Task 5 figure (11.2 / 13.7 ms) were taken in the hidden, throttled browser pane. Unthrottled, the same scene measures about half of that, so neither is a reference for the budget.
+
+### Tuning (Task 7)
+
+No values changed. The planned order was tiling the merged buildings and tree instances into ~150 to 200 m chunks, then shadow far 300 on high, then `PCFShadowMap`, then cascades, map size, pixel ratio and mirror cadence. Each step is conditional on a miss, and high has none. Tiling was also checked against the scene and would not pay for itself here: the six building meshes total about 14k triangles, so culling them saves little, while splitting them and the trees into chunks adds a draw call per visible chunk to a count that low already exceeds. Most triangles are the 4,538 instanced trees (44 each, about 200k in the main pass plus 91k per shadow cascade); tiling those is the first move if high ever misses on a slower machine.
+
+Low's two misses, diagnosed on low chase at noon:
+
+| Change (live, low chase, noon) | gpu p50 / p95 |
+|---|---|
+| as shipped (mirrors every 3rd frame) | 2.2 / 5.4 |
+| mirrors every frame | 3.1 / 5.0 |
+| mirrors off | 2.7 / 5.6 |
+| shadow map updates off | 2.0 / 4.0 |
+| mirrors off, shadow updates off, pixel ratio 0.25 | 1.0 / 3.4 |
+
+Mirror cadence does not move p95, and a near-empty frame still has a p95 of 3.4 ms with single-frame spikes to about 4 ms, so the timer has a noise floor on this machine close to low's 4 ms budget. The shadow map update is the one real cost (about 1.4 ms at p95). Low already has 1 cascade at 1024, pixel ratio 1 and mirrors every 3rd frame, so the brief's levers are spent; dropping low's shadows or going to a 512 map would change how low looks, which is a feature cut and is left for a decision. Low's 62 calls are the M3 count (61) plus the M4a sky; getting to 60 needs merging meshes (the player car alone is 15 draw calls), not value tuning.
+
+### Download size
+
+| Part | Bytes |
+|---|---|
+| JS bundle (incl. Rapier WASM) | 2,907,624 (1.0 MB gzipped) |
+| district.json | 846,822 |
+| Textures (all M4a) | 3,109,935 |
+| Audio | 1,052,784 |
+| Total `dist/` | 7,917,636 |
+
+The M4a texture share is 3.11 MB against the 4 MB cap; all five texture sets are in `CREDITS.md`.

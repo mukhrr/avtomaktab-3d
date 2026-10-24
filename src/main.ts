@@ -142,6 +142,8 @@ function resetToLane() {
 }
 
 const clock = new THREE.Clock();
+/** Read by perf tooling through window.__game; cpu frame time alone mixes in catch-up sim steps. */
+const lastFrame = { renderMs: 0, steps: 0, mainCalls: 0, mainTris: 0, frameMs: 0, gpuMs: null as number | null };
 let acc = 0, pendingEdges = NO_EDGES, flippedFor = 0, frames = 0, hudT = 0;
 let simMs = 0, simSteps = 0, simT = 0, simAvg = 0;
 let cabin = newCabin(), simClock = 0;
@@ -321,6 +323,7 @@ renderer.setAnimationLoop(() => {
   mirrors.overlay(rig.mode);
   gpuTimer?.end();
   const renderMs = performance.now() - renderStart;
+  Object.assign(lastFrame, { renderMs, steps: r.steps, mainCalls, mainTris });
 
   const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(car.object.quaternion);
   minimap.draw(p.x, p.z, Math.atan2(fwd.x, fwd.z));
@@ -368,7 +371,9 @@ renderer.setAnimationLoop(() => {
     hudT = 0;
   }
   const gpuSample = gpuTimer?.poll() ?? null;
-  frameStats.add(performance.now() - cpuStart, gpuSample);
+  lastFrame.frameMs = performance.now() - cpuStart;
+  lastFrame.gpuMs = gpuSample;
+  frameStats.add(lastFrame.frameMs, gpuSample);
   if (probe && !probeDone) {
     const result = probe.frame(performance.now(), renderMs, gpuSample, r.steps);
     if (result) {
@@ -382,7 +387,7 @@ renderer.setAnimationLoop(() => {
   }
 });
 
-Object.assign(window, { __game: { car, env, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, cabin: () => cabin, session, hud, route, start: (c: Partial<StartChoice>) => {
+Object.assign(window, { __game: { car, env, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, cabin: () => cabin, lastFrame, session, hud, route, start: (c: Partial<StartChoice>) => {
   choice = { ...choice, ...c };
   if (choice.mode === 'exam') startExam();
   else show('drive');
