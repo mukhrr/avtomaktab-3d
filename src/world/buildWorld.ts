@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import type { DistrictData, GraphEdge, Road } from '../shared/district';
 import { FOOT_KINDS } from '../../tools/city/extract';
+import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { addBuildings } from './buildings';
+import { batchChunks, groupByChunk } from './chunks';
 import { dashes, edgeMarkings } from './markings';
 import { GROUND_TILE, type GroundSurface } from './groundMaterials';
 import { addMerged, polygonGeometry, ribbonGeometry, worldUVs } from './meshes';
@@ -15,10 +17,11 @@ const Y = { green: 0.03, water: 0.05, sidewalk: 0.06, curb: 0.07, asphalt: 0.09,
 const CURB_EXTRA = 1.2;
 const MARKING_WIDTH = 0.15;
 const TREE_SEED = 7;
+const CHUNK_SIZE = 200;
 
 const lambert = (color: number) => new THREE.MeshLambertMaterial({ color });
 
-export function buildWorld(scene: THREE.Scene, d: DistrictData, mats: Record<GroundSurface, THREE.Material>): { signalLamps: SignalLamps } {
+export function buildWorld(scene: THREE.Scene, d: DistrictData, mats: Record<GroundSurface, THREE.Material>, facadeAtlas: THREE.Texture): { signalLamps: SignalLamps } {
   const uv = (g: THREE.BufferGeometry, k: keyof typeof GROUND_TILE) => worldUVs(g, GROUND_TILE[k]);
   const roads = new Map(d.roads.map(r => [r.id, r]));
   const edges = new Map(d.graph.edges.map(e => [e.id, e]));
@@ -59,7 +62,7 @@ export function buildWorld(scene: THREE.Scene, d: DistrictData, mats: Record<Gro
   const markMesh = addMerged(scene, marks, new THREE.MeshBasicMaterial({ color: 0xeeeeee }));
   if (markMesh) markMesh.receiveShadow = false;
 
-  addBuildings(scene, d.buildings);
+  addBuildings(scene, d.buildings, facadeAtlas, CHUNK_SIZE);
   addTrees(scene, d);
   addCrossings(scene, d);
   addSigns(scene, d);
@@ -73,22 +76,30 @@ function addMarkings(out: THREE.BufferGeometry[], e: GraphEdge, road: Road | und
   }
 }
 
+function treeGeometry(): THREE.BufferGeometry {
+  const paint = (g: THREE.BufferGeometry, hex: number) => {
+    const c = new THREE.Color(hex);
+    g.deleteAttribute('uv');
+    g.setAttribute('color', new THREE.Float32BufferAttribute(Array.from({ length: g.getAttribute('position').count }, () => [c.r, c.g, c.b]).flat(), 3));
+    return g;
+  };
+  const trunk = paint(new THREE.CylinderGeometry(0.18, 0.25, 3, 6, 1, true).translate(0, 1.5, 0), 0x6b5138);
+  // Flat shading takes face normals from screen derivatives, so the crown can share vertices.
+  const crown = paint(mergeVertices(new THREE.IcosahedronGeometry(2.6, 0).deleteAttribute('normal').deleteAttribute('uv')).translate(0, 5, 0), 0x4f7d34);
+  crown.computeVertexNormals();
+  return mergeGeometries([trunk, crown], false);
+}
+
 function addTrees(scene: THREE.Scene, d: DistrictData) {
-  const trees = treePositions(d, TREE_SEED);
-  const trunkGeo = new THREE.CylinderGeometry(0.18, 0.25, 3, 6).translate(0, 1.5, 0);
-  const crownGeo = new THREE.IcosahedronGeometry(2.6, 0).translate(0, 5, 0);
-  const trunks = new THREE.InstancedMesh(trunkGeo, lambert(0x6b5138), trees.length);
-  const crowns = new THREE.InstancedMesh(crownGeo, new THREE.MeshLambertMaterial({ color: 0x4f7d34, flatShading: true }), trees.length);
+  const tree = treeGeometry();
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
-  trees.forEach(([x, z], i) => {
+  const chunks = [...groupByChunk(treePositions(d, TREE_SEED), t => t, CHUNK_SIZE).values()].map(trees => mergeGeometries(trees.map(([x, z]) => {
     // Scale and rotation derived from position so they're stable between loads.
     const k = Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1;
     q.setFromAxisAngle(up, k * Math.PI * 2);
     const scale = 0.8 + k * 0.6;
-    m.compose(p.set(x, 0, z), q, s.set(scale, scale, scale));
-    trunks.setMatrixAt(i, m);
-    crowns.setMatrixAt(i, m);
-  });
-  crowns.castShadow = true;
-  scene.add(trunks, crowns);
+    return tree.clone().applyMatrix4(m.compose(p.set(x, 0, z), q, s.set(scale, scale, scale)));
+  }), false));
+  tree.dispose();
+  scene.add(batchChunks(chunks, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })));
 }

@@ -21,7 +21,7 @@ function gameScene(q: Quality) {
   const renderer = { toneMappingExposure: 1 } as unknown as THREE.WebGLRenderer;
   const mats = createGroundMaterials(s, stubLoader);
   const env = createEnvironment(scene, camera, renderer, s, 'noon', mats.ground, s.skyAmbient ? fakeEnvMaps : null);
-  buildWorld(scene, testDistrict(), mats);
+  buildWorld(scene, testDistrict(), mats, new THREE.Texture());
   trafficView(scene, 2);
   pedView(scene, 2);
   const car = createCarModel().root;
