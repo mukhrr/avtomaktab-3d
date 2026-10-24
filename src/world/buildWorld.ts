@@ -3,7 +3,9 @@ import type { DistrictData, GraphEdge, Road } from '../shared/district';
 import { FOOT_KINDS } from '../../tools/city/extract';
 import { addBuildings } from './buildings';
 import { dashes, edgeMarkings } from './markings';
-import { addMerged, polygonGeometry, ribbonGeometry } from './meshes';
+import type { QualitySettings } from '../render/quality';
+import { createGroundMaterials, GROUND_TILE } from './groundMaterials';
+import { addMerged, polygonGeometry, ribbonGeometry, worldUVs } from './meshes';
 import { junctionPolygon, junctionTrim, trimEdge } from './roadGeometry';
 import { addCrossings } from './crossings';
 import { addSigns } from './signs';
@@ -17,7 +19,9 @@ const TREE_SEED = 7;
 
 const lambert = (color: number) => new THREE.MeshLambertMaterial({ color });
 
-export function buildWorld(scene: THREE.Scene, d: DistrictData): { signalLamps: SignalLamps } {
+export function buildWorld(scene: THREE.Scene, d: DistrictData, q: QualitySettings): { signalLamps: SignalLamps } {
+  const mats = createGroundMaterials(q);
+  const uv = (g: THREE.BufferGeometry, k: keyof typeof GROUND_TILE) => worldUVs(g, GROUND_TILE[k]);
   const roads = new Map(d.roads.map(r => [r.id, r]));
   const edges = new Map(d.graph.edges.map(e => [e.id, e]));
 
@@ -27,7 +31,7 @@ export function buildWorld(scene: THREE.Scene, d: DistrictData): { signalLamps: 
     const touching = node.edges.map(id => edges.get(id)!);
     const trims = junctionTrim(node, touching);
     if (!trims.size) continue;
-    junctions.push(polygonGeometry(junctionPolygon(node, touching), Y.asphalt));
+    junctions.push(uv(polygonGeometry(junctionPolygon(node, touching), Y.asphalt), 'asphalt'));
     for (const e of touching) {
       const t = trimAt.get(e.id) ?? { start: 0, end: 0 };
       if (e.from === node.id) t.start = trims.get(e.id)!;
@@ -40,20 +44,20 @@ export function buildWorld(scene: THREE.Scene, d: DistrictData): { signalLamps: 
   for (const e of d.graph.edges) {
     const t = trimAt.get(e.id);
     const pts = t ? trimEdge(e, t.start, t.end) : e.points;
-    asphalt.push(ribbonGeometry(pts, e.width, Y.asphalt));
-    curbs.push(ribbonGeometry(e.points, e.width + CURB_EXTRA, Y.curb));
+    asphalt.push(uv(ribbonGeometry(pts, e.width, Y.asphalt), 'asphalt'));
+    curbs.push(uv(ribbonGeometry(e.points, e.width + CURB_EXTRA, Y.curb), 'curb'));
     addMarkings(marks, e, roads.get(e.roadId), pts);
   }
 
   const footways = d.roads.filter((r: Road) => FOOT_KINDS.has(r.kind));
-  addMerged(scene, d.areas.filter(a => a.kind === 'green').map(a => polygonGeometry(a.outline, Y.green)), lambert(0x6f9a4a));
+  addMerged(scene, d.areas.filter(a => a.kind === 'green').map(a => uv(polygonGeometry(a.outline, Y.green), 'grass')), mats.grass);
   addMerged(scene, [
     ...d.areas.filter(a => a.kind === 'water').map(a => polygonGeometry(a.outline, Y.water)),
     ...d.waterways.map(w => ribbonGeometry(w.points, w.width, Y.water)),
   ], lambert(0x4f8fb0));
-  addMerged(scene, footways.map(r => ribbonGeometry(r.points, r.width, Y.sidewalk)), lambert(0xc9bfae));
-  addMerged(scene, curbs, lambert(0xa8a39a));
-  addMerged(scene, [...asphalt, ...junctions], lambert(0x3d4045));
+  addMerged(scene, footways.map(r => uv(ribbonGeometry(r.points, r.width, Y.sidewalk), 'sidewalk')), mats.sidewalk);
+  addMerged(scene, curbs, mats.curb);
+  addMerged(scene, [...asphalt, ...junctions], mats.asphalt);
   const markMesh = addMerged(scene, marks, new THREE.MeshBasicMaterial({ color: 0xeeeeee }));
   if (markMesh) markMesh.receiveShadow = false;
 
