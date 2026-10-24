@@ -21,7 +21,7 @@ export function addBuildings(scene: THREE.Scene, buildings: Building[]): void {
     byColour[hash(b.id) % PALETTE.length].push(g);
   }
   byColour.forEach((geoms, i) => {
-    const mesh = addMerged(scene, geoms, new THREE.MeshLambertMaterial({ color: PALETTE[i] }));
+    const mesh = addMerged(scene, geoms, new THREE.MeshStandardMaterial({ color: PALETTE[i], roughness: 1, metalness: 0 }));
     if (mesh) mesh.castShadow = true;
   });
 }

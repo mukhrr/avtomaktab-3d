@@ -16,6 +16,12 @@ const SKY_SIZE = 2500;
 const SHADOW_BIAS_M = 0.05;
 const CSM_LIGHT_FAR = 1000;
 const SHADOW_NORMAL_BIAS = 0.03;
+const ENV_SKY_SIZE = 50;
+
+export interface EnvMapSource {
+  fromScene(scene: THREE.Scene, sigma?: number, near?: number, far?: number): THREE.WebGLRenderTarget;
+  dispose(): void;
+}
 
 export interface Environment {
   follow(x: number, z: number): void;
@@ -40,6 +46,7 @@ export function createEnvironment(
   q: QualitySettings,
   tod: TimeOfDay,
   groundMaterial: THREE.Material,
+  envMaps: EnvMapSource | null = null,
 ): Environment {
   const fog = new THREE.Fog(0xffffff, 1, 2);
   const background = new THREE.Color();
@@ -53,9 +60,22 @@ export function createEnvironment(
   sky.scale.setScalar(SKY_SIZE);
   sky.frustumCulled = false;
   scene.add(sky);
-  const skyU = (sky.material as THREE.ShaderMaterial).uniforms;
-  skyU.mieCoefficient.value = 0.005;
+  const skyMaterial = sky.material as THREE.ShaderMaterial;
+  // three's Sky goes grey-white under a high sun and tracks exposure; these restore a clear blue at any exposure.
+  skyMaterial.fragmentShader = skyMaterial.fragmentShader
+    .replace('uniform float mieDirectionalG;', 'uniform float mieDirectionalG;\nuniform float saturation;\nuniform float gain;')
+    .replace('gl_FragColor = vec4( retColor, 1.0 );', 'retColor = max( mix( vec3( dot( retColor, vec3( 0.2126, 0.7152, 0.0722 ) ) ), retColor, saturation ), 0.0 ) * gain;\n\t\t\tgl_FragColor = vec4( retColor, 1.0 );');
+  const skyU = skyMaterial.uniforms;
+  skyU.saturation = { value: 1 };
+  skyU.gain = { value: 1 };
   skyU.mieDirectionalG.value = 0.8;
+
+  const envSky = new Sky();
+  envSky.material = sky.material;
+  envSky.scale.setScalar(ENV_SKY_SIZE);
+  const envScene = new THREE.Scene();
+  envScene.add(envSky);
+  let envTarget: THREE.WebGLRenderTarget | null = null;
 
   const ground = new THREE.Mesh(worldUVs(new THREE.PlaneGeometry(6000, 6000).rotateX(-Math.PI / 2), GROUND_TILE.ground), groundMaterial);
   ground.receiveShadow = true;
@@ -163,7 +183,20 @@ export function createEnvironment(
     renderer.toneMappingExposure = p.exposure;
     skyU.turbidity.value = p.turbidity;
     skyU.rayleigh.value = p.rayleigh;
+    skyU.mieCoefficient.value = p.mie;
     (skyU.sunPosition.value as THREE.Vector3).copy(toSun);
+    scene.environmentIntensity = p.envIntensity;
+    if (envMaps) {
+      // Ambient light comes from the unsaturated sky, so a bluer visible sky does not tint the city.
+      skyU.saturation.value = 1;
+      skyU.gain.value = 1;
+      const next = envMaps.fromScene(envScene, 0, 0.1, 2 * ENV_SKY_SIZE);
+      envTarget?.dispose();
+      envTarget = next;
+      scene.environment = next.texture;
+    }
+    skyU.saturation.value = p.skySaturation;
+    skyU.gain.value = p.skyGain;
     applyLight();
     placeSingle();
   }
@@ -216,6 +249,11 @@ export function createEnvironment(
       for (const m of materials) m.needsUpdate = true;
       materials.clear();
       scene.remove(hemi, sky, ground);
+      envTarget?.dispose();
+      envTarget = null;
+      envMaps?.dispose();
+      scene.environment = null;
+      envSky.geometry.dispose();
       sky.geometry.dispose();
       (sky.material as THREE.Material).dispose();
       ground.geometry.dispose();

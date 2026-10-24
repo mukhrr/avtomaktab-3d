@@ -152,3 +152,22 @@ Mirror cadence does not move p95, and a near-empty frame still has a p95 of 3.4 
 | Total `dist/` | 7,917,636 |
 
 The M4a texture share is 3.11 MB against the 4 MB cap; all five texture sets are in `CREDITS.md`.
+
+### Fix round 1: sky ambient light (2026-10-24)
+
+Buildings and trees moved from Lambert to `MeshStandardMaterial` (roughness 1) so they take image-based ambient light from `scene.environment`, a PMREM of the current sky built on each `setTimeOfDay` (old target disposed). Times of day retuned; the visible sky got a saturation and gain uniform so it stays blue at any exposure.
+
+PMREM rebuild: 2.0 to 3.0 ms CPU per time-of-day change including `gl.finish` (5 calls), once per Start press, never per frame.
+
+Same method as above, low and high, noon and evening, drive shortened to 15 s:
+
+| Preset | View | render cpu p95 | gpu p50 / p95 | calls | triangles |
+|---|---|---|---|---|---|
+| high | chase, spawn | 1.3 | 5.4 / 5.7 (evening 6.3) | 84 | 703k |
+| high | cockpit, spawn | 1.4 | 5.3 / 5.5 (evening 6.3) | 62 | 703k |
+| high | route-1 drive | 1.7 to 1.8 | 4.2 to 4.3 / 5.1 to 5.2 | 84 | 703k |
+| low | chase, spawn | 1.6 | 2.5 to 2.6 / 4.9 to 5.5 | 62 | 493k |
+| low | cockpit, spawn | 1.5 | 2.3 to 2.4 / 4.6 to 5.6 | 46 | 492k |
+| low | route-1 drive | 1.6 to 1.7 | 2.2 to 2.3 / 4.9 to 5.0 | 62 | 493k |
+
+High gpu p50 rose about 1 ms (Standard shading and the environment lookup on every building and tree) and stays within 8 ms at p95. Calls and triangles are unchanged. Low rose about 0.3 ms at p50.

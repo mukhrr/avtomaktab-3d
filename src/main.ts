@@ -76,7 +76,7 @@ const frameStats = new FrameStats();
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 3000);
 const groundMats = createGroundMaterials(quality);
-const env = createEnvironment(scene, camera, renderer, quality, choice.timeOfDay, groundMats.ground);
+const env = createEnvironment(scene, camera, renderer, quality, choice.timeOfDay, groundMats.ground, new THREE.PMREMGenerator(renderer));
 const { signalLamps } = buildWorld(scene, district, groundMats);
 
 const credit = document.createElement('div');

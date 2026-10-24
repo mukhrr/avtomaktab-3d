@@ -8,12 +8,26 @@ import { createEnvironment } from './environment';
 const LAT = 41.3111;
 const LON = 69.2797;
 
-function setup(q = QUALITY.high) {
+function fakeEnvMaps() {
+  const made: THREE.WebGLRenderTarget[] = [];
+  return {
+    made,
+    fromScene: vi.fn(() => {
+      const t = new THREE.WebGLRenderTarget(1, 1);
+      vi.spyOn(t, 'dispose');
+      made.push(t);
+      return t;
+    }),
+    dispose: vi.fn(),
+  };
+}
+
+function setup(q = QUALITY.high, envMaps = fakeEnvMaps()) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(65, 16 / 9, 0.1, 3000);
   const renderer = { toneMappingExposure: 1 } as unknown as THREE.WebGLRenderer;
-  const env = createEnvironment(scene, camera, renderer, q, 'noon', new THREE.MeshLambertMaterial());
-  return { scene, camera, renderer, env };
+  const env = createEnvironment(scene, camera, renderer, q, 'noon', new THREE.MeshLambertMaterial(), envMaps);
+  return { scene, camera, renderer, env, envMaps };
 }
 
 const shadowLights = (scene: THREE.Scene) => {
@@ -101,5 +115,38 @@ describe('createEnvironment', () => {
       expect(Math.abs(l.shadow.bias) * l.shadow.camera.far).toBeLessThan(0.1);
       expect(l.shadow.camera.far).toBeLessThanOrEqual(1000);
     }
+  });
+
+  it('lights the scene from the sky and rebuilds that light only when the time of day changes', () => {
+    const { scene, env, envMaps } = setup();
+    expect(envMaps.fromScene).toHaveBeenCalledTimes(1);
+    expect(scene.environment).toBe(envMaps.made[0].texture);
+    expect(scene.environmentIntensity).toBe(TIMES_OF_DAY.noon.envIntensity);
+    env.update();
+    env.setQuality(QUALITY.low);
+    expect(envMaps.fromScene).toHaveBeenCalledTimes(1);
+    env.setTimeOfDay('evening');
+    expect(envMaps.fromScene).toHaveBeenCalledTimes(2);
+    expect(envMaps.made[0].dispose).toHaveBeenCalled();
+    expect(scene.environment).toBe(envMaps.made[1].texture);
+    expect(scene.environmentIntensity).toBe(TIMES_OF_DAY.evening.envIntensity);
+    env.dispose();
+    expect(envMaps.made[1].dispose).toHaveBeenCalled();
+    expect(envMaps.dispose).toHaveBeenCalled();
+    expect(scene.environment).toBeNull();
+  });
+
+  it('applies the preset sky saturation and gain in the sky shader', () => {
+    const { scene, env } = setup();
+    let sky: THREE.Mesh | undefined;
+    scene.traverse(o => {
+      if ((o as THREE.Mesh & { isSky?: boolean }).isSky) sky = o as THREE.Mesh;
+    });
+    const mat = sky!.material as THREE.ShaderMaterial;
+    expect(mat.fragmentShader).toContain('uniform float saturation;');
+    expect(mat.uniforms.saturation.value).toBe(TIMES_OF_DAY.noon.skySaturation);
+    env.setTimeOfDay('evening');
+    expect(mat.uniforms.saturation.value).toBe(TIMES_OF_DAY.evening.skySaturation);
+    expect(mat.uniforms.gain.value).toBe(TIMES_OF_DAY.evening.skyGain);
   });
 });

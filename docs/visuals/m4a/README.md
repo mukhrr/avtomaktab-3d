@@ -15,3 +15,17 @@ Maps, to compare with real panoramas:
 - Istiqbol ko'chasi: [Yandex](https://yandex.uz/maps/?ll=69.28143%2C41.30943&z=18&panorama%5Bpoint%5D=69.28143%2C41.30943&panorama%5Bdirection%5D=143%2C0) / [Google](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=41.30943,69.28143&heading=143)
 
 If a link lands with no panorama, the nearest street-level image is a few metres off; drag the pegman onto the same street.
+
+## Brightness check (fix round 1)
+
+`python3 tools/visual/luminance.py IMAGE asphalt=250,610,550,710 building=870,250,960,310` prints the mean luma (Rec. 709 weights on 0-255 sRGB) of each region. The asphalt region is the near carriageway, the building region is the shaded west-facing facade on the right of the avenue shot.
+
+| Avenue shot | Near asphalt | Building face |
+|---|---|---|
+| before | 41.9 | 165.2 |
+| after, noon | 48.7 (+16%) | 150.7 (-9%) |
+| after, evening | 24.8 (51% of noon) | 139.2 |
+| after, noon, first M4a take (no sky ambient) | 36.1 | 45.1 |
+| after, evening, first M4a take | 3.1 | 46.7 |
+
+Targets: noon asphalt and building within 20% of before (33.5 to 50.3, 132 to 198), evening asphalt at least 40% of noon (19.5). All pass.
