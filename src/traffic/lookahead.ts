@@ -23,6 +23,7 @@ export interface Obstacle {
   speed: number;
   /** Unsignalled junction the agent is held at, when that is the nearest obstacle. */
   gate?: string;
+  player?: boolean;
 }
 
 export interface LookaheadWorld {
@@ -85,8 +86,8 @@ function pieces(a: Agent, w: LookaheadWorld): Piece[] {
 /** Nearest thing the agent must not drive into, as a bumper-to-bumper gap and its speed along the lane. */
 export function nearestObstacle(a: Agent, w: LookaheadWorld, player: PlayerState, crossings: CrossingOccupancy): Obstacle | null {
   let best: Obstacle | null = null;
-  const consider = (gap: number, speed: number, gate?: string) => {
-    if (gap <= LOOKAHEAD && (!best || gap < best.gap)) best = { gap, speed, gate };
+  const consider = (gap: number, speed: number, gate?: string, player?: boolean) => {
+    if (gap <= LOOKAHEAD && (!best || gap < best.gap)) best = { gap, speed, gate, player };
   };
   const half = a.length / 2;
   const route = pieces(a, w);
@@ -145,7 +146,7 @@ export function nearestObstacle(a: Agent, w: LookaheadWorld, player: PlayerState
       // The lane-wide corridor is a margin for a player who may move; one standing still is judged by its real box,
       // or a player angled just beside the path and a car waiting for it hold each other forever.
       if (Math.abs(player.speed) < MOVING && !sweepHitsPlayer(p, a, player, hit.d)) continue;
-      consider(hit.d - half - along, Math.max(0, player.speed * Math.cos(rel)));
+      consider(hit.d - half - along, Math.max(0, player.speed * Math.cos(rel)), undefined, true);
     }
   }
   return best;

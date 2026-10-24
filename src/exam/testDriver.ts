@@ -90,6 +90,10 @@ const LANE_GAP_TIME = 3;
 const CUT_STEP = 0.25;
 const CUT_HORIZON = 2.5;
 const CUT_MARGIN = 0.5;
+/** Standing this long nose to nose with a car that waits for us, back off this far at this speed to clear its path. */
+const BACK_OFF_AFTER = 3;
+const BACK_OFF_DISTANCE = 2.5;
+const BACK_OFF_SPEED = 0.8;
 /** Cobalt wheelbase, and MAX_STEER and STEER_FALLOFF_SPEED in src/vehicle/vehicle.ts, to turn path curvature into steer input. */
 const WHEELBASE = 2.6;
 const MAX_STEER = 0.6;
@@ -204,6 +208,8 @@ export class ScriptedDriver {
   /** Turn and lane-change maneuvers this plan signals for, in order. */
   readonly signalling: Signalling[] = [];
   readonly laneChanges: number;
+  /** Times the driver backed off for a car waiting for it. */
+  backOffs = 0;
   s = 0;
   v = 0;
   cabin: CabinState = { ...newCabin(), belt: true };
@@ -222,6 +228,11 @@ export class ScriptedDriver {
   private stopSignStill = 0;
   private yieldWait = 0;
   private stillAtStart = 0;
+  /** The car the last decision stopped for, and backing off from one that waits for us. */
+  private blocker: number | null = null;
+  private heldFor = 0;
+  private backingFrom: number | null = null;
+  private readonly backedOff = new Set<string>();
   private moved = false;
   private lastGlance = -Infinity;
   private touching = new Set<number>();
@@ -381,9 +392,12 @@ export class ScriptedDriver {
   step(t: number, dt: number): SessionFrame {
     const a = this.decide(t, dt);
     this.prevV = this.v;
-    this.v = Math.max(0, this.v + a * dt);
-    if (this.v < 0.02 && a <= 0) this.v = 0;
-    this.s = Math.min(this.s + this.v * dt, this.line.length);
+    if (this.backOff(dt)) this.v = -BACK_OFF_SPEED;
+    else {
+      this.v = Math.max(0, this.v + a * dt);
+      if (this.v < 0.02 && a <= 0) this.v = 0;
+    }
+    this.s = Math.min(Math.max(this.s + this.v * dt, 0), this.line.length);
     if (this.v > STOP_SPEED) this.moved = true;
     this.keyboardSteer(dt);
     this.signal(t);
@@ -391,7 +405,7 @@ export class ScriptedDriver {
     const events = this.contacts(t);
     const frame: SessionFrame = {
       t, dt, position, heading, speed: this.v,
-      drivetrain: { gearbox: 'auto', gear: 1, rpm: 800, running: true },
+      drivetrain: { gearbox: 'auto', gear: this.v < 0 ? -1 : 1, rpm: 800, running: true },
       cabin: this.cabin, steer: this.steer, events,
     };
     this.snap = buildSnapshot(
@@ -427,19 +441,21 @@ export class ScriptedDriver {
     const v = this.v;
     let acc = MAX_ACCEL;
     let why = 'cruise';
-    const limit = (a: number, reason: string) => {
+    let by: number | null = null;
+    const limit = (a: number, reason: string, car: number | null = null) => {
       if (a < acc) {
         acc = a;
         why = reason;
+        by = car;
       }
     };
     /** A point the front must not pass, with the speed it may have there. */
-    const target = (gap: number, vMax: number, reason: string) => {
+    const target = (gap: number, vMax: number, reason: string, car: number | null = null) => {
       const g = Math.max(gap, 0.01);
-      if (vMax === 0 && g < 0.3) return limit(-v / dt, reason);
+      if (vMax === 0 && g < 0.3) return limit(-v / dt, reason, car);
       const allowed = Math.sqrt(vMax * vMax + 2 * COMFORT_DECEL * g);
-      if (v > allowed) limit(-Math.min(MAX_DECEL, Math.max(COMFORT_DECEL, (v * v - vMax * vMax) / (2 * g))), reason);
-      else limit(Math.min(MAX_ACCEL, (allowed - v) / 0.5), reason);
+      if (v > allowed) limit(-Math.min(MAX_DECEL, Math.max(COMFORT_DECEL, (v * v - vMax * vMax) / (2 * g))), reason, car);
+      else limit(Math.min(MAX_ACCEL, (allowed - v) / 0.5), reason, car);
     };
 
     // Pull-off: indicate and wait before moving.
@@ -470,7 +486,7 @@ export class ScriptedDriver {
     const lead = this.leader();
     if (lead) {
       const a = idmAccel(v, lead.gap, lead.speed, { v0: Math.max(cruise, 0.1), a: MAX_ACCEL, b: 2, T: 1.4, s0: 2.5 });
-      limit(Math.max(-MAX_DECEL, a), `leader ${lead.id}`);
+      limit(Math.max(-MAX_DECEL, a), `leader ${lead.id}`, lead.id);
     } else limit(MAX_ACCEL * (1 - (v / Math.max(cruise, 0.1)) ** 4), 'cruise');
 
     for (const p of this.pieces) {
@@ -489,14 +505,47 @@ export class ScriptedDriver {
     }
 
     const cut = this.cutIn();
-    if (cut) target(cut.gap, 0, `car ${cut.id} cutting across`);
+    if (cut) target(cut.gap, 0, `car ${cut.id} cutting across`, cut.id);
 
     const hop = this.signalling.find(m => m.into && m.at > this.s);
     if (hop && hop.at - this.s < LOOKAHEAD && !this.gapFree(hop.into!)) target(hop.at - this.s, 0, `gap in lane ${hop.into!.lane}`);
 
     target(this.finishS - this.s, 0, 'finish');
+    this.blocker = by;
     this.note(t, why);
     return acc;
+  }
+
+  /**
+   * A car that waits because we stand in its path while we wait for it never moves first. A driver backs off a
+   * little, once per car, so its path is clear; it is not a forward gear, so it is no roll-back.
+   */
+  private backOff(dt: number): boolean {
+    const b = this.blocker === null ? null : this.w.traffic.agents[this.blocker];
+    const x = b?.active && b.speed < YIELD_MOVING ? this.w.traffic.inspect(b.id) : null;
+    const key = x ? `${b!.id}:${x.generation}` : '';
+    if (this.backingFrom === null) {
+      this.heldFor = x?.heldByPlayer && this.v === 0 && !this.backedOff.has(key) ? this.heldFor + dt : 0;
+      if (this.heldFor < BACK_OFF_AFTER) return false;
+      this.backedOff.add(key);
+      this.backOffs++;
+      this.backingFrom = this.s;
+      this.heldFor = 0;
+    }
+    if (this.backingFrom - this.s < BACK_OFF_DISTANCE && this.s > 0 && !this.carBehind()) return true;
+    this.backingFrom = null;
+    this.v = 0;
+    return false;
+  }
+
+  private carBehind(): boolean {
+    const at = this.line.at(this.s - 1);
+    const mine = { p: at.position, h: at.heading, l: PLAYER_LENGTH, w: PLAYER_WIDTH };
+    return this.w.traffic.agents.some(a => {
+      if (!a.active || Math.abs(a.position[0] - at.position[0]) > 15 || Math.abs(a.position[1] - at.position[1]) > 15) return false;
+      const k = CAR_CLASSES[a.carClass];
+      return boxesOverlap(mine, { p: a.position, h: a.heading, l: k.length, w: k.width });
+    });
   }
 
   private limitAt(p: Piece, s: number): number {
@@ -683,6 +732,9 @@ export class ScriptedDriver {
     for (const a of this.w.traffic.agents) {
       if (!a.active || Math.abs(a.position[0] - me[0]) > 30 || Math.abs(a.position[1] - me[1]) > 30) continue;
       const k = CAR_CLASSES[a.carClass];
+      // One that waits for us with its box already touching ours stands beside or behind: driving on frees it.
+      const touching = boxesOverlap({ p: me, h: this.pose.heading, l: PLAYER_LENGTH, w: PLAYER_WIDTH }, { p: a.position, h: a.heading, l: k.length, w: k.width });
+      if (touching && a.speed < YIELD_MOVING && this.w.traffic.inspect(a.id)?.heldByPlayer) continue;
       for (let tau = CUT_STEP; tau <= CUT_HORIZON + 1e-9; tau += CUT_STEP) {
         const ahead = this.s + Math.max(this.v, 2) * tau;
         const mine = this.line.at(ahead);

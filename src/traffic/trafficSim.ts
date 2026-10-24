@@ -78,6 +78,8 @@ export interface Agent extends AgentView {
   changing: LaneChange | null;
   /** Sim time of the next lane-change consideration. */
   considerAt: number;
+  /** The player was the nearest obstacle on the last step. */
+  heldByPlayer: boolean;
 }
 
 /** A car on a lane, or one changing into or out of it, at its path distance along that lane. */
@@ -357,13 +359,14 @@ export class TrafficSim {
   inspect(id: number): {
     ref: LaneRef; s: number; connectorNode: string | null; generation: number; turn: Turn | null;
     changing: { from: LaneRef; to: LaneRef; t: number; back: boolean } | null;
+    heldByPlayer: boolean;
   } | null {
     const a = this.pool[id];
     if (!a || !a.active) return null;
     const ch = a.changing;
     return {
       ref: a.ref, s: a.s, connectorNode: a.conn?.node ?? null, generation: a.generation, turn: (a.conn ?? a.nextConn)?.kind ?? null,
-      changing: ch ? { from: ch.from, to: ch.to, t: ch.t, back: ch.back } : null,
+      changing: ch ? { from: ch.from, to: ch.to, t: ch.t, back: ch.back } : null, heldByPlayer: a.heldByPlayer,
     };
   }
 
@@ -386,6 +389,7 @@ export class TrafficSim {
       m.set(approachKey(a.conn ? a.conn.to : a.ref), this.time);
       this.waiting.set(node, m);
     }
+    a.heldByPlayer = !!ob?.player;
     const acc = idmAccel(a.speed, ob ? ob.gap : null, ob ? ob.speed : 0, { v0, ...DEFAULT_DRIVER });
     a.speed = Math.max(0, a.speed + acc * dt);
     a.braking = acc < BRAKING;
@@ -958,7 +962,7 @@ export class TrafficSim {
       colour: pickPaint(this.rand(), carClass), braking: false, speed: 0, indicator: null,
       ref, s, conn: null, next: null, nextConn: null, route: [], trapped: false,
       factor: 0.85 + 0.15 * this.rand(), length: CAR_CLASSES[carClass].length,
-      generation: (this.pool[id]?.generation ?? 0) + 1, still: 0, rest: 0, stopDone: false,
+      generation: (this.pool[id]?.generation ?? 0) + 1, still: 0, rest: 0, stopDone: false, heldByPlayer: false,
       changing: null, considerAt: this.time + CONSIDER_EVERY * this.laneRand(),
     };
     a.speed = speed ?? 0.6 * this.desiredSpeed(a);

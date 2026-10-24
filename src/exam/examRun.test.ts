@@ -36,6 +36,15 @@ describe('exam runs on route-1 with M2 traffic (headless)', () => {
     expect(nearestSolid).toBeGreaterThan(3);
   }, RUN_TIMEOUT);
 
+  it('a careful driver moves off when a car turning behind it waits for it (seed 5)', () => {
+    // Seed 5 left the player just past the junction at node 3618822995 with a bus behind it on the connector,
+    // touching and waiting for it, and the driver yielding to the bus as a car cutting across until the 1500 s cap.
+    const run = runExam(loadWorld({ cars: 60, crossers: 40, walkers: 80, seed: 5 }), { indicators: true, obeyLights: true });
+    expect(run.result.phase).toBe('finished');
+    expect(run.result.violations.map(v => v.id)).toEqual([]);
+    expect(run.seconds).toBeLessThan(900);
+  }, RUN_TIMEOUT);
+
   it('a driver who runs red lights fails on redLight', () => {
     const { result } = runExam(world(), { indicators: true, obeyLights: false });
     expect(result.phase).toBe('failed');
