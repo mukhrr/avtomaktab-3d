@@ -219,11 +219,15 @@ function unlockAudio() {
   if (!Ctor) return;
   try {
     sfx ??= new Sfx(new Ctor());
-    void sfx.ctx.resume();
+    if (sfx.ctx.state !== 'running') void sfx.ctx.resume();
   } catch {
     sfx = null;
   }
 }
+
+document.addEventListener('visibilitychange', () => {
+  if (sfx && document.visibilityState === 'visible' && sfx.ctx.state !== 'running') void sfx.ctx.resume();
+});
 
 /** Runs inside the click handler, so the brief's audio starts within the user gesture. */
 function startExam() {

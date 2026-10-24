@@ -44,11 +44,23 @@ describe('hornVolume and hornPan', () => {
   });
 });
 
-/** Player at the origin heading +z (north of nothing in particular), queue stretching to -z. */
+/** Player at the origin heading +z, queue stretching to -z. */
 function setup() {
   let state: LightState = 'red';
-  const signals = { time: 0, approachState: () => ({ state, stopAt: 30 }) };
-  const matcher = { update: () => ({ ref: { edgeId: 'e', dir: 1 as const, lane: 0 }, edgeS: 10, lateral: 1, inJunction: null, onConnector: false, confidence: 1, held: 1 }) };
+  let greenStart = 0;
+  let lightDistance = 20;
+  let match: 'lane' | 'none' | 'junction' = 'lane';
+  const signals = {
+    time: 0,
+    approachState: () => (match === 'lane' ? { state, stopAt: 10 + lightDistance } : null),
+    greenAge: () => (state === 'green' ? signals.time - greenStart : 0),
+  };
+  const matcher = {
+    update: () => ({
+      ref: match === 'none' ? null : { edgeId: 'e', dir: 1 as const, lane: 0 },
+      edgeS: 10, lateral: 1, inJunction: match === 'junction' ? 'n' : null, onConnector: false, confidence: 1, held: 1,
+    }),
+  };
   const net = { path: () => ({ startAt: 0, endAt: 60 }) };
   const monitor = new HornMonitor({ matcher, signals, net } as never);
   const player = { position: [0, 0] as [number, number], heading: 0, speed: 0, length: 4.5, width: 1.8 };
@@ -58,13 +70,18 @@ function setup() {
   const listener = { position: [0, 0] as [number, number], heading: 0 };
   const run = (secs: number, agents: AgentView[], speed = 0) => {
     const out: ReturnType<HornMonitor['update']> = [];
-    for (let i = 0; i < secs * 10; i++) {
+    for (let i = 0; i < Math.round(secs * 10); i++) {
       signals.time += 0.1;
       out.push(...monitor.update(0.1, { ...player, speed }, agents, signals, listener));
     }
     return out;
   };
-  return { run, setLight: (s: LightState) => { state = s; }, car, signals };
+  return {
+    run, car, signals,
+    setLight: (s: LightState) => { if (s === 'green' && state !== 'green') greenStart = signals.time; state = s; },
+    setMatch: (m: typeof match) => { match = m; },
+    setLightDistance: (d: number) => { lightDistance = d; },
+  };
 }
 
 describe('HornMonitor', () => {
@@ -85,6 +102,22 @@ describe('HornMonitor', () => {
     const w = setup();
     w.setLight('green');
     expect(w.run(1.9, [w.car(1, -8)])).toEqual([]);
+  });
+
+  it('times from the real green, not from when the player arrived', () => {
+    const w = setup();
+    w.setLight('green');
+    w.setMatch('none');
+    w.run(20, []);
+    w.setMatch('lane');
+    expect(w.run(10, [w.car(1, -8)])).toEqual([]);
+  });
+
+  it('does not honk past 6 s of green', () => {
+    const w = setup();
+    w.setLight('green');
+    w.run(6.5, []);
+    expect(w.run(5, [w.car(1, -8)])).toEqual([]);
   });
 
   it('is silent when the player is moving', () => {
@@ -123,5 +156,59 @@ describe('HornMonitor', () => {
     w.setLight('green');
     const horns = w.run(8, [w.car(1, -8, { position: [-1, -8] })]);
     expect(horns[0].pan).toBeGreaterThan(0);
+  });
+
+  it('ignores a light more than 40 m ahead', () => {
+    const w = setup();
+    w.setLightDistance(41);
+    w.setLight('green');
+    expect(w.run(8, [w.car(1, -8)])).toEqual([]);
+    w.setLightDistance(39);
+    w.setLight('red');
+    w.setLight('green');
+    expect(w.run(8, [w.car(1, -8)])).toHaveLength(1);
+  });
+
+  it('is silent with no light ahead, in a junction, or off the map', () => {
+    for (const m of ['none', 'junction'] as const) {
+      const w = setup();
+      w.setLight('green');
+      w.setMatch(m);
+      expect(w.run(8, [w.car(1, -8)])).toEqual([]);
+    }
+  });
+
+  it('a short match dropout does not allow a second honk in the same stop', () => {
+    const w = setup();
+    const agents = [w.car(1, -8)];
+    w.setLight('green');
+    expect(w.run(2.5, agents)).toHaveLength(1);
+    w.setMatch('none');
+    w.run(0.5, agents);
+    w.setMatch('lane');
+    expect(w.run(3, agents)).toEqual([]);
+  });
+
+  it('moving off clears the honk so a later stop in the same green can honk', () => {
+    const w = setup();
+    const agents = [w.car(1, -8)];
+    w.setLight('green');
+    expect(w.run(4, agents)).toHaveLength(1);
+    w.run(0.5, agents, 5);
+    // stopped again, still inside the 2 to 6 s window of the same green
+    expect(w.run(1, agents)).toHaveLength(1);
+  });
+
+  it('a long match dropout forgets the stop', () => {
+    const w = setup();
+    const agents = [w.car(1, -8)];
+    w.setLight('green');
+    expect(w.run(4, agents)).toHaveLength(1);
+    w.setMatch('none');
+    w.run(2, agents);
+    w.setLight('red');
+    w.setLight('green');
+    w.setMatch('lane');
+    expect(w.run(8, agents)).toHaveLength(1);
   });
 });

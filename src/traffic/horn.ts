@@ -50,7 +50,11 @@ export interface HornEvent {
 
 export interface HornDeps {
   matcher: { update(position: Vec2, heading: number, dt: number): LaneMatch };
-  signals: { time: number; approachState(edgeId: string, dir: 1 | -1, s: number, within?: [number, number]): { state: LightState; stopAt: number } | null };
+  signals: {
+    time: number;
+    approachState(edgeId: string, dir: 1 | -1, s: number, within?: [number, number]): { state: LightState; stopAt: number } | null;
+    greenAge(edgeId: string, dir: 1 | -1, s: number, within?: [number, number]): number;
+  };
   net: { path(ref: NonNullable<LaneMatch['ref']>): { startAt: number; endAt: number } };
 }
 
@@ -63,21 +67,27 @@ interface PlayerPose {
 
 const isGreen = (s: LightState) => s === 'green' || s === 'flashingGreen';
 
+/** Match dropouts shorter than this keep the stop's state. */
+const DROPOUT_S = 1;
+
 /** Decides, from public traffic and signal state only, when the first AI car behind a stopped player honks. */
 export class HornMonitor {
-  private greenSince: number | null = null;
+  private lastSeen = -Infinity;
   private readonly honked = new Set<number>();
 
   constructor(private readonly deps: HornDeps) {}
 
   update(dt: number, player: PlayerPose, agents: readonly AgentView[], signals: HornDeps['signals'], listener: Listener): HornEvent[] {
     const light = this.lightAhead(dt, player);
-    if (!light || !isGreen(light)) {
-      this.greenSince = null;
+    if (!light) {
+      if (signals.time - this.lastSeen > DROPOUT_S) this.honked.clear();
+      return [];
+    }
+    this.lastSeen = signals.time;
+    if (!isGreen(light.state)) {
       this.honked.clear();
       return [];
     }
-    this.greenSince ??= signals.time;
     if (Math.abs(player.speed) >= STOPPED_BELOW) {
       this.honked.clear();
       return [];
@@ -86,7 +96,7 @@ export class HornMonitor {
     if (!first) return [];
     const { agent, gap } = first;
     const fire = hornDecision({
-      greenFor: signals.time - this.greenSince, playerSpeed: player.speed, playerAhead: true,
+      greenFor: light.greenFor, playerSpeed: player.speed, playerAhead: true,
       honked: this.honked.has(agent.id), distance: gap,
     });
     if (!fire) return [];
@@ -94,13 +104,15 @@ export class HornMonitor {
     return [{ agentId: agent.id, volume: hornVolume(gap), pan: hornPan(listener, agent.position) }];
   }
 
-  private lightAhead(dt: number, player: PlayerPose): LightState | null {
+  private lightAhead(dt: number, player: PlayerPose): { state: LightState; greenFor: number } | null {
     const m = this.deps.matcher.update(player.position, player.heading, dt);
     if (!m.ref || m.inJunction) return null;
+    const { edgeId, dir } = m.ref;
     const lane = this.deps.net.path(m.ref);
-    const l = this.deps.signals.approachState(m.ref.edgeId, m.ref.dir, m.edgeS, [lane.startAt, lane.endAt]);
-    if (!l || (l.stopAt - m.edgeS) * m.ref.dir > LIGHT_RANGE) return null;
-    return l.state;
+    const within: [number, number] = [lane.startAt, lane.endAt];
+    const l = this.deps.signals.approachState(edgeId, dir, m.edgeS, within);
+    if (!l || (l.stopAt - m.edgeS) * dir > LIGHT_RANGE) return null;
+    return { state: l.state, greenFor: this.deps.signals.greenAge(edgeId, dir, m.edgeS, within) };
   }
 
   private firstBehind(player: PlayerPose, agents: readonly AgentView[]): { agent: AgentView; gap: number } | null {

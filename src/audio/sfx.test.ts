@@ -2,20 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { Sfx } from './sfx';
 
 interface Param { value: number; ramps: [number, number][]; setValueAtTime: (v: number, t: number) => void; linearRampToValueAtTime: (v: number, t: number) => void }
-interface Node { kind: string; params: Record<string, Param>; connected: Node[]; started?: number; stopped?: number; stopCalls?: number; type?: string; frequency?: Param; onended?: () => void; connect: (n: Node) => Node; disconnect: () => void; start?: (t: number) => void; stop?: (t?: number) => void }
+interface Node { kind: string; params: Record<string, Param>; connected: Node[]; started?: number; stopped?: number; stopCalls?: number; disconnects?: number; type?: string; frequency?: Param; onended?: () => void; connect: (n: Node) => Node; disconnect: () => void; start?: (t: number) => void; stop?: (t?: number) => void }
 
 function param(): Param {
   const p: Param = { value: 0, ramps: [], setValueAtTime(v, t) { p.ramps.push([t, v]); }, linearRampToValueAtTime(v, t) { p.ramps.push([t, v]); } };
   return p;
 }
 
-function stubContext(now = 10) {
+function stubContext(now = 10, state = 'running') {
   const nodes: Node[] = [];
   const make = (kind: string, extra: Partial<Node> = {}): Node => {
     const n: Node = {
       kind, params: {}, connected: [],
       connect(to) { n.connected.push(to); return to; },
-      disconnect() {},
+      disconnect() { n.disconnects = (n.disconnects ?? 0) + 1; },
       ...extra,
     };
     nodes.push(n);
@@ -23,6 +23,7 @@ function stubContext(now = 10) {
   };
   const ctx = {
     currentTime: now,
+    state,
     destination: make('destination'),
     createGain() { const n = make('gain'); n.params.gain = param(); (n as unknown as { gain: Param }).gain = n.params.gain; return n; },
     createBiquadFilter() { const n = make('filter'); (n as unknown as { frequency: Param; Q: Param }).frequency = param(); (n as unknown as { Q: Param }).Q = param(); return n; },
@@ -55,12 +56,12 @@ describe('Sfx.horn', () => {
   it('ramps the gain up and back to silence by the stop time, scaled by volume', () => {
     const { ctx, nodes } = stubContext(0);
     new Sfx(ctx).horn(0.5, 0);
-    const gain = nodes.find(n => n.kind === 'gain')!.params.gain;
+    const gain = nodes.filter(n => n.kind === 'gain')[1].params.gain;
     const peak = Math.max(...gain.ramps.map(r => r[1]));
     expect(peak).toBeGreaterThan(0);
     const loud = stubContext(0);
     new Sfx(loud.ctx).horn(1, 0);
-    expect(Math.max(...loud.nodes.find(n => n.kind === 'gain')!.params.gain.ramps.map(r => r[1]))).toBeGreaterThan(peak);
+    expect(Math.max(...loud.nodes.filter(n => n.kind === 'gain')[1].params.gain.ramps.map(r => r[1]))).toBeGreaterThan(peak);
     const last = gain.ramps[gain.ramps.length - 1];
     expect(last[1]).toBe(0);
     expect(last[0]).toBeLessThanOrEqual(0.5);
@@ -68,18 +69,40 @@ describe('Sfx.horn', () => {
 
   it('pans and clamps, and routes through a shared master when given one', () => {
     const { ctx, nodes } = stubContext();
-    const master = { connect() {}, disconnect() {} } as unknown as AudioNode;
-    const sfx = new Sfx(ctx, master);
-    expect(sfx.master).toBe(master);
+    const sfx = new Sfx(ctx);
     sfx.horn(1, 3);
     const panner = nodes.find(n => n.kind === 'panner')! as unknown as { pan: Param; connected: unknown[] };
     expect(panner.pan.value).toBe(1);
-    expect(panner.connected).toContain(master);
+    expect(panner.connected).toContain(sfx.master);
   });
 
-  it('defaults the master to the context destination', () => {
-    const { ctx } = stubContext();
-    expect(new Sfx(ctx).master).toBe(ctx.destination);
+  it('owns a master gain routed to the destination', () => {
+    const { ctx, nodes } = stubContext();
+    const sfx = new Sfx(ctx);
+    const master = sfx.master as unknown as Node;
+    expect(master.kind).toBe('gain');
+    expect(master.connected).toContain(ctx.destination);
+    expect(nodes.filter(n => n.kind === 'gain')).toHaveLength(1);
+  });
+
+  it('makes no nodes while the context is not running', () => {
+    const { ctx, nodes } = stubContext(0, 'suspended');
+    new Sfx(ctx).horn(1, 0);
+    expect(nodes.filter(n => n.kind === 'osc')).toHaveLength(0);
+    expect(nodes.filter(n => n.kind === 'panner')).toHaveLength(0);
+  });
+
+  it('disconnects its nodes once both oscillators have ended', () => {
+    const { ctx, nodes } = stubContext();
+    new Sfx(ctx).horn(1, 0);
+    const [a, b] = nodes.filter(n => n.kind === 'osc');
+    const chain = nodes.filter(n => ['filter', 'panner'].includes(n.kind));
+    a.onended!();
+    expect(chain.every(n => !n.disconnects)).toBe(true);
+    b.onended!();
+    expect(a.disconnects).toBe(1);
+    expect(b.disconnects).toBe(1);
+    expect(chain.every(n => n.disconnects === 1)).toBe(true);
   });
 
   it('dispose stops running oscillators', () => {

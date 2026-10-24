@@ -5,16 +5,19 @@ const HORN_PEAK = 0.35;
 
 /** Synthesised sound effects on a shared master bus, so later car sounds can mix through the same output. */
 export class Sfx {
-  readonly master: AudioNode;
+  /** Every sound goes through this gain, so a volume setting or later car sounds can share the bus. */
+  readonly master: GainNode;
   private readonly live = new Set<OscillatorNode>();
 
-  constructor(readonly ctx: AudioContext, master?: AudioNode) {
-    this.master = master ?? ctx.destination;
+  constructor(readonly ctx: AudioContext) {
+    this.master = ctx.createGain();
+    this.master.connect(ctx.destination);
   }
 
   /** Two detuned saws near 400 and 500 Hz through a band-pass. `volume` is 0 to 1, `pan` -1 (left) to 1 (right). */
   horn(volume: number, pan: number): void {
     const { ctx } = this;
+    if (ctx.state !== 'running') return;
     const t0 = ctx.currentTime;
     const end = t0 + HORN_S;
     const gain = ctx.createGain();
@@ -58,5 +61,6 @@ export class Sfx {
       try { osc.stop(); } catch { /* already stopped */ }
     }
     this.live.clear();
+    this.master.disconnect();
   }
 }

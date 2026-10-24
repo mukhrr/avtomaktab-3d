@@ -123,3 +123,17 @@ test('headState matches a signal whose stopAt was deduped away', () => {
   sys.time = 0;
   expect(sys.headState('late')).toBe('red');
 });
+
+test('greenAge counts seconds since the phase turned green and is 0 otherwise', () => {
+  const sys = make([[p0], [p1]]);
+  at(sys, 7.5);
+  expect(sys.greenAge('e0', 1, 0)).toBeCloseTo(7.5);
+  at(sys, 19);
+  expect(sys.greenAge('e0', 1, 0)).toBeCloseTo(19);
+  at(sys, 22);
+  expect(sys.greenAge('e0', 1, 0)).toBe(0);
+  at(sys, 26 + 4);
+  expect(sys.greenAge('e0', 1, 0)).toBe(0);
+  expect(sys.greenAge('e1', -1, 50)).toBeCloseTo(4);
+  expect(sys.greenAge('nowhere', 1, 0)).toBe(0);
+});
