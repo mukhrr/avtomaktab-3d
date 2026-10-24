@@ -1,4 +1,4 @@
-import { createProbe, needsReload } from './probe';
+import { afterProbe, createProbe, needsReload } from './probe';
 
 function run(frames: number, render: (i: number) => number, dtMs = 16, steps: (i: number) => number = () => 1) {
   const probe = createProbe();
@@ -40,4 +40,10 @@ test('a reload is needed only when antialias or ground textures differ', () => {
   expect(needsReload('medium', 'low')).toBe(true);
   expect(needsReload('low', 'high')).toBe(true);
   expect(needsReload('low', 'low')).toBe(false);
+});
+
+test('a measured pick that needs other load-time settings reloads; anything else applies in place', () => {
+  expect(afterProbe('medium', { quality: 'low', measured: true })).toBe('reload');
+  expect(afterProbe('medium', { quality: 'high', measured: true })).toBe('apply');
+  expect(afterProbe('medium', { quality: 'medium', measured: false })).toBe('apply');
 });

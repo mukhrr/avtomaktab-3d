@@ -49,7 +49,7 @@ export const QUALITY: Record<Quality, QualitySettings> = {
   },
 };
 
-/** Inputs are the p95 frame times (ms) measured at medium. */
+/** Inputs are p90 render-only frame times (ms) measured at medium. */
 export function pickQuality(probeGpuMs: number | null, probeCpuMs: number): Quality {
   const worst = probeGpuMs === null ? probeCpuMs : Math.max(probeGpuMs, probeCpuMs);
   if (worst <= 5) return 'high';

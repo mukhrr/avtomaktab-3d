@@ -27,7 +27,7 @@ import { newCabin, stepCabin } from './vehicle/cabin';
 import { InputReader } from './vehicle/input';
 import { Vehicle } from './vehicle/vehicle';
 import { useSkyAmbient } from './render/litMaterials';
-import { createProbe } from './render/probe';
+import { afterProbe, createProbe } from './render/probe';
 import { loadQuality, QUALITY, saveQuality, type Quality } from './render/quality';
 import { createGroundMaterials } from './world/groundMaterials';
 import { buildWorld } from './world/buildWorld';
@@ -384,6 +384,7 @@ renderer.setAnimationLoop(() => {
     if (result) {
       probeDone = true;
       if (result.measured) saveQuality(result.quality);
+      if (afterProbe(loadedQuality, result) === 'reload') return location.reload();
       else pickUnmeasured = true;
       frameStats.reset();
       applyQuality(result.quality);

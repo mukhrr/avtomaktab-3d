@@ -38,7 +38,13 @@ export function createProbe() {
   };
 }
 
-/** Antialiasing and ground textures are fixed for the page load. */
+/** Antialiasing, ground textures and sky ambient are fixed for the page load. */
 export function needsReload(loaded: Quality, chosen: Quality): boolean {
-  return QUALITY[loaded].antialias !== QUALITY[chosen].antialias || QUALITY[loaded].groundTextures !== QUALITY[chosen].groundTextures;
+  const a = QUALITY[loaded], b = QUALITY[chosen];
+  return a.antialias !== b.antialias || a.groundTextures !== b.groundTextures || a.skyAmbient !== b.skyAmbient;
+}
+
+/** The probe ends on the start screen, so a reload loses nothing and gives a weak machine its real low preset. */
+export function afterProbe(loaded: Quality, result: ProbeResult): 'reload' | 'apply' {
+  return result.measured && needsReload(loaded, result.quality) ? 'reload' : 'apply';
 }
