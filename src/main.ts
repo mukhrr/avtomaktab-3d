@@ -32,6 +32,7 @@ import { loadQuality, QUALITY, saveQuality, type Quality } from './render/qualit
 import { createGroundMaterials } from './world/groundMaterials';
 import { createFacadeTexture } from './world/facadeAtlas';
 import { buildWorld } from './world/buildWorld';
+import { createLandmarkTextures } from './world/landmarks';
 import { createEnvironment } from './world/environment';
 import { nearestLane } from './world/spawn';
 
@@ -79,7 +80,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 3000);
 const groundMats = createGroundMaterials(quality);
 const env = createEnvironment(scene, camera, renderer, quality, choice.timeOfDay, groundMats.ground, quality.skyAmbient ? new THREE.PMREMGenerator(renderer) : null);
-const { signalLamps } = buildWorld(scene, district, groundMats, createFacadeTexture());
+const { signalLamps } = buildWorld(scene, district, groundMats, createFacadeTexture(), createLandmarkTextures());
 
 const credit = document.createElement('div');
 credit.textContent = '© OpenStreetMap contributors';

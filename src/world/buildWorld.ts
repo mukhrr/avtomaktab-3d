@@ -14,6 +14,8 @@ import { addSignals, type SignalLamps } from './signals';
 import { addFurniture } from './furniture';
 import { addStreetside } from './streetside';
 import { TREE_SEED, treePositions } from './vegetation';
+import { addLandmarks, type LandmarkTextures } from './landmarks';
+import { landmarkBuildingIds } from '../shared/landmark';
 
 const Y = { green: 0.03, water: 0.05, sidewalk: 0.06, curb: 0.07, asphalt: 0.09, marking: 0.11 };
 const CURB_EXTRA = 1.2;
@@ -22,7 +24,7 @@ const CHUNK_SIZE = 200;
 
 const lambert = (color: number) => new THREE.MeshLambertMaterial({ color });
 
-export function buildWorld(scene: THREE.Scene, d: DistrictData, mats: Record<GroundSurface, THREE.Material>, facadeAtlas: THREE.Texture): { signalLamps: SignalLamps } {
+export function buildWorld(scene: THREE.Scene, d: DistrictData, mats: Record<GroundSurface, THREE.Material>, facadeAtlas: THREE.Texture, landmarkTextures?: LandmarkTextures): { signalLamps: SignalLamps } {
   const uv = (g: THREE.BufferGeometry, k: keyof typeof GROUND_TILE) => worldUVs(g, GROUND_TILE[k]);
   const roads = new Map(d.roads.map(r => [r.id, r]));
   const edges = new Map(d.graph.edges.map(e => [e.id, e]));
@@ -63,7 +65,8 @@ export function buildWorld(scene: THREE.Scene, d: DistrictData, mats: Record<Gro
   const markMesh = addMerged(scene, marks, new THREE.MeshBasicMaterial({ color: 0xeeeeee }));
   if (markMesh) markMesh.receiveShadow = false;
 
-  addBuildings(scene, d.buildings, facadeAtlas, CHUNK_SIZE);
+  addBuildings(scene, d.buildings, facadeAtlas, CHUNK_SIZE, landmarkBuildingIds(d));
+  addLandmarks(scene, d, landmarkTextures);
   addTrees(scene, d);
   addStreetside(scene, d, CHUNK_SIZE);
   addFurniture(scene, d);

@@ -10,7 +10,7 @@ export function useSkyAmbient(root: THREE.Object3D): void {
     if (!s) {
       s = new THREE.MeshStandardMaterial({
         color: l.color, map: l.map, flatShading: l.flatShading, vertexColors: l.vertexColors,
-        side: l.side, transparent: l.transparent, opacity: l.opacity, roughness: 1, metalness: 0,
+        side: l.side, transparent: l.transparent, opacity: l.opacity, depthWrite: l.depthWrite, roughness: 1, metalness: 0,
       });
       s.userData = { ...l.userData };
       swapped.set(m, s);

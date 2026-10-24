@@ -1,4 +1,5 @@
 import type { Vec2 } from '../shared/district';
+import { landmarkColliders } from '../shared/landmark';
 import { shelterBoxes } from '../world/furniture';
 import { LAMP_SEED, lampPositions } from '../world/streetside';
 import { loadWorld, runExam } from './testDriver';
@@ -29,6 +30,10 @@ describe('exam runs on route-1 with M2 traffic (headless)', () => {
     const shelters = shelterBoxes(w.d);
     const nearestShelter = path.reduce((best, [x, z]) => shelters.reduce((b, s) => Math.min(b, Math.hypot(s.x - x, s.z - z)), best), Infinity);
     expect(nearestShelter).toBeGreaterThan(3);
+    const solids = landmarkColliders(w.d);
+    expect(solids.length).toBe(5);
+    const nearestSolid = path.reduce((best, [x, z]) => solids.reduce((b, s) => Math.min(b, Math.hypot(s.x - x, s.z - z) - s.radius), best), Infinity);
+    expect(nearestSolid).toBeGreaterThan(3);
   }, RUN_TIMEOUT);
 
   it('a driver who runs red lights fails on redLight', () => {
