@@ -139,6 +139,12 @@ describe('HornMonitor', () => {
     expect(w.run(8, [w.car(1, -8), w.car(2, 7)])).toEqual([]);
   });
 
+  it('honks when the car just ahead is driving off', () => {
+    const w = setup();
+    w.setLight('green');
+    expect(w.run(8, [w.car(1, -8), w.car(2, 7, { speed: 4 })]).map(h => h.agentId)).toEqual([1]);
+  });
+
   it('still honks when the car ahead is in another lane or past 10 m', () => {
     const w = setup();
     w.setLight('green');

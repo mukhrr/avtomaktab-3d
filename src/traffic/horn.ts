@@ -124,7 +124,7 @@ export class HornMonitor {
       const dx = a.position[0] - player.position[0], dz = a.position[1] - player.position[1];
       const ahead = dx * fx + dz * fz, across = dx * fz - dz * fx;
       const gap = ahead - player.length / 2 - CAR_CLASSES[a.carClass].length / 2;
-      return ahead > 0 && gap <= BLOCKED_AHEAD && Math.abs(across) <= LANE_HALF_WIDTH;
+      return ahead > 0 && gap <= BLOCKED_AHEAD && Math.abs(across) <= LANE_HALF_WIDTH && Math.abs(a.speed) < STOPPED_BELOW;
     });
   }
 
