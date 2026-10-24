@@ -26,7 +26,7 @@ import { trafficView } from './traffic/trafficView';
 import { newCabin, stepCabin } from './vehicle/cabin';
 import { InputReader } from './vehicle/input';
 import { Vehicle } from './vehicle/vehicle';
-import { createProbe, PROBE_MIN_FRAMES } from './render/probe';
+import { createProbe } from './render/probe';
 import { loadQuality, QUALITY, saveQuality, type Quality } from './render/quality';
 import { createGroundMaterials } from './world/groundMaterials';
 import { buildWorld } from './world/buildWorld';
@@ -195,8 +195,10 @@ function applyQuality(q: Quality) {
 }
 
 // The probe samples the same loop that draws the start screen, so it never blocks it.
-const probe = storedQuality === null ? createProbe(frameStats) : null;
+const probe = storedQuality === null ? createProbe() : null;
 let probeDone = probe === null;
+// True while the shown pick is only a fallback from a probe that measured nothing; Start must not store it.
+let pickUnmeasured = false;
 
 /** Runs inside the click handler, so the brief's audio starts within the user gesture. */
 function startExam() {
@@ -213,7 +215,11 @@ mountHud(hud, minimap.canvas, params.has('debug'), {
   choice: () => choice,
   onStart: (c, q) => {
     choice = c;
-    saveQuality(q);
+    if (!(pickUnmeasured && q === hud.get().quality)) {
+      saveQuality(q);
+      pickUnmeasured = false;
+    }
+    hud.set({ quality: q });
     applyQuality(q);
     env.setTimeOfDay(c.timeOfDay);
     if (c.mode === 'exam') return startExam();
@@ -302,6 +308,7 @@ renderer.setAnimationLoop(() => {
 
   if (orbit) orbit.update();
   else rig.update(car.object, car.speed, dt);
+  const renderStart = performance.now();
   env.follow(p.x, p.z);
   env.update();
   gpuTimer?.begin();
@@ -313,6 +320,7 @@ renderer.setAnimationLoop(() => {
   const mainTris = renderer.info.render.triangles - preTris;
   mirrors.overlay(rig.mode);
   gpuTimer?.end();
+  const renderMs = performance.now() - renderStart;
 
   const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(car.object.quaternion);
   minimap.draw(p.x, p.z, Math.atan2(fwd.x, fwd.z));
@@ -359,16 +367,17 @@ renderer.setAnimationLoop(() => {
     frames = 0;
     hudT = 0;
   }
-  frameStats.add(performance.now() - cpuStart, gpuTimer?.poll() ?? null);
+  const gpuSample = gpuTimer?.poll() ?? null;
+  frameStats.add(performance.now() - cpuStart, gpuSample);
   if (probe && !probeDone) {
-    const picked = probe.frame(performance.now());
-    if (picked) {
+    const result = probe.frame(performance.now(), renderMs, gpuSample, r.steps);
+    if (result) {
       probeDone = true;
-      // A timed-out probe with too few frames says nothing about the machine, so it is not stored.
-      if (frameStats.summary().frames >= PROBE_MIN_FRAMES) saveQuality(picked);
+      if (result.measured) saveQuality(result.quality);
+      else pickUnmeasured = true;
       frameStats.reset();
-      applyQuality(picked);
-      hud.set({ probing: false, quality: picked });
+      applyQuality(result.quality);
+      hud.set({ probing: false, quality: result.quality });
     }
   }
 });

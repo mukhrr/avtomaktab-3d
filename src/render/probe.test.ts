@@ -1,59 +1,38 @@
-import { FrameStats } from './frameStats';
 import { createProbe, needsReload } from './probe';
 
-function feed(frames: number, ms: number, dtMs = 16) {
-  const stats = new FrameStats();
-  const probe = createProbe(stats);
+function run(frames: number, render: (i: number) => number, dtMs = 16, steps: (i: number) => number = () => 1) {
+  const probe = createProbe();
   let result = null;
-  for (let i = 0; i < frames && !result; i++) {
-    stats.add(ms, null);
-    result = probe.frame(i * dtMs);
-  }
+  for (let i = 0; i < frames && !result; i++) result = probe.frame(i * dtMs, render(i), null, steps(i));
   return result;
 }
 
 test('a fast machine finishes after 120 measured frames and picks high', () => {
-  expect(feed(200, 3)).toBe('high');
+  expect(run(200, () => 3)).toEqual({ quality: 'high', measured: true });
 });
 
 test('a slow machine picks low', () => {
-  expect(feed(200, 15)).toBe('low');
+  expect(run(200, () => 15)?.quality).toBe('low');
 });
 
-test('the first frames are warm-up and not measured', () => {
-  const stats = new FrameStats();
-  const probe = createProbe(stats);
-  for (let i = 0; i < 10; i++) {
-    stats.add(500, null);
-    expect(probe.frame(i)).toBeNull();
-  }
-  for (let i = 10; i < 130; i++) {
-    stats.add(3, null);
-    probe.frame(i);
-  }
-  expect(stats.summary().cpuP95).toBe(3);
+test('the first 10 frames are warm-up', () => {
+  expect(run(200, i => (i < 10 ? 500 : 3))?.quality).toBe('high');
+});
+
+test('frames with catch-up sim steps are skipped', () => {
+  expect(run(400, i => (i % 2 ? 80 : 3), 16, i => (i % 2 ? 4 : 1))?.quality).toBe('high');
+});
+
+test('a few hitches do not lower the preset', () => {
+  expect(run(300, i => (i % 25 === 0 ? 60 : 3))?.quality).toBe('high');
 });
 
 test('after 4 s it decides with at least 20 frames', () => {
-  const stats = new FrameStats();
-  const probe = createProbe(stats);
-  let result = null;
-  for (let i = 0; i < 60 && !result; i++) {
-    stats.add(15, null);
-    result = probe.frame(i * 100);
-  }
-  expect(result).toBe('low');
+  expect(run(60, () => 15, 100)).toEqual({ quality: 'low', measured: true });
 });
 
-test('after 4 s with fewer than 20 frames it falls back to medium', () => {
-  const stats = new FrameStats();
-  const probe = createProbe(stats);
-  let result = null;
-  for (let i = 0; i < 15 && !result; i++) {
-    stats.add(3, null);
-    result = probe.frame(i * 1000);
-  }
-  expect(result).toBe('medium');
+test('after 4 s with fewer than 20 frames it falls back to unmeasured medium', () => {
+  expect(run(15, () => 3, 1000)).toEqual({ quality: 'medium', measured: false });
 });
 
 test('a reload is needed only when antialias or ground textures differ', () => {

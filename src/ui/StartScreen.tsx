@@ -5,11 +5,11 @@ import type { Quality } from '../render/quality';
 import type { TimeOfDay } from '../render/timeOfDay';
 import { saveChoice, type StartChoice } from './choices';
 
-function Pick<T extends string>({ value, options, onPick }: { value: T; options: [T, string][]; onPick: (v: T) => void }) {
+function Pick<T extends string>({ value, options, onPick, disabled }: { value: T; options: [T, string][]; onPick: (v: T) => void; disabled?: boolean }) {
   return (
     <div className="pick">
       {options.map(([v, label]) => (
-        <button key={v} type="button" className={v === value ? 'on' : ''} onClick={() => onPick(v)}>{label}</button>
+        <button key={v} type="button" disabled={disabled} className={v === value ? 'on' : ''} onClick={() => onPick(v)}>{label}</button>
       ))}
     </div>
   );
@@ -45,7 +45,7 @@ export function StartScreen({ initial, routeKm, quality, loadedQuality, probing,
         <label>{t(L, 'ui.timeOfDay')}</label>
         <Pick<TimeOfDay> value={c.timeOfDay} options={[['morning', t(L, 'ui.morning')], ['noon', t(L, 'ui.noon')], ['evening', t(L, 'ui.evening')]]} onPick={timeOfDay => set({ timeOfDay })} />
         <label>{t(L, 'ui.quality')}</label>
-        <Pick<Quality> value={q} options={[['low', t(L, 'ui.low')], ['medium', t(L, 'ui.medium')], ['high', t(L, 'ui.high')]]} onPick={setQ} />
+        <Pick<Quality> value={q} options={[['low', t(L, 'ui.low')], ['medium', t(L, 'ui.medium')], ['high', t(L, 'ui.high')]]} onPick={setQ} disabled={probing} />
         {probing && <p className="note">{t(L, 'ui.checkingGraphics')}</p>}
         {!probing && needsReload(loadedQuality, q) && <p className="note">{t(L, 'ui.reloadForAA')}</p>}
         {c.mode === 'exam' && <p className="note">{t(L, 'ui.route', { km: routeKm.toFixed(1) })} · {t(L, 'ui.examKeys')}</p>}

@@ -1,27 +1,39 @@
 import { pickQuality, QUALITY, type Quality } from './quality';
-import type { FrameStats } from './frameStats';
 
 const WARMUP_FRAMES = 10;
-const TARGET_FRAMES = 120;
+const TARGET_SAMPLES = 120;
 export const PROBE_MIN_FRAMES = 20;
 const MAX_MS = 4000;
 
-/** Shader compiles make the first frames unrepresentative, so they are dropped before measuring. */
-export function createProbe(stats: FrameStats) {
+const p90 = (v: number[]): number => [...v].sort((a, b) => a - b)[Math.max(0, Math.ceil(0.9 * v.length) - 1)];
+
+export interface ProbeResult {
+  quality: Quality;
+  /** False when too few frames arrived in time to say anything about the machine. */
+  measured: boolean;
+}
+
+/**
+ * Samples are render-only times. The first frames (shader compiles) and frames that ran catch-up
+ * sim steps are skipped, and p90 rather than p95 is used so a stray hitch cannot lower the preset.
+ */
+export function createProbe() {
   let startMs: number | null = null;
   let seen = 0;
+  const cpu: number[] = [];
+  const gpu: number[] = [];
   return {
-    /** Call once per frame after the frame's sample was added to `stats`. Returns the pick when done. */
-    frame(nowMs: number): Quality | null {
+    frame(nowMs: number, renderCpuMs: number, gpuMs: number | null, simSteps: number): ProbeResult | null {
       startMs ??= nowMs;
       seen++;
-      if (seen === WARMUP_FRAMES) stats.reset();
-      const measured = Math.max(0, seen - WARMUP_FRAMES);
+      if (seen > WARMUP_FRAMES && simSteps <= 1) {
+        cpu.push(renderCpuMs);
+        if (gpuMs !== null) gpu.push(gpuMs);
+      }
       const timedOut = nowMs - startMs >= MAX_MS;
-      if (measured < TARGET_FRAMES && !timedOut) return null;
-      if (measured < PROBE_MIN_FRAMES) return 'medium';
-      const s = stats.summary();
-      return pickQuality(s.gpuP95, s.cpuP95);
+      if (cpu.length < TARGET_SAMPLES && !timedOut) return null;
+      if (cpu.length < PROBE_MIN_FRAMES) return { quality: 'medium', measured: false };
+      return { quality: pickQuality(gpu.length ? p90(gpu) : null, p90(cpu)), measured: true };
     },
   };
 }
