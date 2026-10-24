@@ -55,7 +55,7 @@ test('manual: releasing the clutch with no gas stalls the engine', async () => {
 test('hitting a building at 50 km/h stops the car instead of passing through', async () => {
   const { buildingMesh } = await import('../physics/world');
   const world = await flatWorld();
-  const { vertices, indices } = buildingMesh({ id: 'wall', height: 12, footprint: [[30, -20], [40, -20], [40, 20], [30, 20]] });
+  const { vertices, indices } = buildingMesh({ id: 'wall', height: 12, levels: 4, style: 'stucco', footprint: [[30, -20], [40, -20], [40, 20], [30, 20]] });
   world.createCollider(RAPIER.ColliderDesc.trimesh(vertices, indices));
   const car = new Vehicle(world, { position: [0, 0], heading: Math.PI / 2 });
   drive(world, car, idle, 0.5);

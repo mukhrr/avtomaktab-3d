@@ -188,3 +188,85 @@ Perf recheck, DPR 2, unthrottled:
 | low (same views) | 1.5 to 2.3 / 3.9 to 5.4 | 1.6 to 1.8 | 62 / 46 | 493k | null |
 
 A first high run read 13 to 27 ms gpu from the noon drive onward while other Chrome windows were busy on the same GPU; an immediate rerun gave the figures above, so that run is discarded.
+
+## Milestone 4b
+
+### Budget check (Task 7, 2026-10-24)
+
+Budgets: high at most 8 ms gpu and render cpu p95 in the chase view, 120 main-pass draw calls, 1.5 M triangles. Low at most +10 calls and +20% gpu p50 over its cost before M4b.
+
+Method as in M4a: production builds served by `vite preview`, Playwright Chromium (Chrome for Testing, build 1243) on Apple M5 in a visible window at about 120 Hz, 1280x720 CSS at pixel ratio 2, preset from `avtomaktab.quality`, time of day from `env.setTimeOfDay`, samples from `window.__game.lastFrame` every frame after a 1.5 s warm-up (3.5 s parked, 28.5 s for the route-1 drive, which teleports the car along `session.routeLine` at 12 m/s). Steps per frame were mean 0.5, max 1 in every run.
+
+"Before" is `main` at f8ba7db (M4a merge plus the M4b plan), built and served from a scratch worktree on the same machine in the same session, so both sides share the same browser, window and GPU state. High ran twice per side, low four times, interleaved (main, branch, branch, main, then main, branch, main, branch). Cells give the range over runs.
+
+High:
+
+| Time | View | render cpu p50 / p95 | gpu p50 / p95 | calls | triangles | gpu p50 / p95 before |
+|---|---|---|---|---|---|---|
+| noon | chase, spawn | 0.5 to 0.7 / 0.8 to 1.4 | 6.6 to 7.0 / 7.6 | 83 | 615k | 5.4 to 5.6 / 6.3 |
+| noon | cockpit, spawn | 0.5 to 0.6 / 0.8 to 1.0 | 5.8 to 5.9 / 6.4 to 6.6 | 61 | 613k | 5.3 / 6.1 to 6.2 |
+| noon | route-1 drive | 0.6 to 0.8 / 1.0 to 1.3 | 5.7 to 6.0 / 6.6 to 7.0 | 83 | 626k (max 634k) | 4.4 to 4.6 / 5.4 to 5.5 |
+| evening | chase, spawn | 0.5 to 0.9 / 0.8 to 1.3 | 5.8 to 6.6 / 6.5 to 7.2 | 83 | 630k | 4.5 to 4.7 / 5.5 to 5.6 |
+| evening | cockpit, spawn | 0.7 / 1.1 to 1.4 | 4.9 to 5.1 / 5.8 to 5.9 | 61 | 634k | 4.1 to 4.4 / 5.2 |
+| evening | route-1 drive | 0.6 to 0.8 / 1.1 to 1.3 | 5.6 to 6.1 / 6.5 to 7.1 | 83 | 659k (max 691k) | 4.1 to 4.6 / 5.4 |
+
+Before M4b, high drew 84 / 62 calls and 703k triangles in every view.
+
+Low:
+
+| Time | View | gpu p50 before, mean of 4 | gpu p50 after, mean of 4 | change | gpu p95 after | render cpu p95 after | calls before / after | triangles before / after |
+|---|---|---|---|---|---|---|---|---|
+| noon | chase, spawn | 1.98 | 2.00 | +1% | 4.2 to 5.3 | 1.5 to 1.8 | 62 / 63 | 493k / 374k |
+| noon | cockpit, spawn | 1.95 | 1.93 | -1% | 4.2 to 5.2 | 1.6 to 1.7 | 46 / 47 | 492k / 374k |
+| noon | route-1 drive | 1.80 | 1.90 | +6% | 4.1 to 4.9 | 1.6 to 1.7 | 62 / 63 | 493k / 381k (max 395k) |
+| evening | chase, spawn | 1.93 | 2.05 | +6% | 4.2 to 6.2 | 1.7 | 62 / 63 | 493k / 384k |
+| evening | cockpit, spawn | 1.75 | 1.93 | +10% | 4.1 to 5.9 | 1.5 to 1.6 | 46 / 47 | 492k / 384k |
+| evening | route-1 drive | 1.85 | 1.98 | +7% | 4.4 to 4.9 | 1.7 to 1.8 | 62 / 63 | 493k / 396k (max 403k) |
+
+All times in ms.
+
+Result:
+
+- High passes every axis. Worst gpu p95 is 7.6 ms (noon chase, both runs; 7.7 in a separate diagnostic run), so the margin is 0.3 to 0.4 ms. Worst render cpu p95 1.4 ms, 83 calls, 691k triangles. High gpu p50 rose 0.5 to 1.6 ms over M4a (most in chase and drive); calls fell by one because the chunked BatchedMesh walls, roofs and trees replace the merged M4a meshes, which offsets the new lamps, aryks and furniture.
+- Low passes: +1 call (63 against 72 allowed), and the mean gpu p50 rose 1% to 10% per view against 20% allowed. Triangles fell about 110k because chunks out of view are culled. The worst single pairing is the fourth branch run in the evening, chase 2.5 against 2.0 (+25%) and cockpit 2.3 against 1.8 (+28%). That run's p95 also jumped to 6.2 and 5.9 while its noon views were normal, so it reads as a disturbance, and a 0.3 ms swing on a 1.8 ms base is inside the timer noise noted in M4a.
+
+### Tuning (Task 7)
+
+No values changed: high and low both pass, so the planned order (chunk size, roof boxes, lamp spacing on low, aryks off on low) was not started.
+
+Where high's gpu time goes, live, high chase at noon, hiding mesh groups in one page (single run, 4.5 s each):
+
+| Hidden | gpu p50 / p95 | calls | triangles |
+|---|---|---|---|
+| nothing | 6.5 / 7.7 | 83 | 615k |
+| facade walls (textured BatchedMesh) | 6.1 / 7.0 | 79 | 595k |
+| every vertex-coloured BatchedMesh (roofs, per-chunk trees, streetside batches) | 5.6 / 6.1 | 74 | 356k |
+| every BatchedMesh | 4.5 / 5.2 | 70 | 336k |
+| every InstancedMesh (lamps, furniture, signals, signs, cars, pedestrians) | 6.6 / 7.6 | 46 | 318k |
+
+The batched world costs about 2 ms of high's gpu p50, most of it in the vertex-coloured batches that carry the trees. Instanced meshes cost calls but almost no gpu time here. If high misses on a busier GPU, chunk size is the first step: smaller chunks cull more of the tree and roof batches behind the camera.
+
+### Download size
+
+| Part | Before M4b (main) | After |
+|---|---|---|
+| JS bundle (incl. Rapier WASM) | 2,904,439 | 2,939,521 (1,020,150 gzipped) |
+| district.json | 838,301 | 856,510 |
+| Textures | 3,109,935 | 3,109,935 |
+| Audio and the rest | 1,066,659 | 1,066,659 |
+| Total `dist/` | 7,919,334 | 7,972,625 |
+
+M4b adds 53 KB (code and the style, level and furniture fields in `district.json`) and no downloaded assets; facades and furniture are drawn in code, so `CREDITS.md` is unchanged.
+
+### World build time
+
+Spec: world generation under 2 s. `aryks()` (~107 ms) and `lampPositions()` (~124 ms) used to run 2 to 3 times each (render, physics, and lamps recomputing aryks); both are now computed once per district object.
+
+Method: Vite dev server, in-app Chrome on an Apple M5, a fresh `district.json` fetch per run, `createFacadeTexture()` + `buildWorld()` + `createPhysics()` timed with `performance.now()` (Rapier already initialised, ground materials stubbed so no texture downloads). Four runs each, unminified dev modules.
+
+| | build | physics | total |
+|---|---|---|---|
+| before | 2.19 to 2.39 s | 0.74 to 0.84 s | 2.9 to 3.2 s |
+| after | 1.80 to 1.98 s | 0.03 to 0.09 s | 1.9 to 2.1 s |
+
+The machine was noisy: one extra before-run read 0.7 s total and one after-run 0.2 s, both discarded as outliers. Production build is faster than dev modules but was not timed separately.

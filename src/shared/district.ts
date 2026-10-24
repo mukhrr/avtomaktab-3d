@@ -12,10 +12,16 @@ export interface Road {
   points: Vec2[];
 }
 
+export type BuildingStyle = 'panel' | 'brick' | 'stucco' | 'public' | 'tower' | 'shed';
+
 /** Footprint is counter-clockwise in x/z with no closing duplicate. */
 export interface Building {
   id: string;
   height: number;
+  levels: number;
+  style: BuildingStyle;
+  /** From OSM roof:shape, only for the two shapes the renderer draws. */
+  roof?: 'hipped' | 'gabled';
   footprint: Vec2[];
 }
 
@@ -102,6 +108,17 @@ export interface Sign {
   value?: number;
 }
 
+export type FurnitureKind = 'busStop' | 'bench' | 'bin';
+
+/** `heading` is the way the item faces, as atan2(dx, dz): toward the nearest road. */
+export interface Furniture {
+  id: string;
+  kind: FurnitureKind;
+  x: number;
+  z: number;
+  heading: number;
+}
+
 export interface DistrictData {
   name: string;
   origin: { lat: number; lon: number };
@@ -114,6 +131,7 @@ export interface DistrictData {
   crossings: Crossing[];
   controllers: SignalController[];
   signs: Sign[];
+  furniture: Furniture[];
   graph: { nodes: GraphNode[]; edges: GraphEdge[] };
 }
 

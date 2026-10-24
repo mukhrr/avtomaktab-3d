@@ -24,6 +24,9 @@
  <node id="16" lat="41.3110" lon="69.2795"><tag k="highway" v="traffic_signals"/></node>
  <node id="17" lat="41.3110" lon="69.2785"><tag k="highway" v="crossing"/><tag k="crossing" v="zebra"/></node>
  <node id="18" lat="41.3119" lon="69.2795"><tag k="highway" v="traffic_signals"/></node>
+ <node id="30" lat="41.3117" lon="69.2785"><tag k="highway" v="bus_stop"/><tag k="public_transport" v="platform"/></node>
+ <node id="31" lat="41.3112" lon="69.2792"><tag k="amenity" v="bench"/></node>
+ <node id="32" lat="41.3108" lon="69.2793"><tag k="amenity" v="waste_basket"/></node>
  <way id="100"><nd ref="1"/><nd ref="17"/><nd ref="2"/><nd ref="3"/><tag k="highway" v="residential"/><tag k="name" v="Test ko'chasi"/><tag k="lanes" v="2"/></way>
  <way id="101"><nd ref="4"/><nd ref="2"/><nd ref="5"/><tag k="highway" v="residential"/><tag k="lanes" v="2;3"/></way>
  <way id="102"><nd ref="6"/><nd ref="18"/><nd ref="7"/><tag k="highway" v="primary"/><tag k="oneway" v="yes"/><tag k="name:uz" v="Bosh yo'l"/><tag k="name" v="Main road"/></way>

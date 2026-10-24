@@ -38,6 +38,16 @@ const isLit = (m: THREE.Material) =>
   (m as THREE.MeshStandardMaterial).isMeshStandardMaterial ||
   (m as THREE.MeshPhongMaterial).isMeshPhongMaterial;
 
+type ShaderPatch = (shader: THREE.WebGLProgramParametersWithUniforms, renderer: THREE.WebGLRenderer) => void;
+
+const patchIds = new WeakMap<ShaderPatch, number>();
+let nextPatchId = 1;
+const patchId = (f: ShaderPatch): number => {
+  let id = patchIds.get(f);
+  if (id === undefined) patchIds.set(f, (id = nextPatchId++));
+  return id;
+};
+
 /** Sky, sun, fog and shadows. One shadowed light follows the car on one cascade; CSM fits 2 or 3 to the camera. */
 export function createEnvironment(
   scene: THREE.Scene,
@@ -163,6 +173,17 @@ export function createEnvironment(
 
   function patch(m: THREE.Material): void {
     if (csm) csm.setupMaterial(m);
+    const user = m.userData.patchShader as ShaderPatch | undefined;
+    if (user) {
+      // CSM assigns onBeforeCompile outright, so its function is captured and called first, then the material's own patch.
+      const csmPatch = csm ? m.onBeforeCompile : null;
+      m.onBeforeCompile = (shader, r) => {
+        csmPatch?.call(m, shader, r);
+        user(shader, r);
+      };
+      const key = `${csm ? `csm${csm.cascades}${csm.fade ? 'f' : ''}` : 'plain'}:${patchId(user)}`;
+      m.customProgramCacheKey = () => key;
+    }
     m.needsUpdate = true;
   }
 

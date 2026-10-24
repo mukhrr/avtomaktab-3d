@@ -1,1 +1,9 @@
-{ "removeWays": [], "roads": {}, "buildingHeights": {} }
+{
+  "removeWays": [],
+  "roads": {},
+  "buildingHeights": {},
+  "buildingStyles": {
+    "44491343": "tower",
+    "389494087": "public"
+  }
+}

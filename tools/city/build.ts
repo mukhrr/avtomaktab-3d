@@ -4,6 +4,7 @@ import type { Crossing, DistrictConfig, DistrictData, Sign } from '../../src/sha
 import { edgeLength, locateNode } from './attach';
 import { buildControllers } from './controllers';
 import { crossingsOffJunctions } from './crossings';
+import { placeFurniture } from './furniture';
 import { extractFeatures, type Overrides } from './extract';
 import { buildRoadGraph } from './graph';
 import { parseOsm } from './osm';
@@ -23,10 +24,10 @@ export function validateSigns(signs: Sign[], edges: DistrictData['graph']['edges
   }
 }
 
-export function buildDistrict(xml: string, config: DistrictConfig, overrides: Overrides, signs: Sign[] = []): DistrictData {
+export function buildDistrict(xml: string, config: DistrictConfig, overrides: Overrides, signs: Sign[] = [], log: (message: string) => void = () => {}): DistrictData {
   const osm = parseOsm(xml);
   const project = makeProjection(config.origin);
-  const { roadNodeIds, crossingNodes, ...features } = extractFeatures(osm, project, overrides);
+  const { roadNodeIds, crossingNodes, furniture: rawFurniture, ...features } = extractFeatures(osm, project, overrides);
   const graph = buildRoadGraph(features.roads, roadNodeIds, id => {
     const n = osm.nodes.get(id)!;
     return project(n.lat, n.lon);
@@ -40,12 +41,17 @@ export function buildDistrict(xml: string, config: DistrictConfig, overrides: Ov
   }
   validateSigns(signs, graph.edges);
   const built = buildControllers(features.signals, graph.edges, graph.nodes, crossingsOffJunctions(crossings, graph.edges, graph.nodes));
+  const furniture = placeFurniture(rawFurniture, graph.edges, graph.nodes, built.crossings, new Map(features.roads.map(r => [r.id, r.kind])), features.buildings.map(b => b.footprint));
+  for (const kind of ['busStop', 'bench', 'bin'] as const) {
+    const n = furniture.items.filter(i => i.kind === kind).length;
+    log(`${kind}: ${n} placed, ${furniture.moved[kind]} moved, ${furniture.dropped[kind]} dropped`);
+  }
   const [minLon, minLat, maxLon, maxLat] = config.bbox;
   const [minX, maxZ] = project(minLat, minLon);
   const [maxX, minZ] = project(maxLat, maxLon);
   return {
     name: config.name, origin: config.origin, bounds: { minX, maxX, minZ, maxZ }, ...features,
-    signals: built.signals, crossings: built.crossings, controllers: built.controllers, signs, graph,
+    signals: built.signals, crossings: built.crossings, controllers: built.controllers, signs, furniture: furniture.items, graph,
   };
 }
 
@@ -58,6 +64,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     JSON.parse(readFileSync(`${dir}/district.config.json`, 'utf8')),
     JSON.parse(readFileSync(`${dir}/overrides.json`, 'utf8')),
     existsSync(`${dir}/signs.json`) ? JSON.parse(readFileSync(`${dir}/signs.json`, 'utf8')) : [],
+    console.info,
   );
   const outDir = `public/districts/${district}`;
   mkdirSync(outDir, { recursive: true });

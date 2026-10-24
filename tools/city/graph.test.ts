@@ -6,7 +6,7 @@ import { buildRoadGraph } from './graph';
 
 const osm = parseOsm(readFileSync(new URL('./fixtures/mini.osm.xml', import.meta.url), 'utf8'));
 const proj = makeProjection({ lat: 41.3111, lon: 69.2797 });
-const f = extractFeatures(osm, proj, { removeWays: [], roads: {}, buildingHeights: {} });
+const f = extractFeatures(osm, proj, { removeWays: [], roads: {}, buildingHeights: {}, buildingStyles: {} });
 const nodePos = (id: string) => { const n = osm.nodes.get(id)!; return proj(n.lat, n.lon); };
 const g = buildRoadGraph(f.roads, f.roadNodeIds, nodePos);
 

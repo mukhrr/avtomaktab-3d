@@ -5,7 +5,7 @@ import { buildDistrict } from './build';
 
 const xml = readFileSync(new URL('./fixtures/mini.osm.xml', import.meta.url), 'utf8');
 const config = { name: 'mini', bbox: [69.278, 41.31, 69.281, 41.312] as [number, number, number, number], origin: { lat: 41.3111, lon: 69.2797 } };
-const d = buildDistrict(xml, config, { removeWays: [], roads: {}, buildingHeights: {} });
+const d = buildDistrict(xml, config, { removeWays: [], roads: {}, buildingHeights: {}, buildingStyles: {} });
 
 test('every graph edge belongs to an extracted road', () => {
   const roadIds = new Set(d.roads.map(r => r.id));
@@ -35,7 +35,7 @@ test('zebra node on way 100 becomes a crossing on edge 100:0', () => {
 describe('signs', () => {
   const edge = d.graph.edges.find(e => e.lanesBackward === 0)!;
   const len = edgeLength(edge);
-  const build = (...signs: Sign[]) => buildDistrict(xml, config, { removeWays: [], roads: {}, buildingHeights: {} }, signs);
+  const build = (...signs: Sign[]) => buildDistrict(xml, config, { removeWays: [], roads: {}, buildingHeights: {}, buildingStyles: {} }, signs);
   const sign = (extra: Partial<Sign>): Sign => ({ id: 's1', type: 'giveWay', edgeId: edge.id, dir: 1, at: 5, ...extra });
 
   it('defaults to no signs', () => {

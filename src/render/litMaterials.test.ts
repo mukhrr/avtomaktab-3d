@@ -21,7 +21,7 @@ function gameScene(q: Quality) {
   const renderer = { toneMappingExposure: 1 } as unknown as THREE.WebGLRenderer;
   const mats = createGroundMaterials(s, stubLoader);
   const env = createEnvironment(scene, camera, renderer, s, 'noon', mats.ground, s.skyAmbient ? fakeEnvMaps : null);
-  buildWorld(scene, testDistrict(), mats);
+  buildWorld(scene, testDistrict(), mats, new THREE.Texture());
   trafficView(scene, 2);
   pedView(scene, 2);
   const car = createCarModel().root;
@@ -74,5 +74,14 @@ describe('lit materials per preset', () => {
     expect(a.flatShading).toBe(true);
     expect(a.roughness).toBe(1);
     expect(a.metalness).toBe(0);
+  });
+
+  it('keeps userData.patchShader on the swapped material', () => {
+    const patch = () => {};
+    const l = new THREE.MeshLambertMaterial();
+    l.userData.patchShader = patch;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), l);
+    useSkyAmbient(mesh);
+    expect((mesh.material as THREE.Material).userData.patchShader).toBe(patch);
   });
 });

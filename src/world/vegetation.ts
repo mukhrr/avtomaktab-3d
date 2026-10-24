@@ -1,9 +1,12 @@
 import type { DistrictData, Vec2 } from '../shared/district';
 import { rng } from '../sim/rng';
+import { pointInShelter } from '../shared/shelter';
 import { Grid, pointInPolygon, segmentDistance } from './spatial';
 
+export const TREE_SEED = 7;
 const AVENUE_KINDS = new Set(['primary', 'secondary', 'tertiary', 'trunk']);
 const SPACING = 10;
+const SHELTER_CLEARANCE = 0.8;
 const CURB_GAP = 3;
 const PARK_M2_PER_TREE = 150;
 const MAX_PER_AREA = 300;
@@ -49,7 +52,9 @@ export function treePositions(d: DistrictData, seed: number): Vec2[] {
     buildings.add(Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs), b.footprint);
   }
 
+  const stops = d.furniture.filter(f => f.kind === 'busStop');
   return candidates.filter(([x, z]) => {
+    if (stops.some(f => pointInShelter(f, x, z, SHELTER_CLEARANCE))) return false;
     for (const s of roads.query(x, z, 0)) if (segmentDistance(x, z, s.a, s.b).d <= s.half) return false;
     for (const f of buildings.query(x, z, 0)) if (pointInPolygon(x, z, f)) return false;
     return true;
