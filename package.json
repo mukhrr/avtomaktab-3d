@@ -1,7 +1,7 @@
 {
   "name": "avtomaktab-3d",
   "version": "0.1.0",
-  "description": "",
+  "description": "Browser driving game on the real streets of Tashkent, for practising the Uzbek driving test",
   "directories": {
     "doc": "docs"
   },
@@ -16,8 +16,8 @@
     "exam:route": "tsx tools/exam/route.ts"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Mukher",
+  "license": "MIT",
   "type": "module",
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.14.0",
