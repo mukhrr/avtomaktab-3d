@@ -46,3 +46,16 @@ test('rejects checked: true without a reference', () => {
 test('throws on an unknown code', () => {
   expect(() => entry('9.99')).toThrow('9.99');
 });
+
+test('accepts drawn art based on public-domain Commons art and rejects other licences', () => {
+  const rows = clone();
+  const basedOn = 'https://commons.wikimedia.org/wiki/File:x.svg';
+  rows[0].art = { source: 'drawn', file: 'data/signs/drawn/x.svg', basedOn, licence: 'Public domain' };
+  expect(() => validateCatalogue(rows)).not.toThrow();
+  rows[0].art = { source: 'drawn', file: 'data/signs/drawn/x.svg', basedOn, licence: 'CC BY-SA 3.0' };
+  expect(() => validateCatalogue(rows)).toThrow('licence');
+  rows[0].art = { source: 'drawn', file: 'data/signs/drawn/x.svg', basedOn };
+  expect(() => validateCatalogue(rows)).toThrow('licence');
+  rows[0].art = { source: 'drawn', file: 'assets-src/signs/x.svg' };
+  expect(() => validateCatalogue(rows)).toThrow('data/signs/drawn');
+});

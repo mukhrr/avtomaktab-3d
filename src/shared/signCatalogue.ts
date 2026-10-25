@@ -5,7 +5,7 @@ export type ValueKind = 'speed' | 'mass' | 'height' | 'width' | 'length' | 'dist
 
 export type SignArt =
   | { source: 'commons'; file: string; page: string; licence: string }
-  | { source: 'drawn'; file: string };
+  | { source: 'drawn'; file: string; basedOn?: string; licence?: string };
 
 export interface CatalogueEntry {
   number: string;
@@ -76,7 +76,13 @@ export function validateCatalogue(input: unknown): CatalogueEntry[] {
       if (art.source === 'commons') {
         if (!art.file || !art.page) fail('commons art needs file and page');
         if (!isAcceptedLicence(art.licence ?? '')) fail(`art licence "${art.licence}" is not public domain or CC0`);
-      } else if (art.source !== 'drawn' || !art.file) {
+      } else if (art.source === 'drawn') {
+        if (!art.file?.startsWith('data/signs/drawn/')) fail('drawn art must live in data/signs/drawn/');
+        if (art.basedOn !== undefined || art.licence !== undefined) {
+          if (!art.basedOn) fail('drawn art with a licence needs basedOn');
+          if (!isAcceptedLicence(art.licence ?? '')) fail(`basedOn licence "${art.licence}" is not public domain or CC0`);
+        }
+      } else {
         fail('has malformed art');
       }
     }
