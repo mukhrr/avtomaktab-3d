@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import type { QualitySettings } from '../render/quality';
-import type { CameraMode } from './cameras';
+import { COCKPIT_LAYER, type CameraMode } from './cameras';
 
 interface MirrorSpec { name: string; eye: [number, number, number]; yaw: number; quad: [number, number, number]; quadSize: [number, number] }
 
 // Positions relative to the chassis centre, car facing +z (driver on +x).
-const SPECS: MirrorSpec[] = [
+export const MIRROR_SPECS: MirrorSpec[] = [
   { name: 'left', eye: [0.98, 0.32, 0.85], yaw: THREE.MathUtils.degToRad(-12), quad: [0.98, 0.32, 0.85], quadSize: [0.2, 0.12] },
   { name: 'right', eye: [-0.98, 0.32, 0.85], yaw: THREE.MathUtils.degToRad(12), quad: [-0.98, 0.32, 0.85], quadSize: [0.2, 0.12] },
   { name: 'rear', eye: [0, 0.6, 0.4], yaw: 0, quad: [0.05, 0.62, 0.55], quadSize: [0.26, 0.08] },
@@ -15,10 +15,11 @@ const SPECS: MirrorSpec[] = [
 export function createMirrors(renderer: THREE.WebGLRenderer, scene: THREE.Scene, car: THREE.Object3D, q: QualitySettings) {
   let [targetW, targetH] = q.mirrorSize;
   let every: number = q.mirrorEvery;
-  const mirrors = SPECS.map(spec => {
+  const mirrors = MIRROR_SPECS.map(spec => {
     const target = new THREE.WebGLRenderTarget(targetW, targetH);
     const cam = new THREE.PerspectiveCamera(spec.name === 'rear' ? 45 : 35, targetW / targetH, 0.3, 600);
     cam.layers.enableAll();
+    cam.layers.disable(COCKPIT_LAYER);
     cam.position.set(...spec.eye);
     // Default camera looks along -z, which is backwards for a car facing +z; yaw toes the side mirrors outward.
     cam.rotation.set(0, spec.yaw, 0);

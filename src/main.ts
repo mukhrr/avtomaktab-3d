@@ -2,7 +2,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { DistrictData } from './shared/district';
-import { CameraRig, CAR_LAYER, lookGlance } from './camera/cameras';
+import { CameraRig, CAR_LAYER, COCKPIT_LAYER, lookGlance } from './camera/cameras';
 import { createMirrors } from './camera/mirrors';
 import { createGpuTimer, FrameStats } from './render/frameStats';
 import { fixedSteps, NO_EDGES, splitControls, STEP } from './physics/loop';
@@ -27,7 +27,8 @@ import { AudioRig } from './audio/audioRig';
 import { setVoiceMuted } from './audio/voice';
 import { MapMatcher } from './exam/mapMatch';
 import { trafficView } from './traffic/trafficView';
-import { newCabin, stepCabin } from './vehicle/cabin';
+import { BlinkClock, newCabin, stepCabin } from './vehicle/cabin';
+import { createCockpit } from './vehicle/cockpit';
 import { InputReader } from './vehicle/input';
 import { Vehicle } from './vehicle/vehicle';
 import { useSkyAmbient } from './render/litMaterials';
@@ -97,6 +98,10 @@ const car = new Vehicle(world, spawn);
 scene.add(car.object);
 car.sync();
 car.object.traverse(o => o.layers.set(CAR_LAYER));
+const cockpit = createCockpit();
+cockpit.root.traverse(o => o.layers.set(COCKPIT_LAYER));
+car.object.add(cockpit.root);
+const blink = new BlinkClock();
 const signals = new SignalSystem(district);
 const net = new LaneNetwork(district);
 const signs = new SignSystem(district);
@@ -357,6 +362,11 @@ renderer.setAnimationLoop(() => {
 
   if (orbit) orbit.update();
   else rig.update(car.object, car.speed, dt);
+  const blinkOn = blink.step(cabin.hazard ? 'hazard' : cabin.indicator, dt);
+  if (rig.mode === 'cockpit') {
+    const d = car.drivetrain;
+    cockpit.update({ speedKmh: Math.abs(car.speed) * 3.6, rpm: d.rpm, indicator: cabin.indicator, blinkOn, hazard: cabin.hazard, belt: cabin.belt, steer: controls.steer, running: d.running });
+  }
   const renderStart = performance.now();
   env.follow(p.x, p.z);
   env.update();
@@ -438,7 +448,7 @@ renderer.setAnimationLoop(() => {
   }
 });
 
-Object.assign(window, { __game: { car, env, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, audio: () => audio && Object.assign(audio, { ctxState: audio.ctx.state, ctxTime: audio.ctx.currentTime }), cabin: () => cabin, lastFrame, session, hud, route, start: (c: Partial<StartChoice>) => {
+Object.assign(window, { __game: { car, cockpit, env, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, audio: () => audio && Object.assign(audio, { ctxState: audio.ctx.state, ctxTime: audio.ctx.currentTime }), cabin: () => cabin, lastFrame, session, hud, route, start: (c: Partial<StartChoice>) => {
   choice = { ...choice, ...c };
   if (choice.mode === 'exam') startExam();
   else show('drive');
