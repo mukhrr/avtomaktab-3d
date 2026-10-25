@@ -75,7 +75,7 @@ export function testNetwork(): DistrictData {
     name: 'test-network',
     origin: { lat: 0, lon: 0 },
     bounds: { minX: -130, maxX: 380, minZ: -130, maxZ: 130 },
-    roads, buildings: [], areas: [], waterways: [], signals, crossings, controllers, signs: [], furniture: [],
+    roads, buildings: [], areas: [], waterways: [], signals, crossings, controllers, signs: [], furniture: [], landmarks: [],
     graph: { nodes, edges },
   };
 }

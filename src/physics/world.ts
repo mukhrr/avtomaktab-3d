@@ -1,6 +1,7 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import type { Building, DistrictData } from '../shared/district';
+import { landmarkColliders } from '../shared/landmark';
 import { shelterBoxes } from '../world/furniture';
 import { LAMP_SEED, lampPositions } from '../world/streetside';
 
@@ -33,6 +34,9 @@ export async function createPhysics(d: DistrictData): Promise<{ world: RAPIER.Wo
         .setTranslation(b.x, DRIVE_SURFACE_Y + b.halfHeight, b.z)
         .setRotation({ x: 0, y: Math.sin(half), z: 0, w: Math.cos(half) }),
     );
+  }
+  for (const c of landmarkColliders(d)) {
+    world.createCollider(RAPIER.ColliderDesc.cylinder(c.height / 2, c.radius).setTranslation(c.x, c.height / 2, c.z));
   }
   return { world, ground };
 }

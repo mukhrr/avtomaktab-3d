@@ -14,11 +14,20 @@ const GLANCE_KEYS: [string, Glance][] = [['Digit1', 'left'], ['Digit2', 'rear'],
 
 const any = (held: ReadonlySet<string>, ...codes: string[]) => codes.some(c => held.has(c));
 
+export const HORN_KEY = 'KeyN';
+const PAD_HORN = 0;
+
 /** Turns raw keyboard and gamepad state into smoothed driving controls; keeps edge and ramp state between frames. */
 export class InputReader {
   private steer = 0;
   private clutch = 0;
   private padHeld = new Set<number>();
+
+  /** Held, not an edge: the horn sounds for as long as the key or button is down. */
+  horn(held: ReadonlySet<string>, pads: readonly (Gamepad | null)[]): boolean {
+    const pad = pads.find((p): p is Gamepad => !!p);
+    return held.has(HORN_KEY) || (pad?.buttons[PAD_HORN]?.value ?? 0) > 0.5;
+  }
 
   read(held: ReadonlySet<string>, pressed: ReadonlySet<string>, pads: readonly (Gamepad | null)[], dt: number): Controls {
     const pad = pads.find((p): p is Gamepad => !!p) ?? null;

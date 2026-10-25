@@ -11,7 +11,7 @@ describe('lamp colliders', () => {
     const lamps = lampPositions(d, LAMP_SEED);
     const poles: { x: number; z: number; r: number }[] = [];
     world.colliders.forEach(c => {
-      if (c.shapeType() !== 10 /* cylinder */) return;
+      if (c.shapeType() !== 10 /* cylinder */ || c.halfHeight() !== 4) return;
       const t = c.translation();
       poles.push({ x: t.x, z: t.z, r: c.radius() });
     });

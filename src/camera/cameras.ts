@@ -11,13 +11,23 @@ const TOP_BACK = 25;
 const TOP_UP = 18;
 const FOLLOW_RATE = 5;
 // Driver's eye relative to the chassis centre (left-hand drive, car faces +z so the driver sits at +x).
-const DRIVER_EYE = new THREE.Vector3(0.35, 0.38, -0.1);
+export const DRIVER_EYE = new THREE.Vector3(0.35, 0.38, -0.1);
 const MAX_YAW = THREE.MathUtils.degToRad(100);
 const MAX_PITCH = THREE.MathUtils.degToRad(30);
 const LOOK_SENSITIVITY = 0.005;
 const RECENTRE_RATE = 6;
 /** Car body meshes live on this layer so the cockpit camera can hide them. */
 export const CAR_LAYER = 1;
+/** Interior meshes, seen only from the driver's seat. */
+export const COCKPIT_LAYER = 2;
+
+export function applyModeLayers(layers: THREE.Layers, mode: CameraMode): void {
+  const cockpit = mode === 'cockpit';
+  if (cockpit) layers.disable(CAR_LAYER);
+  else layers.enable(CAR_LAYER);
+  if (cockpit) layers.enable(COCKPIT_LAYER);
+  else layers.disable(COCKPIT_LAYER);
+}
 
 const GLANCE_YAW = THREE.MathUtils.degToRad(35);
 const REAR_PITCH = THREE.MathUtils.degToRad(10);
@@ -55,7 +65,7 @@ export class CameraRig {
   private readonly fwd = new THREE.Vector3();
 
   constructor(private camera: THREE.PerspectiveCamera, dom: HTMLElement) {
-    camera.layers.enable(CAR_LAYER);
+    applyModeLayers(camera.layers, this.mode);
     dom.addEventListener('pointerdown', () => (this.dragging = this.mode === 'cockpit'));
     addEventListener('pointerup', () => (this.dragging = false));
     addEventListener('pointermove', e => {
@@ -78,8 +88,7 @@ export class CameraRig {
   cycle(): void {
     this.mode = nextMode(this.mode);
     this.yaw = this.pitch = 0;
-    if (this.mode === 'cockpit') this.camera.layers.disable(CAR_LAYER);
-    else this.camera.layers.enable(CAR_LAYER);
+    applyModeLayers(this.camera.layers, this.mode);
   }
 
   update(car: THREE.Object3D, speed: number, dt: number): void {

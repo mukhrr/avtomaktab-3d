@@ -52,3 +52,18 @@ export function stepCabin(s: CabinState, c: Controls, t: number, heading: number
     turned,
   };
 }
+
+// Matches hud.css `hud-blink` (0.667 s, lit for the first half) and the CarAudio clicks.
+const BLINK_PERIOD_S = 0.667;
+
+/** Blink phase shared by the dashboard lamps; restarts whenever the blinking lamp changes, as the HUD animation does. */
+export class BlinkClock {
+  private key: Indicator | 'hazard' | null = null;
+  private phase = 0;
+
+  step(key: Indicator | 'hazard' | null, dt: number): boolean {
+    if (key !== this.key) [this.key, this.phase] = [key, 0];
+    else this.phase += dt;
+    return key !== null && this.phase % BLINK_PERIOD_S < BLINK_PERIOD_S / 2;
+  }
+}

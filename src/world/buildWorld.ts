@@ -14,6 +14,8 @@ import { addSignals, type SignalLamps } from './signals';
 import { addFurniture } from './furniture';
 import { addStreetside } from './streetside';
 import { TREE_SEED, treePositions } from './vegetation';
+import { addLandmarks, type LandmarkTextures } from './landmarks';
+import { landmarkBuildingIds } from '../shared/landmark';
 
 const Y = { green: 0.03, water: 0.05, sidewalk: 0.06, curb: 0.07, asphalt: 0.09, marking: 0.11 };
 const CURB_EXTRA = 1.2;
@@ -22,7 +24,7 @@ const CHUNK_SIZE = 200;
 
 const lambert = (color: number) => new THREE.MeshLambertMaterial({ color });
 
-export function buildWorld(scene: THREE.Scene, d: DistrictData, mats: Record<GroundSurface, THREE.Material>, facadeAtlas: THREE.Texture): { signalLamps: SignalLamps } {
+export function buildWorld(scene: THREE.Scene, d: DistrictData, mats: Record<GroundSurface, THREE.Material>, facadeAtlas: THREE.Texture, landmarkTextures?: LandmarkTextures): { signalLamps: SignalLamps } {
   const uv = (g: THREE.BufferGeometry, k: keyof typeof GROUND_TILE) => worldUVs(g, GROUND_TILE[k]);
   const roads = new Map(d.roads.map(r => [r.id, r]));
   const edges = new Map(d.graph.edges.map(e => [e.id, e]));
@@ -54,7 +56,7 @@ export function buildWorld(scene: THREE.Scene, d: DistrictData, mats: Record<Gro
   const footways = d.roads.filter((r: Road) => FOOT_KINDS.has(r.kind));
   addMerged(scene, d.areas.filter(a => a.kind === 'green').map(a => uv(polygonGeometry(a.outline, Y.green), 'grass')), mats.grass);
   addMerged(scene, [
-    ...d.areas.filter(a => a.kind === 'water').map(a => polygonGeometry(a.outline, Y.water)),
+    ...waterAreas(d).map(a => polygonGeometry(a.outline, Y.water)),
     ...d.waterways.map(w => ribbonGeometry(w.points, w.width, Y.water)),
   ], lambert(0x4f8fb0));
   addMerged(scene, footways.map(r => uv(ribbonGeometry(r.points, r.width, Y.sidewalk), 'sidewalk')), mats.sidewalk);
@@ -63,7 +65,8 @@ export function buildWorld(scene: THREE.Scene, d: DistrictData, mats: Record<Gro
   const markMesh = addMerged(scene, marks, new THREE.MeshBasicMaterial({ color: 0xeeeeee }));
   if (markMesh) markMesh.receiveShadow = false;
 
-  addBuildings(scene, d.buildings, facadeAtlas, CHUNK_SIZE);
+  addBuildings(scene, d.buildings, facadeAtlas, CHUNK_SIZE, landmarkBuildingIds(d));
+  addLandmarks(scene, d, landmarkTextures);
   addTrees(scene, d);
   addStreetside(scene, d, CHUNK_SIZE);
   addFurniture(scene, d);
@@ -105,4 +108,10 @@ function addTrees(scene: THREE.Scene, d: DistrictData) {
   }), false));
   tree.dispose();
   scene.add(batchChunks(chunks, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })));
+}
+
+/** Fountain basins draw their own water, and the OSM polygon would show past the round rim. */
+export function waterAreas(d: DistrictData): DistrictData['areas'] {
+  const fountains = new Set(d.landmarks.filter(l => l.kind === 'fountain').map(l => l.id));
+  return d.areas.filter(a => a.kind === 'water' && !fountains.has(a.id));
 }

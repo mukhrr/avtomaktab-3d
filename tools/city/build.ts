@@ -7,6 +7,7 @@ import { crossingsOffJunctions } from './crossings';
 import { placeFurniture } from './furniture';
 import { extractFeatures, type Overrides } from './extract';
 import { buildRoadGraph } from './graph';
+import { extractLandmarks } from './landmarks';
 import { parseOsm } from './osm';
 import { makeProjection } from './projection';
 
@@ -51,7 +52,8 @@ export function buildDistrict(xml: string, config: DistrictConfig, overrides: Ov
   const [maxX, minZ] = project(maxLat, maxLon);
   return {
     name: config.name, origin: config.origin, bounds: { minX, maxX, minZ, maxZ }, ...features,
-    signals: built.signals, crossings: built.crossings, controllers: built.controllers, signs, furniture: furniture.items, graph,
+    signals: built.signals, crossings: built.crossings, controllers: built.controllers, signs, furniture: furniture.items,
+    landmarks: extractLandmarks(osm, project, overrides.landmarks ?? {}, features.buildings), graph,
   };
 }
 

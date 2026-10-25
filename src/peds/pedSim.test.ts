@@ -8,7 +8,7 @@ const DT = 1 / 30;
 const AWAY: PlayerState = { position: [-40, 60], heading: 0, speed: 0, length: 4.5, width: 1.8 };
 
 function car(position: Vec2, heading: number, speed: number): AgentView {
-  return { id: 1, active: true, position, heading, carClass: 'nexia', colour: 0, braking: false, speed };
+  return { id: 1, active: true, position, heading, carClass: 'nexia', colour: 0, braking: false, speed, indicator: null };
 }
 
 /** Test network with its zebra replaced by a signal crossing on edge e, 40 m from the cross. */
@@ -309,4 +309,56 @@ test.each([
     }
   }
   expect(checked > 0).toBe(walkOn);
+});
+
+describe('crossers starving a waiting car', () => {
+  const stopped = car([-46, 0], Math.PI / 2, 0);
+
+  it('new crossers wait once a car has stood at the zebra for 3 s, and the crossing empties', () => {
+    const c = setup(testNetwork(), { crossers: 8, walkers: 0 });
+    let freeFor = 0, longestFree = 0;
+    for (let i = 0; i < 30 * 30; i++) {
+      c.step(AWAY, [stopped]);
+      freeFor = c.sim.occupied('z1') ? 0 : freeFor + DT;
+      longestFree = Math.max(longestFree, freeFor);
+    }
+    expect(longestFree).toBeGreaterThan(20);
+    expect(c.sim.curbWaiting('z1')).toBe(true);
+  });
+
+  it('the same holds at an unmarked crossing', () => {
+    const d = testNetwork();
+    d.crossings[0].kind = 'unmarked';
+    const c = setup(d, { crossers: 8, walkers: 0 });
+    let freeFor = 0, longestFree = 0;
+    for (let i = 0; i < 30 * 30; i++) {
+      c.step(AWAY, [stopped]);
+      freeFor = c.sim.occupied('z1') ? 0 : freeFor + DT;
+      longestFree = Math.max(longestFree, freeFor);
+    }
+    expect(longestFree).toBeGreaterThan(20);
+  });
+
+  it('crossers go again once that car has passed', () => {
+    const c = setup(testNetwork(), { crossers: 8, walkers: 0 });
+    for (let i = 0; i < 20 * 30; i++) c.step(AWAY, [stopped]);
+    expect(c.sim.occupied('z1')).toBe(false);
+    const gone = car([-30, 0], Math.PI / 2, 8);
+    let reopened = false;
+    for (let i = 0; i < 3 * 30 && !reopened; i++) {
+      c.step(AWAY, [gone]);
+      reopened = c.sim.occupied('z1');
+    }
+    expect(reopened).toBe(true);
+  });
+
+  it('a car that has only just stopped does not hold the crossers', () => {
+    const c = setup(testNetwork(), { crossers: 8, walkers: 0 });
+    let stepped = 0;
+    for (let i = 0; i < 2 * 30; i++) {
+      c.step(AWAY, [stopped]);
+      if (c.sim.occupied('z1')) stepped++;
+    }
+    expect(stepped).toBeGreaterThan(0);
+  });
 });

@@ -2,7 +2,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { STEP } from '../physics/loop';
 import { DRIVE_SURFACE_Y } from '../physics/world';
 import type { Controls } from './drivetrain';
-import { Vehicle } from './vehicle';
+import { Vehicle, wheelSlip } from './vehicle';
 
 const idle: Controls = { throttle: 0, brake: 0, clutch: 0, steer: 0, handbrake: false, shiftUp: false, shiftDown: false, ignition: false, toggleLeft: false, toggleRight: false, toggleHazard: false, toggleBelt: false, glance: null };
 
@@ -94,4 +94,87 @@ test('full brake stops hard but a light brake is gentle', async () => {
   drive(light.world, light.car, { ...idle, brake: 0.2 }, 0.5);
   const lightDecel = (v0 - light.car.speed) / 0.5;
   expect(lightDecel).toBeLessThan(fullDecel / 2);
+});
+
+test('hard braking dips the body nose-down while the physics pose and upright stay untouched', async () => {
+  const THREE = await import('three');
+  const world = await flatWorld();
+  const car = new Vehicle(world, { position: [0, 0], heading: 0 });
+  drive(world, car, idle, 1);
+  while (car.speed * 3.6 < 50) drive(world, car, { ...idle, throttle: 1 }, 0.1);
+  drive(world, car, { ...idle, brake: 1 }, 0.4);
+  expect(car.lean.pitch).toBeGreaterThan(1 * Math.PI / 180);
+  expect(car.lean.pitch).toBeLessThanOrEqual(3 * Math.PI / 180 + 1e-9);
+
+  const body = (car as unknown as { body: RAPIER.RigidBody }).body;
+  const q = body.rotation();
+  expect(car.object.quaternion.toArray()).toEqual([q.x, q.y, q.z, q.w]);
+  expect(car.upright).toBeCloseTo(new THREE.Vector3(0, 1, 0).applyQuaternion(car.object.quaternion).y, 6);
+
+  car.object.updateMatrixWorld(true);
+  const pivot = car.object.getObjectByName('lean')!;
+  expect(pivot.rotation.x).toBeCloseTo(car.lean.pitch, 9);
+  expect(new THREE.Box3().setFromObject(pivot).min.y).toBeGreaterThan(DRIVE_SURFACE_Y + 0.02);
+});
+
+test('reset zeroes the lean at once, so R and the exam start show a level car', async () => {
+  const world = await flatWorld();
+  const car = new Vehicle(world, { position: [0, 0], heading: 0 });
+  drive(world, car, idle, 1);
+  drive(world, car, { ...idle, throttle: 1, steer: 1 }, 2);
+  expect(Math.abs(car.lean.roll) + Math.abs(car.lean.pitch)).toBeGreaterThan(0.2 * Math.PI / 180);
+  car.reset({ position: [10, 10], heading: 1 });
+  car.sync();
+  expect(car.lean).toEqual({ pitch: 0, roll: 0 });
+  drive(world, car, idle, STEP);
+  expect(Math.abs(car.lean.pitch)).toBeLessThan(0.05 * Math.PI / 180);
+});
+
+describe('wheelSlip', () => {
+  const stub = (wheels: { side: number; forward: number; force: number }[]) => ({
+    numWheels: () => wheels.length,
+    wheelSideImpulse: (i: number) => wheels[i].side,
+    wheelForwardImpulse: (i: number) => wheels[i].forward,
+    wheelSuspensionForce: (i: number) => wheels[i].force,
+  });
+  const dt = 1 / 60;
+  const full = 2.2 * 3000 * dt;
+
+  it('is the largest side impulse as a share of friction slip times suspension force', () => {
+    const c = stub([{ side: 0, forward: 0, force: 3000 }, { side: full * 0.5, forward: 0, force: 3000 }, { side: full * 0.2, forward: 0, force: 3000 }, { side: 0, forward: 0, force: 3000 }]);
+    expect(wheelSlip(c, 2.2, dt, false)).toBeCloseTo(0.5, 5);
+  });
+
+  it('caps at 1 and is 0 for a wheel with no load', () => {
+    expect(wheelSlip(stub([{ side: full * 4, forward: 0, force: 3000 }]), 2.2, dt, false)).toBe(1);
+    expect(wheelSlip(stub([{ side: 50, forward: 50, force: 0 }]), 2.2, dt, true)).toBe(0);
+  });
+
+  it('counts the forward impulse only under hard braking', () => {
+    const c = stub([{ side: 0, forward: full * 0.8, force: 3000 }]);
+    expect(wheelSlip(c, 2.2, dt, false)).toBe(0);
+    expect(wheelSlip(c, 2.2, dt, true)).toBeCloseTo(0.8, 5);
+  });
+
+  it('combines side and forward grip use per wheel while braking', () => {
+    const c = stub([{ side: full * 0.6, forward: full * 0.8, force: 3000 }]);
+    expect(wheelSlip(c, 2.2, dt, true)).toBeCloseTo(1, 5);
+    expect(wheelSlip(c, 2.2, dt, false)).toBeCloseTo(0.6, 5);
+  });
+
+  it('treats null and NaN readings as no slip', () => {
+    const c = { numWheels: () => 2, wheelSideImpulse: () => null, wheelForwardImpulse: () => NaN, wheelSuspensionForce: () => 3000 };
+    expect(wheelSlip(c, 2.2, dt, true)).toBe(0);
+  });
+});
+
+test('Vehicle.slip is 0 at rest and stays within 0 to 1 while cornering hard', async () => {
+  const world = await flatWorld();
+  const car = new Vehicle(world, { position: [0, 0], heading: 0 });
+  drive(world, car, idle, 1);
+  expect(car.slip).toBeLessThan(0.15);
+  drive(world, car, { ...idle, throttle: 1 }, 3);
+  drive(world, car, { ...idle, throttle: 1, steer: 1 }, 2);
+  expect(car.slip).toBeGreaterThanOrEqual(0);
+  expect(car.slip).toBeLessThanOrEqual(1);
 });

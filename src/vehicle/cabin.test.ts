@@ -1,4 +1,4 @@
-import { newCabin, stepCabin } from './cabin';
+import { BlinkClock, newCabin, stepCabin } from './cabin';
 import type { Controls } from './drivetrain';
 
 const idle: Controls = { throttle: 0, brake: 0, clutch: 0, steer: 0, handbrake: false, shiftUp: false, shiftDown: false, ignition: false, toggleLeft: false, toggleRight: false, toggleHazard: false, toggleBelt: false, glance: null };
@@ -82,4 +82,16 @@ test('a glance stamps lastGlance while held and stops when released', () => {
   s = stepCabin(s, idle, 6, 0);
   expect(s.glance).toBeNull();
   expect(s.lastGlance).toEqual({ left: -Infinity, rear: 5.5, right: -Infinity });
+});
+
+test('blink clock lights the lamp for the first half of each 0.667 s period and restarts on a change', () => {
+  const b = new BlinkClock();
+  expect(b.step(null, 0.1)).toBe(false);
+  expect(b.step('left', 0.016)).toBe(true);
+  expect(b.step('left', 0.3)).toBe(true);
+  expect(b.step('left', 0.1)).toBe(false);
+  expect(b.step('left', 0.3)).toBe(true);
+  expect(b.step('hazard', 0.016)).toBe(true);
+  expect(b.step('hazard', 0.4)).toBe(false);
+  expect(b.step(null, 0.016)).toBe(false);
 });

@@ -2,6 +2,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import type { Vec2 } from '../shared/district';
 import { DRIVE_SURFACE_Y } from '../physics/world';
+import { BodyLean } from './bodyLean';
 import { createCarModel, WHEEL_POSITIONS } from './carModel';
 import { stepDrivetrain, IDLE_RPM, WHEEL_RADIUS, type Controls, type DrivetrainState, type Gearbox } from './drivetrain';
 
@@ -22,6 +23,37 @@ const ROLLING_RESISTANCE = 0.012 * MASS * 9.81;
 const FRONT = [0, 1];
 const REAR = [2, 3];
 
+const WHEEL_FRICTION = 2.2;
+const leanAccel = new THREE.Vector3();
+const leanRot = new THREE.Quaternion();
+
+const HARD_BRAKE = 0.8;
+const HARD_BRAKE_MIN_SPEED = 5;
+
+interface SlipSource {
+  numWheels(): number;
+  wheelSideImpulse(i: number): number | null;
+  wheelForwardImpulse(i: number): number | null;
+  wheelSuspensionForce(i: number): number | null;
+}
+
+/**
+ * Worst wheel as a 0 to 1 share of the grip it has: the combined side and forward impulse Rapier applied against friction slip times
+ * suspension force times dt. The forward impulse only counts when `braking`, as it also carries the engine's drive.
+ */
+export function wheelSlip(c: SlipSource, frictionSlip: number, dt: number, braking: boolean): number {
+  let worst = 0;
+  for (let i = 0; i < c.numWheels(); i++) {
+    const grip = frictionSlip * (c.wheelSuspensionForce(i) ?? 0) * dt;
+    if (!(grip > 0)) continue;
+    const side = Math.abs(c.wheelSideImpulse(i) ?? 0);
+    const forward = braking ? Math.abs(c.wheelForwardImpulse(i) ?? 0) : 0;
+    const ratio = Math.hypot(side, forward) / grip;
+    if (ratio > worst) worst = ratio;
+  }
+  return Math.min(1, worst);
+}
+
 export interface Spawn { position: Vec2; heading: number }
 
 export class Vehicle {
@@ -30,12 +62,18 @@ export class Vehicle {
   private body: RAPIER.RigidBody;
   private controller: RAPIER.DynamicRayCastVehicleController;
   private wheels: THREE.Object3D[];
+  private pivot: THREE.Group;
+  private bodyLean = new BodyLean();
+  private tilt = { pitch: 0, roll: 0 };
+  private lastVel = new THREE.Vector3();
   private state: DrivetrainState;
+  private slipNow = 0;
 
   constructor(world: RAPIER.World, spawn: Spawn, gearbox: Gearbox = 'auto') {
     const model = createCarModel();
     this.object = model.root;
     this.wheels = model.wheels;
+    this.pivot = model.lean;
     this.state = { gearbox, gear: gearbox === 'auto' ? 1 : 0, rpm: IDLE_RPM, running: true };
 
     this.body = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setCanSleep(false).setAdditionalMass(0));
@@ -60,7 +98,7 @@ export class Vehicle {
       this.controller.setWheelSuspensionCompression(i, 4.4);
       this.controller.setWheelSuspensionRelaxation(i, 2.3);
       this.controller.setWheelMaxSuspensionForce(i, 12000);
-      this.controller.setWheelFrictionSlip(i, 2.2);
+      this.controller.setWheelFrictionSlip(i, WHEEL_FRICTION);
     }
     this.reset(spawn);
   }
@@ -77,6 +115,16 @@ export class Vehicle {
     this.state = { gearbox: g, gear: g === 'auto' ? 1 : 0, rpm: IDLE_RPM, running: true };
   }
 
+  /** 0 to 1 from the last physics step; read-only, it feeds the tyre sound. */
+  get slip(): number {
+    return this.slipNow;
+  }
+
+  /** Visual body pitch and roll in radians; the physics pose never sees it. */
+  get lean(): { pitch: number; roll: number } {
+    return { ...this.tilt };
+  }
+
   get upright(): number {
     const q = this.body.rotation();
     return new THREE.Vector3(0, 1, 0).applyQuaternion(new THREE.Quaternion(q.x, q.y, q.z, q.w)).y;
@@ -89,10 +137,15 @@ export class Vehicle {
     this.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     this.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
     this.state = { ...this.state, gear: this.state.gearbox === 'auto' ? 1 : 0, rpm: IDLE_RPM, running: true };
+    this.lastVel.set(0, 0, 0);
+    this.bodyLean.reset();
+    this.tilt = { pitch: 0, roll: 0 };
+    this.slipNow = 0;
   }
 
   /** One fixed physics step; call before world.step(). */
   update(c: Controls, dt: number): void {
+    this.updateLean(dt);
     const speed = this.speed;
     const step = stepDrivetrain(this.state, c, speed, dt);
     this.state = step.state;
@@ -108,6 +161,7 @@ export class Vehicle {
     for (const i of REAR) this.controller.setWheelBrake(i, (service + (c.handbrake ? HANDBRAKE_FORCE : 0)) * dt);
     this.applyResistance();
     this.controller.updateVehicle(dt);
+    this.slipNow = wheelSlip(this.controller, WHEEL_FRICTION, dt, c.brake >= HARD_BRAKE && Math.abs(speed) > HARD_BRAKE_MIN_SPEED);
   }
 
   private applyResistance(): void {
@@ -119,11 +173,20 @@ export class Vehicle {
     this.body.addForce({ x: (-v.x / speed) * f, y: 0, z: (-v.z / speed) * f }, true);
   }
 
+  private updateLean(dt: number): void {
+    const v = this.body.linvel(), q = this.body.rotation();
+    const accel = leanAccel.set(v.x, v.y, v.z).sub(this.lastVel).divideScalar(dt)
+      .applyQuaternion(leanRot.set(q.x, q.y, q.z, q.w).invert());
+    this.lastVel.set(v.x, v.y, v.z);
+    this.tilt = this.bodyLean.update(accel.z, accel.x, dt);
+  }
+
   /** Copies physics pose to the visual model. */
   sync(): void {
     const t = this.body.translation(), q = this.body.rotation();
     this.object.position.set(t.x, t.y, t.z);
     this.object.quaternion.set(q.x, q.y, q.z, q.w);
+    this.pivot.rotation.set(this.tilt.pitch, 0, this.tilt.roll);
     this.wheels.forEach((w, i) => {
       w.position.y = WHEEL_POSITIONS[i][1] - (this.controller.wheelSuspensionLength(i) ?? REST_LENGTH);
       w.rotation.y = this.controller.wheelSteering(i) ?? 0;

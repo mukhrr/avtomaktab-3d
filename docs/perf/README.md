@@ -270,3 +270,138 @@ Method: Vite dev server, in-app Chrome on an Apple M5, a fresh `district.json` f
 | after | 1.80 to 1.98 s | 0.03 to 0.09 s | 1.9 to 2.1 s |
 
 The machine was noisy: one extra before-run read 0.7 s total and one after-run 0.2 s, both discarded as outliers. Production build is faster than dev modules but was not timed separately.
+
+## Milestone 4c
+
+### Budget check (Task 4, 2026-10-24)
+
+Budgets: high at most 8 ms gpu p95 and 120 main-pass calls, low at most +6 calls over before M4c, all landmarks under 120k triangles.
+
+Method as in M4a and M4b: production builds served by `vite preview`, Playwright Chromium (Chrome for Testing, build 1243) on Apple M5 in a visible window, 1280x720 CSS at pixel ratio 2, preset from `avtomaktab.quality`, `?debug`, noon, samples from `window.__game.lastFrame` every frame for 4.5 s after a 1.5 s warm-up. Views: chase at the spawn, and the square orbit framing (`?cam=-110,45,150&look=0,0`). "Before" is 30f5ed8 (M4c plan only), built and served from a scratch worktree at the same time as the branch; runs were interleaved (before, after, after, before). Cells give the range over two runs.
+
+High (gpu is not usable, see below):
+
+| View | gpu p50 / p95 before | gpu p50 / p95 after | render cpu p95 before / after | calls before / after | triangles before / after |
+|---|---|---|---|---|---|
+| chase, spawn | 17.1 to 19.3 / 19.0 to 21.5 | 17.2 to 19.3 / 19.0 to 21.5 | 1.2 to 1.5 / 1.3 to 1.5 | 83 / 95 | 615k / 658k |
+| square orbit | 16.1 to 17.8 / 17.9 to 20.3 | 16.2 to 16.5 / 18.1 to 18.6 | 1.2 to 1.6 / 1.3 to 1.4 | 83 / 94 | 625k / 669k |
+
+Low:
+
+| View | gpu p50 / p95 before | gpu p50 / p95 after | calls before / after | triangles before / after |
+|---|---|---|---|---|
+| chase, spawn | 1.2 to 1.5 / 3.5 to 3.9 | 1.4 / 4.0 to 4.5 | 63 / 69 | 374k / 397k |
+| square orbit | 1.2 to 1.4 / 4.3 to 4.4 | 1.3 to 1.4 / 3.5 to 4.1 | 63 / 68 | 377k / 398k |
+
+All times in ms.
+
+Result:
+
+- Landmarks add 43k main-pass triangles in high chase and 22k in low.
+- Calls: high 95 (120 allowed). Low +6 in chase (69) and +5 in the orbit view, exactly at the +6 limit.
+- Absolute gpu time could not be measured. During this check another Chrome window kept the GPU busy (WindowServer and Chrome's GPU process at 30% or more), and high read 16 to 19 ms p50 on both sides, against 6.6 in the M4b run. Run-to-run spread within each side was about 2.5 ms at p95, so no change from the landmarks is measurable within that noise. The high 8 ms gpu p95 budget is open until high is re-run on a quiet machine.
+- Low chase read 69 calls (+6) in this run and 68 (+5) in the Task 3 run; orbit read 68. Triangle counts above are main-pass triangles including shadow cascades; the landmark models themselves are about 11.5k triangles against the 120k model budget.
+- Low gpu p95 sits at the timer noise floor noted in M4a (3.4 ms or more), with changes of +0.1 to +0.6 ms in chase and none in orbit.
+
+### Tuning (Task 4)
+
+No values changed. Calls and triangles are within budget and the measured gpu deltas are small, so lathe segments and colonnade column count were left as built.
+
+## Milestone 4d (traffic)
+
+### Budget check (Task 5, 2026-10-24)
+
+Budgets: high at most 8 ms gpu p95 and 120 main-pass calls; low at most +6 calls over before M4d; traffic and pedestrians at most 10 calls.
+
+Method as in M4a to M4c: production builds served by `vite preview` (before and after side by side), Playwright Chromium (Chrome for Testing, build 1243) on Apple M5 in a visible window, 1280x720 CSS at pixel ratio 2, preset from `avtomaktab.quality`, `?debug`, noon, `window.__game.lastFrame` sampled every frame for 4.5 s after a 1.5 s warm-up. "Before" is d35575e (end of M4c) built from a scratch worktree (removed afterwards). Views: chase at the spawn, and the M4a avenue framing (`?cam=-25,6,145&look=-52,310`) with all 60 cars active. Runs interleaved (before, after, after, before); cells give the range over the two runs. Times in ms.
+
+High:
+
+| View | gpu p50 / p95 before | gpu p50 / p95 after | calls before / after | triangles before / after |
+|---|---|---|---|---|
+| chase, spawn | 8.8 to 14.5 / 11.0 to 15.7 | 11.6 to 17.6 / 14.4 to 19.9 | 95 / 96 | 658k / 695k |
+| avenue | 6.0 / 7.1 | 8.8 to 8.9 / 10.3 to 10.5 | 74 / 75 | 569k / 604k |
+
+Low:
+
+| View | gpu p50 / p95 before | gpu p50 / p95 after | calls before / after | triangles before / after |
+|---|---|---|---|---|
+| chase, spawn | 1.8 to 2.0 / 4.6 to 5.0 | 1.8 to 2.0 / 4.6 to 4.9 | 69 / 70 | 396k / 395k |
+| avenue | 1.5 to 1.6 / 4.7 to 4.9 | 1.9 / 4.7 to 4.9 | 49 / 50 | 347k / 346k |
+
+Render cpu p95 is 0.9 to 1.3 on both sides, unchanged.
+
+Result:
+
+- Calls pass. High 96 (120 allowed). Low +1 in both views (limit +6). Traffic and pedestrians together are 9 calls on high (hiding their scene objects drops 75 to 66 on the avenue), 7 on low, under the 10 cap.
+- Low gpu is unchanged within noise (p95 sits at the timer floor, see M4a).
+- High gpu is not within budget at the avenue: p95 10.3 to 10.5 after against 7.1 before, a real change of about +2.8 ms p50 and +3.2 ms p95 (the before runs repeat to 0.1 ms there). The chase view cannot be read: another Chrome window kept the GPU busy again (Chrome at about 30% cpu, WindowServer 14%) and the same build moved by 6 ms between runs.
+- The cost is not triangles. Hiding the car batch removes only about 14k main-pass triangles (604k to 590k) but 2 to 3 ms of gpu p50 (about 7.7 to 5.2 in the quieter rounds). Switching off `castShadow` on the car batch recovers most of it (to about 5.6 to 6.0), so the cost sits in the batch's shadow-cascade passes. Pedestrians and lamps measured as no change. Lowering triangles per class or pedestrian detail would not buy it back, so neither was touched.
+- Open: the 8 ms high p95 budget at a traffic-heavy view is not met on this machine, and a quiet re-run is needed to see how much of the +3 ms is real on a clean GPU. A shadow proxy (one cheap box instance per car casting the shadow, batch not casting) is the first thing to try, not done here because the machine was too noisy to verify it.
+
+### Tuning (Task 5)
+
+No values changed: calls are in budget and the one gpu overrun is not triangle bound.
+
+### Final fix pass: car batch shadows (2026-10-25)
+
+`BatchedMesh.onBeforeShadow` (three r169) runs `onBeforeRender` for every shadow cascade, which re-culls, re-sorts and re-uploads the batch unless `perObjectFrustumCulled` and `sortObjects` are both false. Both are now off on the car batch (`frustumCulled` already was). Every car is drawn in every pass, so main-pass triangles on the avenue rise from 604k to 661k, but the per-cascade work is gone.
+
+Method as above (production builds side by side, before = 34c8009, Playwright Chromium build 1243, 1280x720 at DPR 2, high, noon, 4.5 s after a 1.5 s warm-up). The GPU was not quiet: with the game closed, `ioreg` showed 55 to 62% device utilisation from another Chrome window, and the same build moved by up to 4 ms p50 between rounds (one early round read 21 to 25 ms p50 on both sides and is discarded). Cells give the range over the rounds kept. Times in ms.
+
+| View | gpu p50 / p95 before | gpu p50 / p95 after | rounds |
+|---|---|---|---|
+| avenue | 7.2 to 8.9 / 8.6 to 10.6 | 5.8 to 6.8 / 6.9 to 8.7 | 5 |
+| chase, spawn | 17.5 to 18.2 / 20.7 to 21.5 | 14.8 to 15.0 / 16.1 to 16.3 | 3 |
+
+Car shadows on against off (avenue, two interleaved pairs per side):
+
+| | castShadow on, p50 / p95 | castShadow off, p50 / p95 |
+|---|---|---|
+| before | 7.2 / 8.6, 7.8 / 9.2 | 5.5 / 7.3, 6.0 / 8.1 |
+| after | 5.9 / 7.2, 5.8 / 7.9 | 6.1 / 11.1, 6.3 / 7.2 |
+
+Before, car shadows cost about 1.7 ms p50; after, on and off are equal within noise, so the shadow proxy (one box per car casting instead of the batch) was not built. The after build improves avenue p50 by about 2 ms and chase by about 3 ms against the before build in the same rounds. Avenue p95 after is 6.9 to 8.7, so the 8 ms budget is met in most rounds but not proven; chase cannot be judged on this GPU. High gpu has to be re-checked on a quiet machine.
+
+## Milestone 4e (car feel)
+
+### Budget check (Task 5, 2026-10-25)
+
+Budgets: cockpit view on high within 8 ms gpu p95 and 120 main-pass calls; chase view at most +3 calls; audio at most 0.3 ms per frame on the main thread.
+
+Method as in M4a to M4d: production builds side by side (`vite preview` for before, a static server on the branch build), Playwright Chromium (Chrome for Testing, build 1243) on Apple M5 in a visible window, 1280x720 CSS at pixel ratio 2, preset from `avtomaktab.quality`, `?debug`, noon, free drive at the spawn after pressing Start, `window.__game.lastFrame` sampled every frame for 4.5 s after a 1.5 s warm-up. "Before" is e26e655 (end of M4d), built from a scratch worktree (removed afterwards). Views: chase and cockpit (`rig.cycle()`). Runs interleaved (before, after, after, before); cells give the range over the two runs. Times in ms.
+
+High:
+
+| View | gpu p50 / p95 before | gpu p50 / p95 after | calls before / after | triangles before / after |
+|---|---|---|---|---|
+| chase | 7.3 to 7.4 / 8.1 to 8.4 | 7.3 to 7.4 / 8.1 to 9.0 | 96 / 89 | 751k / 754k |
+| cockpit | 5.8 to 6.9 / 7.0 | 6.8 / 7.5 to 7.9 | 74 / 78 | 749k / 751k |
+
+Low:
+
+| View | gpu p50 / p95 before | gpu p50 / p95 after | calls before / after | triangles before / after |
+|---|---|---|---|---|
+| chase | 1.9 to 2.4 / 5.4 to 6.1 | 2.2 to 2.5 / 5.7 to 5.9 | 70 / 65 | 436k / 438k |
+| cockpit | 2.0 to 2.6 / 4.6 to 6.0 | 2.6 to 2.7 / 6.1 | 54 / 58 | 436k / 437k |
+
+Render cpu p95 is 0.8 to 1.6 on both sides.
+
+Result:
+
+- Calls pass. The Gentra body is 11 meshes instead of 15, so chase drops 7 calls on high and 5 on low (limit was +3). Cockpit adds 4 calls (dashboard, body edges, wheel, gauges), 78 on high against 120.
+- Cockpit gpu p95 on high is 7.5 to 7.9 against 8, and about 0.5 to 0.9 over before. The GPU was lightly loaded this time (high chase p50 7.3 on both sides, run-to-run spread about 0.8 at p95), so the cockpit figure is inside the budget but close to it, not far under. Low cockpit p95 reads 6.1 against a before range of 4.6 to 6.0; low has no gpu budget and sits near the timer floor (see M4a).
+- Chase p95 on high reads 8.1 to 9.0 after against 8.1 to 8.4 before, inside the spread.
+
+### Tuning (Task 5)
+
+The first cockpit run was over budget: high cockpit gpu p95 12.3 against 7.3 before, with p50 unchanged. The cause was the gauge texture, not the redraw rate or triangles. Uploading the 512x256 canvas costs about 6 ms of gpu time on every redraw (cpu side the redraw is 0.1 ms): same build, gpu p95 13.0 with uploads, 7.6 with the canvas drawn but the upload skipped, 7.4 with no redraw at all. Lowering the rate did not fix it (8 Hz still read 10 to 11 in the noisier rounds, and any rate above about 3 Hz puts more than 5% of frames on the spike). Changes:
+
+- The gauge canvas is a software canvas (`willReadFrequently`) and its pixels go to a `DataTexture` through `getImageData`, instead of a `CanvasTexture`. That alone took p95 from 13 to 7.5 to 8.2. The panel's v axis is flipped to match the unflipped upload.
+- Dial faces and captions are drawn once into a second canvas and copied in on each redraw; only needles, the speed number and the lamps are drawn live. Redraw stays at 15 Hz.
+
+### Audio main-thread cost
+
+`AudioRig.frame` (engine, tyres, clicks, chime, horn, start and stall events) timed with `performance.now()` around the call in the real game loop over 600 frames per run, after Start with the AudioContext running and W held. High mean 0.008 to 0.011 ms, low mean 0.011 to 0.017 ms (low frames are shorter, so the sample sits at a different part of the engine state), p95 0.1 (the timer resolution is 0.1), worst single frame 0.4. Budget 0.3 per frame: met with a factor of about 20 on the mean.
+
+The browser's audio thread runs separately and was not measured.

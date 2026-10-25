@@ -3,7 +3,7 @@ import { t } from '../i18n';
 import { PENALTY_IDS, validatePenalties } from '../exam/penalties';
 import penaltyTable from '../../data/exam/penalties.json';
 import lines from '../../data/exam/voice-lines.json';
-import { HtmlAudioBackend, VoicePlayer, spokenLineId, type AudioBackend } from './voice';
+import { HtmlAudioBackend, setVoiceMuted, setVoiceVolume, VoicePlayer, spokenLineId, type AudioBackend } from './voice';
 
 class FakeBackend implements AudioBackend {
   played: string[] = [];
@@ -213,6 +213,8 @@ describe('HtmlAudioBackend', () => {
     onerror: (() => void) | null = null;
     onloadedmetadata: (() => void) | null = null;
     paused = false;
+    muted = false;
+    volume = 1;
     constructor(public src: string) { StubAudio.last = this; }
     play() { return Promise.resolve(); }
     pause() { this.paused = true; }
@@ -245,5 +247,32 @@ describe('HtmlAudioBackend', () => {
     await vi.advanceTimersByTimeAsync(800);
     await p;
     expect(done).toBe(true);
+  });
+
+  it('mutes the clip that is playing and every later clip until unmuted', async () => {
+    vi.stubGlobal('Audio', StubAudio);
+    const backend = new HtmlAudioBackend();
+    void backend.play('/a.mp3');
+    const first = StubAudio.last;
+    expect(first.muted).toBe(false);
+    setVoiceMuted(true);
+    expect(first.muted).toBe(true);
+    void backend.play('/b.mp3');
+    expect(StubAudio.last.muted).toBe(true);
+    setVoiceMuted(false);
+    expect(StubAudio.last.muted).toBe(false);
+    backend.stop();
+  });
+
+  it('sets the volume on the clip that is playing and on later clips', () => {
+    vi.stubGlobal('Audio', StubAudio);
+    const backend = new HtmlAudioBackend();
+    void backend.play('/a.mp3');
+    setVoiceVolume(0.3);
+    expect(StubAudio.last.volume).toBe(0.3);
+    void backend.play('/b.mp3');
+    expect(StubAudio.last.volume).toBe(0.3);
+    setVoiceVolume(1);
+    backend.stop();
   });
 });

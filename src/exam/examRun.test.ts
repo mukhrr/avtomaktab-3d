@@ -1,4 +1,5 @@
 import type { Vec2 } from '../shared/district';
+import { landmarkColliders } from '../shared/landmark';
 import { shelterBoxes } from '../world/furniture';
 import { LAMP_SEED, lampPositions } from '../world/streetside';
 import { loadWorld, runExam } from './testDriver';
@@ -29,6 +30,19 @@ describe('exam runs on route-1 with M2 traffic (headless)', () => {
     const shelters = shelterBoxes(w.d);
     const nearestShelter = path.reduce((best, [x, z]) => shelters.reduce((b, s) => Math.min(b, Math.hypot(s.x - x, s.z - z)), best), Infinity);
     expect(nearestShelter).toBeGreaterThan(3);
+    const solids = landmarkColliders(w.d);
+    expect(solids.length).toBe(5);
+    const nearestSolid = path.reduce((best, [x, z]) => solids.reduce((b, s) => Math.min(b, Math.hypot(s.x - x, s.z - z) - s.radius), best), Infinity);
+    expect(nearestSolid).toBeGreaterThan(3);
+  }, RUN_TIMEOUT);
+
+  it('a careful driver moves off when a car turning behind it waits for it (seed 5)', () => {
+    // Seed 5 left the player just past the junction at node 3618822995 with a bus behind it on the connector,
+    // touching and waiting for it, and the driver yielding to the bus as a car cutting across until the 1500 s cap.
+    const run = runExam(loadWorld({ cars: 60, crossers: 40, walkers: 80, seed: 5 }), { indicators: true, obeyLights: true });
+    expect(run.result.phase).toBe('finished');
+    expect(run.result.violations.map(v => v.id)).toEqual([]);
+    expect(run.seconds).toBeLessThan(900);
   }, RUN_TIMEOUT);
 
   it('a driver who runs red lights fails on redLight', () => {

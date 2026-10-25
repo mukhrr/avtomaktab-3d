@@ -76,6 +76,13 @@ describe('lit materials per preset', () => {
     expect(a.metalness).toBe(0);
   });
 
+  it('keeps transparency and depthWrite, so the fountain jets stay see-through', () => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.55, depthWrite: false }));
+    useSkyAmbient(mesh);
+    const m = mesh.material as THREE.Material;
+    expect([m.transparent, m.opacity, m.depthWrite]).toEqual([true, 0.55, false]);
+  });
+
   it('keeps userData.patchShader on the swapped material', () => {
     const patch = () => {};
     const l = new THREE.MeshLambertMaterial();

@@ -1,62 +1,103 @@
 import * as THREE from 'three';
-import { CAR_CLASSES, type AgentView } from './trafficSim';
+import { CAR_CLASSES, type CarClass } from './carClasses';
+import { BUS_GREEN, carGeometry, lampMounts } from './carModels';
+import type { AgentView } from './trafficSim';
 
 const TAIL_DIM = new THREE.Color(0x4a0d0d);
 const TAIL_BRAKE = new THREE.Color(0xff2a1a);
-const BODY_HEIGHT = 0.7;
-const BODY_Y = 0.2;
-const TAIL_Y = 0.75;
-const TAIL_HEIGHT = 0.14;
-const BUS_CABIN = 1.1;
-const CAR_CABIN = 0.55;
+const AMBER_DIM = new THREE.Color(0x4f3208);
+const AMBER_ON = new THREE.Color(0xffa21a);
+const WHITE = new THREE.Color(0xffffff);
+const BLINK_HZ = 1.5;
+const ROAD_Y = 0.09;
+const LAMPS = 6;
+const BRAKE_SIZE = new THREE.Vector3(0.24, 0.13, 1);
+const BLINKER_SIZE = new THREE.Vector3(0.1, 0.09, 1);
 
-/** Unit box with its base on y = 0, so a y scale grows it upward. */
-const unitBox = () => new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
+const CLASSES = Object.keys(CAR_CLASSES) as CarClass[];
+type Variant = CarClass | 'busGreen';
+const VARIANTS: Variant[] = [...CLASSES, 'busGreen'];
 
-/** Draws the traffic pool as three instanced meshes (body, cabin, brake lights) shared by every car class; call `update` once per frame. */
-export function trafficView(scene: THREE.Scene, count: number): { update(agents: readonly AgentView[]): void } {
-  const body = new THREE.InstancedMesh(unitBox(), new THREE.MeshLambertMaterial(), count);
-  const cabin = new THREE.InstancedMesh(unitBox(), new THREE.MeshLambertMaterial({ color: 0x9fb4c4 }), count);
-  const tail = new THREE.InstancedMesh(unitBox(), new THREE.MeshBasicMaterial(), count);
-  const meshes = [body, cabin, tail];
-  body.castShadow = true;
-  for (const mesh of meshes) {
-    mesh.frustumCulled = false;
-    mesh.count = 0;
+/**
+ * Draws the traffic pool: one BatchedMesh holds every class's paint and fixed parts (two instances per car),
+ * plus one instanced mesh for brake and indicator lamps. Call `update` once per frame with the sim time for the blink.
+ */
+export function trafficView(scene: THREE.Scene, count: number): { update(agents: readonly AgentView[], time?: number): void } {
+  const geoms = VARIANTS.map(v => (v === 'busGreen' ? carGeometry('bus', BUS_GREEN) : carGeometry(v)));
+  const all = geoms.flatMap(g => [g.paint, g.fixed]);
+  const vertices = all.reduce((n, g) => n + g.getAttribute('position').count, 0);
+  const cars = new THREE.BatchedMesh(2 * count, vertices, 0, new THREE.MeshLambertMaterial({ vertexColors: true }));
+  const ids = geoms.map(g => ({ paint: cars.addGeometry(g.paint), fixed: cars.addGeometry(g.fixed) }));
+  for (const g of all) g.dispose();
+  for (let i = 0; i < 2 * count; i++) {
+    cars.addInstance(i % 2 ? ids[0].fixed : ids[0].paint);
+    cars.setColorAt(i, WHITE);
+    cars.setVisibleAt(i, false);
   }
-  scene.add(...meshes);
+  cars.castShadow = true;
+  // BatchedMesh re-culls, re-sorts and re-uploads in onBeforeShadow for every cascade unless both are off.
+  cars.frustumCulled = false;
+  cars.perObjectFrustumCulled = false;
+  cars.sortObjects = false;
 
-  const base = new THREE.Matrix4(), local = new THREE.Matrix4(), m = new THREE.Matrix4();
-  const q = new THREE.Quaternion(), noRot = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
-  const pos = new THREE.Vector3(), off = new THREE.Vector3(), size = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
+  // Per car: two brake lamps, then four indicators, all one unit box sized by the instance matrix.
+  const lamps = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 0.05), new THREE.MeshBasicMaterial(), LAMPS * count);
+  lamps.frustumCulled = false;
+  for (let i = 0; i < lamps.count; i++) lamps.setColorAt(i, WHITE);
+  scene.add(cars, lamps);
+
+  const variantIndex = (a: AgentView) => (a.carClass === 'bus' && a.id % 2 ? VARIANTS.length - 1 : CLASSES.indexOf(a.carClass));
+  const shown = new Array<number>(count).fill(-1);
+  const base = new THREE.Matrix4(), m = new THREE.Matrix4(), t = new THREE.Matrix4(), zero = new THREE.Matrix4().makeScale(0, 0, 0);
+  const q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), pos = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), noRot = new THREE.Quaternion();
   const colour = new THREE.Color();
-
-  const place = (mesh: THREE.InstancedMesh, i: number, x: number, y: number, z: number, sx: number, sy: number, sz: number) => {
-    local.compose(off.set(x, y, z), noRot, size.set(sx, sy, sz));
-    mesh.setMatrixAt(i, m.multiplyMatrices(base, local));
+  const lamp = (i: number, size: THREE.Vector3, x: number, y: number, z: number, c: THREE.Color) => {
+    t.compose(pos.set(x, y, z), noRot, size);
+    lamps.setMatrixAt(i, m.multiplyMatrices(base, t));
+    lamps.setColorAt(i, c);
   };
 
   return {
-    update(agents) {
-      let n = 0;
-      for (let k = 0; k < agents.length; k++) {
+    update(agents, time = 0) {
+      const blinkOn = (time * BLINK_HZ) % 1 < 0.5;
+      for (let k = 0; k < count; k++) {
         const a = agents[k];
-        if (!a.active) continue;
+        if (!a?.active) {
+          if (shown[k] !== -1) {
+            cars.setVisibleAt(2 * k, false).setVisibleAt(2 * k + 1, false);
+            shown[k] = -1;
+          }
+          for (let j = 0; j < LAMPS; j++) lamps.setMatrixAt(LAMPS * k + j, zero);
+          continue;
+        }
+        const v = variantIndex(a);
+        if (shown[k] !== v) {
+          cars.setGeometryIdAt(2 * k, ids[v].paint).setGeometryIdAt(2 * k + 1, ids[v].fixed);
+          cars.setVisibleAt(2 * k, true).setVisibleAt(2 * k + 1, true);
+          shown[k] = v;
+        }
+        base.compose(pos.set(a.position[0], ROAD_Y, a.position[1]), q.setFromAxisAngle(up, a.heading), one);
+        cars.setMatrixAt(2 * k, base).setMatrixAt(2 * k + 1, base);
+        cars.setColorAt(2 * k, colour.setHex(a.colour));
+
         const { length, width } = CAR_CLASSES[a.carClass];
-        const bus = a.carClass === 'bus';
-        base.compose(pos.set(a.position[0], 0.09, a.position[1]), q.setFromAxisAngle(up, a.heading), one);
-        place(body, n, 0, BODY_Y, 0, width, BODY_HEIGHT, length);
-        place(cabin, n, 0, BODY_Y + BODY_HEIGHT, bus ? 0 : -length * 0.05, width * 0.9, bus ? BUS_CABIN : CAR_CABIN, bus ? length * 0.96 : length * 0.55);
-        place(tail, n, 0, TAIL_Y - TAIL_HEIGHT / 2, -length / 2 - 0.02, width * 0.85, TAIL_HEIGHT, 0.06);
-        body.setColorAt(n, colour.setHex(a.colour));
-        tail.setColorAt(n, a.braking ? TAIL_BRAKE : TAIL_DIM);
-        n++;
+        const { headY, tailY } = lampMounts(a.carClass);
+        const rear = -length / 2 + 0.025, front = length / 2 - 0.01;
+        const tail = a.braking ? TAIL_BRAKE : TAIL_DIM;
+        const i = LAMPS * k;
+        lamp(i, BRAKE_SIZE, -(width / 2 - 0.24), tailY, rear, tail);
+        lamp(i + 1, BRAKE_SIZE, width / 2 - 0.24, tailY, rear, tail);
+        // Left is +x for a car facing +z.
+        const left = a.indicator === 'left' && blinkOn ? AMBER_ON : AMBER_DIM;
+        const right = a.indicator === 'right' && blinkOn ? AMBER_ON : AMBER_DIM;
+        const ix = width / 2 - 0.06;
+        lamp(i + 2, BLINKER_SIZE, ix, headY, front, left);
+        lamp(i + 3, BLINKER_SIZE, ix, tailY, rear, left);
+        lamp(i + 4, BLINKER_SIZE, -ix, headY, front, right);
+        lamp(i + 5, BLINKER_SIZE, -ix, tailY, rear, right);
       }
-      for (const mesh of meshes) {
-        mesh.count = n;
-        mesh.instanceMatrix.needsUpdate = true;
-        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-      }
+      lamps.instanceMatrix.needsUpdate = true;
+      lamps.instanceColor!.needsUpdate = true;
     },
   };
 }

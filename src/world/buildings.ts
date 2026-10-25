@@ -26,12 +26,12 @@ export function facadePatch(shader: THREE.WebGLProgramParametersWithUniforms): v
 #endif`);
 }
 
-/** Walls and roofs merged per chunk, each kind batched into one mesh. */
-export function addBuildings(scene: THREE.Scene, buildings: Building[], atlas: THREE.Texture, chunkSize: number): void {
+/** Walls and roofs merged per chunk, each kind batched into one mesh. `skip` holds buildings a landmark model replaces. */
+export function addBuildings(scene: THREE.Scene, buildings: Building[], atlas: THREE.Texture, chunkSize: number, skip = new Set<string>()): void {
   const facade = new THREE.MeshLambertMaterial({ map: atlas });
   facade.userData.patchShader = facadePatch;
   const roof = new THREE.MeshLambertMaterial({ vertexColors: true });
-  const groups = [...groupByChunk(buildings, b => centroid(b.footprint), chunkSize).values()];
+  const groups = [...groupByChunk(buildings.filter(b => !skip.has(b.id)), b => centroid(b.footprint), chunkSize).values()];
   scene.add(
     batchChunks(groups.map(g => merge(g.map(wallGeometry))), facade),
     batchChunks(groups.map(g => merge(g.map(b => roofGeometry(b, ROOF_SEED)))), roof),

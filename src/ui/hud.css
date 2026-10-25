@@ -35,6 +35,7 @@
 .hud .start { width: 360px; }
 .hud .pick { display: flex; gap: 6px; }
 .hud .pick button, .hud .card button { flex: 1; font: inherit; font-size: 15px; color: #fff; background: #ffffff14; border: 1px solid #ffffff30; border-radius: 6px; padding: 8px 12px; cursor: pointer; }
+.hud .volume { width: 100%; margin: 0; accent-color: #3d8bff; }
 .hud .pick button.on { background: #3d8bff; border-color: #3d8bff; }
 .hud .card button.go { background: #3ddc5a; border-color: #3ddc5a; color: #08210f; font-weight: 700; }
 .hud .card button:disabled { opacity: 0.5; cursor: default; }

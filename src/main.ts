@@ -2,7 +2,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { DistrictData } from './shared/district';
-import { CameraRig, CAR_LAYER, lookGlance } from './camera/cameras';
+import { CameraRig, CAR_LAYER, COCKPIT_LAYER, lookGlance } from './camera/cameras';
 import { createMirrors } from './camera/mirrors';
 import { createGpuTimer, FrameStats } from './render/frameStats';
 import { fixedSteps, NO_EDGES, splitControls, STEP } from './physics/loop';
@@ -22,8 +22,13 @@ import { SignalSystem } from './sim/signals';
 import { LaneNetwork } from './traffic/lanes';
 import { approachSpeeds, closingSpeed, TrafficBodies } from './traffic/trafficBodies';
 import { TrafficSim, type PlayerState } from './traffic/trafficSim';
+import { HornMonitor } from './traffic/horn';
+import { AudioRig } from './audio/audioRig';
+import { setVoiceMuted } from './audio/voice';
+import { MapMatcher } from './exam/mapMatch';
 import { trafficView } from './traffic/trafficView';
-import { newCabin, stepCabin } from './vehicle/cabin';
+import { BlinkClock, newCabin, stepCabin } from './vehicle/cabin';
+import { createCockpit } from './vehicle/cockpit';
 import { InputReader } from './vehicle/input';
 import { Vehicle } from './vehicle/vehicle';
 import { useSkyAmbient } from './render/litMaterials';
@@ -32,6 +37,7 @@ import { loadQuality, QUALITY, saveQuality, type Quality } from './render/qualit
 import { createGroundMaterials } from './world/groundMaterials';
 import { createFacadeTexture } from './world/facadeAtlas';
 import { buildWorld } from './world/buildWorld';
+import { createLandmarkTextures } from './world/landmarks';
 import { createEnvironment } from './world/environment';
 import { nearestLane } from './world/spawn';
 
@@ -79,7 +85,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 3000);
 const groundMats = createGroundMaterials(quality);
 const env = createEnvironment(scene, camera, renderer, quality, choice.timeOfDay, groundMats.ground, quality.skyAmbient ? new THREE.PMREMGenerator(renderer) : null);
-const { signalLamps } = buildWorld(scene, district, groundMats, createFacadeTexture());
+const { signalLamps } = buildWorld(scene, district, groundMats, createFacadeTexture(), createLandmarkTextures());
 
 const credit = document.createElement('div');
 credit.textContent = '© OpenStreetMap contributors';
@@ -92,6 +98,10 @@ const car = new Vehicle(world, spawn);
 scene.add(car.object);
 car.sync();
 car.object.traverse(o => o.layers.set(CAR_LAYER));
+const cockpit = createCockpit();
+cockpit.root.traverse(o => o.layers.set(COCKPIT_LAYER));
+car.object.add(cockpit.root);
+const blink = new BlinkClock();
 const signals = new SignalSystem(district);
 const net = new LaneNetwork(district);
 const signs = new SignSystem(district);
@@ -156,7 +166,11 @@ if (params.has('debug')) events.on(e => console.log('[event]', e));
 const minimap = createMinimap(district);
 
 let screen: Screen = 'menu', seq = 0;
-const show = (s: Screen) => hud.set({ screen: (screen = s) });
+const show = (s: Screen) => {
+  hud.set({ screen: (screen = s) });
+  if (s === 'drive') audio?.enter();
+  else audio?.leave();
+};
 
 const session = new ExamSession({
   d: district, net, signals, signs, peds, traffic, route, penalties: loadPenalties(), playerLength: PLAYER_LENGTH,
@@ -205,12 +219,41 @@ let probeDone = probe === null;
 // True while the shown pick is only a fallback from a probe that measured nothing; Start must not store it.
 let pickUnmeasured = false;
 
+const horns = new HornMonitor({ matcher: new MapMatcher(district, net), signals, net });
+let audio: AudioRig | null = null;
+const camDir = new THREE.Vector3();
+
+/** Called from click handlers only: browsers keep an AudioContext suspended until a user gesture. */
+function unlockAudio() {
+  const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  setVoiceMuted(!choice.sound);
+  if (!Ctor) return;
+  try {
+    if (audio) audio.apply(choice);
+    else audio = new AudioRig(new Ctor(), choice, audible => setVoiceMuted(!audible));
+    if (audio.ctx.state !== 'running') void audio.ctx.resume();
+  } catch {
+    audio = null;
+  }
+}
+
+document.addEventListener('visibilitychange', () => audio?.visibility(document.visibilityState === 'hidden'));
+
 /** Runs inside the click handler, so the brief's audio starts within the user gesture. */
 function startExam() {
   hud.set({ toast: null, subtitle: null, debrief: null, exam: { lang: choice.lang, maneuver: null, distance: 0, total: 0 } });
   show('drive');
   session.start(choice.lang, choice.gearbox);
   examStep(0);
+}
+
+/** Everything a start applies to the world; shared by the start screen and the `__game.start` debug hook. */
+function applyChoice(c: StartChoice) {
+  env.setTimeOfDay(c.timeOfDay);
+  if (c.mode === 'exam') return startExam();
+  if (Math.abs(car.speed) < STOPPED) car.gearbox = c.gearbox;
+  hud.set({ exam: null, toast: null, subtitle: null });
+  show('drive');
 }
 
 const roads = district.graph.edges.map(e => e.points);
@@ -220,19 +263,19 @@ mountHud(hud, minimap.canvas, params.has('debug'), {
   choice: () => choice,
   onStart: (c, q) => {
     choice = c;
+    unlockAudio();
     if (!(pickUnmeasured && q === hud.get().quality)) {
       saveQuality(q);
       pickUnmeasured = false;
     }
     hud.set({ quality: q });
     applyQuality(q);
-    env.setTimeOfDay(c.timeOfDay);
-    if (c.mode === 'exam') return startExam();
-    if (Math.abs(car.speed) < STOPPED) car.gearbox = c.gearbox;
-    hud.set({ exam: null, toast: null, subtitle: null });
-    show('drive');
+    applyChoice(c);
   },
-  onRetry: startExam,
+  onRetry: () => {
+    unlockAudio();
+    startExam();
+  },
   onMenu: () => {
     session.silence();
     show('menu');
@@ -296,8 +339,19 @@ renderer.setAnimationLoop(() => {
     }
     if (session.active) examStep(c.steer);
   }
+  if (audio && driving) {
+    camera.getWorldDirection(camDir);
+    const listener = { position: [camera.position.x, camera.position.z] as [number, number], heading: Math.atan2(camDir.x, camDir.z) };
+    for (const h of horns.update(dt, playerState(), traffic.agents, signals, listener)) audio.sfx.horn(h.volume, h.pan);
+    const d = car.drivetrain;
+    audio.frame(
+      { rpm: d.rpm, throttle: controls.throttle, running: d.running, speed: car.speed, slip: car.slip, gear: d.gear, belt: cabin.belt, blinker: cabin.hazard ? 'hazard' : cabin.indicator },
+      dt,
+      input.horn(held, navigator.getGamepads?.() ?? []),
+    );
+  }
   signalLamps.update(signals);
-  carsView.update(traffic.agents);
+  carsView.update(traffic.agents, signals.time);
   pedsView.update(peds.peds);
 
   const p = car.object.position, b = district.bounds;
@@ -313,6 +367,11 @@ renderer.setAnimationLoop(() => {
 
   if (orbit) orbit.update();
   else rig.update(car.object, car.speed, dt);
+  const blinkOn = blink.step(cabin.hazard ? 'hazard' : cabin.indicator, dt);
+  if (rig.mode === 'cockpit') {
+    const d = car.drivetrain;
+    cockpit.update({ speedKmh: Math.abs(car.speed) * 3.6, rpm: d.rpm, indicator: cabin.indicator, blinkOn, hazard: cabin.hazard, belt: cabin.belt, steer: controls.steer, running: d.running });
+  }
   const renderStart = performance.now();
   env.follow(p.x, p.z);
   env.update();
@@ -394,8 +453,7 @@ renderer.setAnimationLoop(() => {
   }
 });
 
-Object.assign(window, { __game: { car, env, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, cabin: () => cabin, lastFrame, session, hud, route, start: (c: Partial<StartChoice>) => {
+Object.assign(window, { __game: { car, cockpit, env, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, audio: () => audio && { ...audio, ctxState: audio.ctx.state, ctxTime: audio.ctx.currentTime }, cabin: () => cabin, lastFrame, session, hud, route, start: (c: Partial<StartChoice>) => {
   choice = { ...choice, ...c };
-  if (choice.mode === 'exam') startExam();
-  else show('drive');
+  applyChoice(choice);
 } } });
