@@ -61,6 +61,21 @@ describe('routeConflicts', () => {
     for (const code of ['4.5', '4.6', '3.35']) expect(routeConflicts(sign(code, 'e', 1, 100), [route], net, d)).toHaveLength(1);
   });
 
+  it('flags shared and segregated pedestrian-cycle paths on a driven lane, though they are not car signs', () => {
+    const { d, net, route } = setup();
+    for (const code of ['4.6.1', '4.6.2', '4.6.3', '4.6.4', '4.6.5', '4.6.6']) {
+      expect(routeConflicts(sign(code, 'e', 1, 100), [route], net, d), code).toHaveLength(1);
+      expect(routeConflicts(sign(code, 'e', -1, 100), [route], net, d), code).toEqual([]);
+    }
+  });
+
+  // The examiner has no right-on-red exception, so a driver obeying 5.42 would run a red light.
+  it('flags right turn on red on a signalled approach the route drives', () => {
+    const { d, net, route } = setup();
+    expect(routeConflicts(sign('5.42', 'w', -1, 30), [route], net, d)).toHaveLength(1);
+    expect(routeConflicts(sign('5.42', 'e', 1, 220), [route], net, d)).toEqual([]);
+  });
+
   it('flags a no-left-turn where the route turns left', () => {
     const { d, net, route } = setup([[300, -3], [237, 30]]);
     expect(route.steps.map(s => s.ref.edgeId)).toEqual(['tE', 'tStub']);

@@ -27,6 +27,9 @@ const GENTRA_AXLE = GENTRA.mass / 2;
 
 /** Signs that close the lane they stand on to the Gentra, or that the route would have to stop at. */
 const LANE_BANS = new Set(['3.1', '3.2', '3.3', '3.17.1', '3.17.2', '3.17.3', '3.35', '4.5', '4.6']);
+/** Paths closed to cars; their catalogue entries are not car-relevant, but a car must not drive past them. */
+const PATH_BANS = new Set(['4.6.1', '4.6.2', '4.6.3', '4.6.4', '4.6.5', '4.6.6']);
+const RIGHT_ON_RED = '5.42';
 const BOUND_BY: Record<string, number> = { '3.11': GENTRA.mass, '3.12': GENTRA_AXLE, '3.13': GENTRA.height, '3.14': GENTRA.width, '3.15': GENTRA.length };
 const TURN_BANS: Record<string, Turn> = { '3.18.1': 'right', '3.18.2': 'left', '3.19': 'uturn' };
 /** 4.1.5 and 4.1.6 allow a U-turn too: the 4.1.3 meaning says left-turn signs also permit one. */
@@ -103,7 +106,7 @@ export function freeSpots(d: DistrictData, routes: ExamRoute[], spacing = 15): F
 
 export function routeConflicts(sign: Sign, routes: ExamRoute[], net: LaneNetwork, d: DistrictData): string[] {
   const e = entry(sign.code);
-  if (!e.carRelevant) return [];
+  if (!e.carRelevant && !PATH_BANS.has(sign.code)) return [];
   const where = `${sign.code} (${e.name.en}) on ${sign.edgeId} dir ${sign.dir} at ${sign.at} m`;
   const value = typeof sign.value === 'number' ? sign.value : undefined;
   const out = new Set<string>();
@@ -111,7 +114,9 @@ export function routeConflicts(sign: Sign, routes: ExamRoute[], net: LaneNetwork
     if (sign.code === '3.24' && value < MIN_SPEED_LIMIT) out.add(`${where}: a ${value} km/h limit is below ${MIN_SPEED_LIMIT}`);
     if (sign.code === '4.7' && value > MAX_MIN_SPEED) out.add(`${where}: a ${value} km/h minimum is above ${MAX_MIN_SPEED}`);
   }
-  const bound = LANE_BANS.has(sign.code) || (sign.code in BOUND_BY && value !== undefined && value < BOUND_BY[sign.code]);
+  const bound = LANE_BANS.has(sign.code) || PATH_BANS.has(sign.code) || (sign.code in BOUND_BY && value !== undefined && value < BOUND_BY[sign.code]);
+  // The examiner has no right-on-red exception, so obeying 5.42 there would be a red-light fail.
+  const signalled = sign.code === RIGHT_ON_RED && d.controllers.some(c => c.phases.some(p => p.some(a => a.edgeId === sign.edgeId && a.dir === sign.dir)));
   const banned = TURN_BANS[sign.code], allowed = ALLOWED[sign.code];
   for (const { route, step, edge, dir, len, from, to } of spans(d, routes)) {
     if (edge.id !== sign.edgeId || dir !== sign.dir) continue;
@@ -120,6 +125,7 @@ export function routeConflicts(sign: Sign, routes: ExamRoute[], net: LaneNetwork
     // The examiner faults entering past a no-entry this close to the edge's entry, however far the car then goes.
     if (sign.code === '3.1' && step > 0 && t <= NO_ENTRY_REACH) out.add(`${where}: ${route.id} enters this lane past it`);
     else if (bound && t >= from && t <= to) out.add(`${where}: ${route.id} drives this lane and the Gentra is bound by it`);
+    if (signalled && t >= from && t <= to) out.add(`${where}: ${route.id} drives this signalled approach and the examiner has no right turn on red`);
     if ((!banned && !allowed) || step === route.steps.length - 1 || len - t > JUNCTION_REACH) continue;
     const turn = turnBetween(net, ref, route.steps[step + 1].ref);
     const node = route.steps[step].nodeId;
