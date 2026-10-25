@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { DistrictData, Vec2 } from '../shared/district';
 import { CODE } from '../shared/signCatalogue';
 import { LaneNetwork } from '../traffic/lanes';
-import { pointAlong } from '../world/roadGeometry';
-import { signSpots } from '../world/signMount';
+import { junctionPolygon, pointAlong } from '../world/roadGeometry';
+import { signPose, signSpots } from '../world/signMount';
 import { routeConflicts } from '../../tools/signs/coverageSpots';
 import { missingEntries, signsOnRoute } from './coverage';
 import type { ExamRoute } from './route';
@@ -48,6 +48,34 @@ describe('tashkent-center coverage', () => {
       return outside([p.x, p.z]);
     });
     expect(signsOutside.map(s => s.id)).toEqual([]);
+  });
+
+  // The examiner keeps the mapped limit, so these must not change the legal limit on a lane a route drives.
+  it('puts no limit-changing or dead-end coverage sign on a lane a route drives', () => {
+    const driven = new Set(routes.flatMap(r => r.steps.map(s => `${s.ref.edgeId}|${s.ref.dir}`)));
+    const onDriven = d.signs.filter(s => s.origin === 'coverage' && ['5.22', '5.23', '5.24', '5.25', '5.19.1'].includes(s.code) && driven.has(`${s.edgeId}|${s.dir}`));
+    expect(onDriven.map(s => s.id)).toEqual([]);
+    const limited = new Set(d.signs.filter(s => s.code === CODE.speedLimit).map(s => `${s.edgeId}|${s.dir}`));
+    const edges = new Map(d.graph.edges.map(e => [e.id, e]));
+    const badEnds = d.signs.filter(s => s.origin === 'coverage' && s.code === '3.25' && (limited.has(`${s.edgeId}|${s.dir}`) || edges.get(s.edgeId)!.maxspeed !== 60));
+    expect(badEnds.map(s => s.id)).toEqual([]);
+  });
+
+  it('stands every coverage pole outside the junction areas', () => {
+    const edges = new Map(d.graph.edges.map(e => [e.id, e]));
+    const polys = d.graph.nodes.filter(n => n.edges.length >= 3).map(n => ({ id: n.id, poly: junctionPolygon(n, n.edges.map(id => edges.get(id)!)) }));
+    const inside = ([x, z]: Vec2, p: Vec2[]) => {
+      let c = false;
+      for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
+        if ((p[i][1] > z) !== (p[j][1] > z) && x < ((p[j][0] - p[i][0]) * (z - p[i][1])) / (p[j][1] - p[i][1]) + p[i][0]) c = !c;
+      }
+      return c;
+    };
+    const inJunction = d.signs.filter(s => s.origin === 'coverage').flatMap(s => {
+      const p = signPose(edges.get(s.edgeId)!, s);
+      return polys.filter(j => inside([p.x, p.z], j.poly)).map(j => `${s.id} in ${j.id}`);
+    });
+    expect(inJunction).toEqual([]);
   });
 
   it('spreads coverage signs so no route carries more than 60', () => {

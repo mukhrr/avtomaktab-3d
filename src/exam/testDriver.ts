@@ -903,10 +903,10 @@ const DT = 1 / 60;
 const WARMUP = 30;
 const START_CLEAR = 40;
 
-export function loadWorld(traffic: { cars: number; crossers: number; walkers: number; seed?: number }): DriverWorld {
+export function loadWorld(traffic: { cars: number; crossers: number; walkers: number; seed?: number }, routeId = 'route-1'): DriverWorld {
   const root = new URL('../../public/districts/tashkent-center/', import.meta.url);
   const d: DistrictData = JSON.parse(readFileSync(new URL('district.json', root), 'utf8'));
-  const route: ExamRoute = JSON.parse(readFileSync(new URL('routes/route-1.json', root), 'utf8'));
+  const route: ExamRoute = JSON.parse(readFileSync(new URL(`routes/${routeId}.json`, root), 'utf8'));
   const net = new LaneNetwork(d);
   const signals = new SignalSystem(d);
   const signs = new SignSystem(d);
