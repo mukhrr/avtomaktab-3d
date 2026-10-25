@@ -6,7 +6,7 @@ interface Gltf {
   meshes: { name: string; primitives: { indices: number; attributes: Record<string, number> }[] }[];
   materials: { name: string }[];
   accessors: { count: number; min?: number[]; max?: number[] }[];
-  scenes: { extras: { wheels: { index: number; centre: number[]; radius: number }[] } }[];
+  scenes: { extras: { bodyHalfWidth: number; wheels: { index: number; centre: number[]; radius: number }[] } }[];
 }
 
 function readGlb(path: string): Gltf {
@@ -48,7 +48,8 @@ describe('processed Gentra glb', () => {
     expect(Math.abs(min[0] + max[0]) / 2).toBeLessThan(0.02);
   });
 
-  it('keeps the wheels inside the 1.74 m physics box width', () => {
+  it('keeps the body without mirrors and the wheels inside the 1.74 m physics box width', () => {
+    expect(gltf.scenes[0].extras.bodyHalfWidth).toBeLessThanOrEqual(0.87);
     const { min, max } = bounds(n => n.startsWith('wheel_'));
     expect(min[0]).toBeGreaterThanOrEqual(-0.871);
     expect(max[0]).toBeLessThanOrEqual(0.871);
