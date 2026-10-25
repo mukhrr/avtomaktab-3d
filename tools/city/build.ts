@@ -15,7 +15,8 @@ import { parseOsm } from './osm';
 import { placeRuleSigns } from './signRules';
 import { makeProjection } from './projection';
 
-export function validateSigns(signs: Sign[], edges: DistrictData['graph']['edges']): void {
+/** With `poles: false`, only each sign on its own and id uniqueness; pole capacity waits for the merge. */
+export function validateSigns(signs: Sign[], edges: DistrictData['graph']['edges'], { poles = true } = {}): void {
   const byId = new Map(edges.map(e => [e.id, e]));
   const ids = new Set<string>();
   for (const s of signs) {
@@ -39,6 +40,7 @@ export function validateSigns(signs: Sign[], edges: DistrictData['graph']['edges
       checkValue(p.code, p.value, 'plate on sign');
     }
   }
+  if (!poles) return;
   for (const spot of signSpots(signs)) {
     if (spot.signs.length > 3) {
       throw new Error(`${spot.signs.length} signs on one pole at ${spot.at} m along ${spot.edgeId} (dir ${spot.dir}, ${spot.side}): ${spot.signs.map(s => s.id).join(', ')}; at most 3`);
@@ -49,6 +51,7 @@ export function validateSigns(signs: Sign[], edges: DistrictData['graph']['edges
 export function buildDistrict(
   xml: string, config: DistrictConfig, overrides: Overrides, hand: Sign[] = [], log: (message: string) => void = () => {}, coverage: Sign[] = [],
 ): DistrictData {
+  coverage = coverage.map(s => ({ ...s, origin: 'coverage' }));
   const osm = parseOsm(xml);
   const project = makeProjection(config.origin);
   const { roadNodeIds, crossingNodes, furniture: rawFurniture, ...features } = extractFeatures(osm, project, overrides);
@@ -63,7 +66,7 @@ export function buildDistrict(
     const edge = graph.edges.find(e => e.id === hit.edgeId)!;
     crossings.push({ id: c.id, position: edge.points[hit.index], kind: c.kind, edgeId: hit.edgeId, at: hit.at, width: edge.width });
   }
-  validateSigns([...hand, ...coverage], graph.edges);
+  validateSigns([...hand, ...coverage], graph.edges, { poles: false });
   const built = buildControllers(features.signals, graph.edges, graph.nodes, crossingsOffJunctions(crossings, graph.edges, graph.nodes));
   const signs = placeRuleSigns({ graph, crossings: built.crossings, controllers: built.controllers, pois: features.pois }, hand, log, coverage);
   validateSigns(signs, graph.edges);
@@ -92,7 +95,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     JSON.parse(readFileSync(`${dir}/overrides.json`, 'utf8')),
     existsSync(`${dir}/signs.json`) ? JSON.parse(readFileSync(`${dir}/signs.json`, 'utf8')) : [],
     console.info,
-    existsSync(`${dir}/coverage.json`) ? (JSON.parse(readFileSync(`${dir}/coverage.json`, 'utf8')) as Sign[]).map(s => ({ ...s, origin: 'coverage' as const })) : [],
+    existsSync(`${dir}/coverage.json`) ? JSON.parse(readFileSync(`${dir}/coverage.json`, 'utf8')) : [],
   );
   checkAtlasCovers(d.signs, JSON.parse(readFileSync('public/signs/atlas.json', 'utf8')) as Atlas);
   const outDir = `public/districts/${district}`;

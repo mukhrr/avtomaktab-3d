@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import type { DistrictData, GraphEdge, Sign } from '../../src/shared/district';
 import { turnBetween, type ExamRoute, type Maneuver } from '../../src/exam/route';
 import { entry } from '../../src/shared/signCatalogue';
+import { NO_ENTRY_REACH } from '../../src/exam/rules/thresholds';
 import { JUNCTION_REACH } from '../../src/sim/signs';
 import { LaneNetwork } from '../../src/traffic/lanes';
 import { project } from '../../src/traffic/turns';
@@ -25,7 +26,7 @@ const GENTRA = { mass: 1.3, height: 1.45, width: 1.74, length: 4.48 };
 const GENTRA_AXLE = GENTRA.mass / 2;
 
 /** Signs that close the lane they stand on to the Gentra, or that the route would have to stop at. */
-const LANE_BANS = new Set(['3.1', '3.2', '3.3', '3.17.1', '3.17.2', '3.17.3']);
+const LANE_BANS = new Set(['3.1', '3.2', '3.3', '3.17.1', '3.17.2', '3.17.3', '3.35', '4.5', '4.6']);
 const BOUND_BY: Record<string, number> = { '3.11': GENTRA.mass, '3.12': GENTRA_AXLE, '3.13': GENTRA.height, '3.14': GENTRA.width, '3.15': GENTRA.length };
 const TURN_BANS: Record<string, Turn> = { '3.18.1': 'right', '3.18.2': 'left', '3.19': 'uturn' };
 /** 4.1.5 and 4.1.6 allow a U-turn too: the 4.1.3 meaning says left-turn signs also permit one. */
@@ -116,7 +117,9 @@ export function routeConflicts(sign: Sign, routes: ExamRoute[], net: LaneNetwork
     if (edge.id !== sign.edgeId || dir !== sign.dir) continue;
     const ref = route.steps[step].ref;
     const t = travelled(len, dir, sign.at);
-    if (bound && t >= from && t <= to) out.add(`${where}: ${route.id} drives this lane and the Gentra is bound by it`);
+    // The examiner faults entering past a no-entry this close to the edge's entry, however far the car then goes.
+    if (sign.code === '3.1' && step > 0 && t <= NO_ENTRY_REACH) out.add(`${where}: ${route.id} enters this lane past it`);
+    else if (bound && t >= from && t <= to) out.add(`${where}: ${route.id} drives this lane and the Gentra is bound by it`);
     if ((!banned && !allowed) || step === route.steps.length - 1 || len - t > JUNCTION_REACH) continue;
     const turn = turnBetween(net, ref, route.steps[step + 1].ref);
     const node = route.steps[step].nodeId;

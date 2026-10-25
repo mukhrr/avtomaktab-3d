@@ -50,6 +50,17 @@ describe('routeConflicts', () => {
     expect(routeConflicts(sign('3.1', 'w', -1, 110), [route], net, d)).toEqual([]);
   });
 
+  it('flags a no-entry near the entry of a later edge even when the route finishes short of it', () => {
+    const { d, net, route } = setup([[-100, 3], [120, 3], [237, 10]]);
+    expect(route.steps.at(-1)!.ref.edgeId).toBe('tStub');
+    expect(routeConflicts(sign('3.1', 'tStub', 1, 30), [route], net, d)).toHaveLength(1);
+  });
+
+  it('flags cycle tracks, footpaths and eco zones on a driven lane', () => {
+    const { d, net, route } = setup();
+    for (const code of ['4.5', '4.6', '3.35']) expect(routeConflicts(sign(code, 'e', 1, 100), [route], net, d)).toHaveLength(1);
+  });
+
   it('flags a no-left-turn where the route turns left', () => {
     const { d, net, route } = setup([[300, -3], [237, 30]]);
     expect(route.steps.map(s => s.ref.edgeId)).toEqual(['tE', 'tStub']);

@@ -61,6 +61,17 @@ describe('signs', () => {
     expect(() => withCoverage({ ...cov, edgeId: 'nope:0' })).toThrow(/c1.*nope:0/);
   });
 
+  it('moves a coverage sign 15 m on from a full hand pole instead of failing', () => {
+    const full = [sign({}), sign({ id: 's2', code: CODE.noUTurn }), sign({ id: 's3', code: CODE.noLeftTurn })];
+    const out = buildDistrict(xml, config, { removeWays: [], roads: {}, buildingHeights: {}, buildingStyles: {} }, full, () => {}, [sign({ id: 'c1', code: '3.26', origin: 'coverage' })]);
+    expect(out.signs.find(s => s.id === 'c1')?.at).toBe(20);
+  });
+
+  it('stamps coverage origin on coverage signs whatever they carry', () => {
+    const out = buildDistrict(xml, config, { removeWays: [], roads: {}, buildingHeights: {}, buildingStyles: {} }, [], () => {}, [sign({ id: 'c1', code: '3.26', at: 20 })]);
+    expect(out.signs.find(s => s.id === 'c1')?.origin).toBe('coverage');
+  });
+
   it('rejects a sign on a missing edge', () => {
     expect(() => build(sign({ edgeId: 'nope:0' }))).toThrow(/s1.*nope:0/);
   });
