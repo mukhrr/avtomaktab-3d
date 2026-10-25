@@ -115,7 +115,7 @@ export function routeConflicts(sign: Sign, routes: ExamRoute[], net: LaneNetwork
     if (sign.code === '4.7' && value > MAX_MIN_SPEED) out.add(`${where}: a ${value} km/h minimum is above ${MAX_MIN_SPEED}`);
   }
   const bound = LANE_BANS.has(sign.code) || PATH_BANS.has(sign.code) || (sign.code in BOUND_BY && value !== undefined && value < BOUND_BY[sign.code]);
-  // The examiner has no right-on-red exception, so obeying 5.42 there would be a red-light fail.
+  // The examiner has no right-on-red exception, so a route turning right past 5.42 invites a red-light fail.
   const signalled = sign.code === RIGHT_ON_RED && d.controllers.some(c => c.phases.some(p => p.some(a => a.edgeId === sign.edgeId && a.dir === sign.dir)));
   const banned = TURN_BANS[sign.code], allowed = ALLOWED[sign.code];
   for (const { route, step, edge, dir, len, from, to } of spans(d, routes)) {
@@ -125,10 +125,10 @@ export function routeConflicts(sign: Sign, routes: ExamRoute[], net: LaneNetwork
     // The examiner faults entering past a no-entry this close to the edge's entry, however far the car then goes.
     if (sign.code === '3.1' && step > 0 && t <= NO_ENTRY_REACH) out.add(`${where}: ${route.id} enters this lane past it`);
     else if (bound && t >= from && t <= to) out.add(`${where}: ${route.id} drives this lane and the Gentra is bound by it`);
-    if (signalled && t >= from && t <= to) out.add(`${where}: ${route.id} drives this signalled approach and the examiner has no right turn on red`);
-    if ((!banned && !allowed) || step === route.steps.length - 1 || len - t > JUNCTION_REACH) continue;
+    if ((!banned && !allowed && !signalled) || step === route.steps.length - 1 || len - t > JUNCTION_REACH) continue;
     const turn = turnBetween(net, ref, route.steps[step + 1].ref);
     const node = route.steps[step].nodeId;
+    if (signalled && turn === 'right') out.add(`${where}: ${route.id} turns right at the signals at ${node}, and the examiner has no right turn on red`);
     if (banned === turn) out.add(`${where}: ${route.id} turns ${turn} at ${node}`);
     if (allowed && !allowed.includes(turn)) out.add(`${where}: ${route.id} goes ${turn} at ${node}, the sign allows only ${allowed.join(', ')}`);
   }

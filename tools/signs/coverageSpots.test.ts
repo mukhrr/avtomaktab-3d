@@ -70,10 +70,14 @@ describe('routeConflicts', () => {
   });
 
   // The examiner has no right-on-red exception, so a driver obeying 5.42 would run a red light.
-  it('flags right turn on red on a signalled approach the route drives', () => {
-    const { d, net, route } = setup();
-    expect(routeConflicts(sign('5.42', 'w', -1, 30), [route], net, d)).toHaveLength(1);
-    expect(routeConflicts(sign('5.42', 'e', 1, 220), [route], net, d)).toEqual([]);
+  it('flags right turn on red only where the route turns right at signals', () => {
+    const straight = setup();
+    expect(routeConflicts(sign('5.42', 'w', -1, 30), [straight.route], straight.net, straight.d)).toEqual([]);
+    const right = setup([[-100, 3], [-3, 80]]);
+    expect(right.route.steps[1].ref.edgeId).toBe('s');
+    expect(routeConflicts(sign('5.42', 'w', -1, 30), [right.route], right.net, right.d)).toHaveLength(1);
+    // The T ahead of e has no signals, so a right turn there is not a red-light risk.
+    expect(routeConflicts(sign('5.42', 'e', 1, 220), [straight.route], straight.net, straight.d)).toEqual([]);
   });
 
   it('flags a no-left-turn where the route turns left', () => {
