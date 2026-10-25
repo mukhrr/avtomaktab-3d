@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { wheelIndex } from './gentra';
+import { lampGroup, lensColour, wheelIndex } from './gentra';
 
 interface Gltf {
   nodes: { name: string; mesh?: number; translation?: number[]; children?: number[] }[];
@@ -32,6 +32,8 @@ function bounds(filter: (name: string) => boolean = () => true) {
   return { min, max };
 }
 
+const box = (name: string) => bounds(n => n === name);
+
 describe('processed Gentra glb', () => {
   it('fits 4.5 x 2.1 x 1.7 m', () => {
     const { min, max } = bounds();
@@ -55,10 +57,10 @@ describe('processed Gentra glb', () => {
     expect(max[0]).toBeLessThanOrEqual(0.871);
   });
 
-  it('stays under 25k triangles in at most 10 meshes', () => {
+  it('stays under 25k triangles in at most 15 meshes', () => {
     const tris = gltf.meshes.flatMap(m => m.primitives).reduce((s, p) => s + gltf.accessors[p.indices].count / 3, 0);
     expect(tris).toBeLessThanOrEqual(25000);
-    expect(gltf.meshes.length).toBeLessThanOrEqual(10);
+    expect(gltf.meshes.length).toBeLessThanOrEqual(15);
   });
 
   it('has no badge nodes, meshes or materials', () => {
@@ -76,9 +78,20 @@ describe('processed Gentra glb', () => {
       expect(w.radius).toBeGreaterThan(0.29);
       expect(w.radius).toBeLessThan(0.32);
     }
-    const lights = gltf.nodes.find(n => n.name === 'lights')!;
-    const a = gltf.accessors[gltf.meshes[lights.mesh!].primitives[0].attributes.POSITION];
-    expect(a.max![2]).toBeGreaterThan(2);
+    expect(box('head').min[2]).toBeGreaterThan(1.7);
+  });
+
+  it('has one mesh per lamp group, indicators split by side with +x on the left', () => {
+    expect(box('tail').max[2]).toBeLessThan(-1.7);
+    expect(box('reverse').max[2]).toBeLessThan(-1.7);
+    for (const side of ['indicatorLeft', 'indicatorRight']) {
+      const b = box(side);
+      expect(b.min[2]).toBeLessThan(-1.7);
+      expect(b.max[2]).toBeGreaterThan(1.7);
+      expect(Math.sign(b.min[0])).toBe(side === 'indicatorLeft' ? 1 : -1);
+      expect(Math.sign(b.max[0])).toBe(side === 'indicatorLeft' ? 1 : -1);
+    }
+    expect(gltf.materials.map(m => m.name)).toEqual(expect.arrayContaining(['head', 'tail', 'reverse', 'indicatorLeft', 'indicatorRight']));
   });
 });
 
@@ -88,5 +101,25 @@ describe('wheelIndex', () => {
     expect(wheelIndex(0.7, 1.3)).toBe(1);
     expect(wheelIndex(-0.7, -1.2)).toBe(2);
     expect(wheelIndex(0.7, -1.2)).toBe(3);
+  });
+});
+
+describe('lamp triangles', () => {
+  it('reads amber, red, white and the green atlas background', () => {
+    expect(lensColour([239, 140, 40])).toBe('amber');
+    expect(lensColour([200, 30, 30])).toBe('red');
+    expect(lensColour([230, 230, 230])).toBe('white');
+    expect(lensColour([40, 140, 50])).toBe('green');
+    expect(lensColour([120, 120, 120])).toBe('grey');
+  });
+
+  it('sorts headlamp and tail lamp triangles into lamp groups by colour and side', () => {
+    expect(lampGroup('HeadLights', 'white', 0.5, 0.6)).toBe('head');
+    expect(lampGroup('HeadLights', 'amber', 0.5, 0.6)).toBe('indicatorLeft');
+    expect(lampGroup('HeadLights', 'red', -0.5, 0.6)).toBe('indicatorRight');
+    expect(lampGroup('Material___586', 'red', 0.6, 0.85)).toBe('tail');
+    expect(lampGroup('Material___586', 'grey', -0.6, 0.85)).toBe('indicatorRight');
+    expect(lampGroup('Material___586', 'white', 0.6, 0.7)).toBe('reverse');
+    expect(lampGroup('Material___586', 'grey', 0.6, 0.7)).toBe('reverse');
   });
 });

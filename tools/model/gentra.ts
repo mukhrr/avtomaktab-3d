@@ -1,9 +1,10 @@
 import { mkdirSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { Document, NodeIO, type Material, type Primitive, type Texture, type mat4 } from '@gltf-transform/core';
+import { Document, NodeIO, PropertyType, type Material, type Primitive, type Texture, type mat4 } from '@gltf-transform/core';
 import { dedup, joinPrimitives, prune, textureCompress, transformPrimitive, weld } from '@gltf-transform/functions';
 import sharp from 'sharp';
+import { LAMP_GROUPS, type LampGroup } from '../../src/vehicle/lamps';
 
 const RAW = 'assets-src/gentra/raw/scene.gltf';
 const OUT = 'public/models/gentra.glb';
@@ -19,14 +20,14 @@ export const BADGE_PARTS: { node: string; what: string; box: [number[], number[]
   { node: 'obj165_Material6_0', what: 'boot lid centre emblem plate, 7 x 2 cm', box: [[-0.04, 0.8, -2.08], [0.04, 0.825, -2.06]], tris: 6 },
 ];
 
-export type Group = 'paint' | 'chrome' | 'shell' | 'lights' | 'interior' | 'glass' | 'wheel' | 'drop';
-export const BODY_GROUPS = ['paint', 'chrome', 'shell', 'lights', 'interior', 'glass'] as const;
+export type Group = 'paint' | 'chrome' | 'shell' | 'lamp' | 'interior' | 'glass' | 'wheel' | 'drop' | LampGroup;
+export const BODY_GROUPS = ['paint', 'chrome', 'shell', 'interior', 'glass', ...LAMP_GROUPS] as const;
 
 export const MATERIAL_GROUPS: Record<string, Group> = {
   'Material.006': 'paint', SideLights: 'paint', Suspension: 'paint',
   chrome: 'chrome',
   Material___593: 'shell', Material11: 'shell',
-  HeadLights: 'lights', Material___586: 'lights',
+  HeadLights: 'lamp', Material___586: 'lamp',
   Material___585: 'interior',
   Material4: 'glass', Material8: 'glass', Material14: 'glass',
   Tread: 'wheel', Sidewall: 'wheel', Material5: 'wheel', Material7: 'wheel',
@@ -38,6 +39,31 @@ export const MATERIAL_GROUPS: Record<string, Group> = {
 export function wheelIndex(x: number, z: number): number {
   return (z > 0 ? 0 : 2) + (x > 0 ? 1 : 0);
 }
+
+export type LensColour = 'amber' | 'red' | 'white' | 'grey' | 'green';
+
+/** Colour class of a lamp texel, 0-255 sRGB; green is the atlas's unused background. */
+export function lensColour([r, g, b]: number[]): LensColour {
+  if (g > 120 && r < 90 && b < 90) return 'green';
+  if (r > 180 && g > 80 && g < 190 && b < 110 && r - g > 40) return 'amber';
+  if (r > 120 && g < 90 && b < 90) return 'red';
+  if (r > 150 && g > 150 && b > 150) return 'white';
+  return 'grey';
+}
+
+/**
+ * Lamp function of one lamp triangle at height `y`. The headlamp units carry the front indicator as an amber and red
+ * ring. In the tail lamps the clear and chrome cells above REVERSE_TOP are the indicators and those below it the
+ * reverse lamps; the rest is tail and brake. No side repeaters and no third brake lamp in this model.
+ */
+export function lampGroup(material: string, colour: LensColour, x: number, y: number): LampGroup {
+  const indicator = x > 0 ? 'indicatorLeft' : 'indicatorRight';
+  if (material === 'HeadLights') return colour === 'amber' || colour === 'red' ? indicator : 'head';
+  if (colour === 'red' || colour === 'green') return 'tail';
+  return y > REVERSE_TOP ? indicator : 'reverse';
+}
+
+const REVERSE_TOP = 0.78;
 
 const srgbToLinear = (c: number) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
 const linear = (hex: number) => [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255].map(c => srgbToLinear(c / 255));
@@ -106,6 +132,24 @@ function eraseArc(img: Img, r0: number, r1: number, x0: number, x1: number, top:
   fill(img, px, colour);
 }
 
+function rawTexel(img: Img, u: number, v: number): number[] {
+  const wrap = (t: number) => t - Math.floor(t);
+  const p = (Math.min(img.h - 1, Math.floor(wrap(v) * img.h)) * img.w + Math.min(img.w - 1, Math.floor(wrap(u) * img.w))) * 4;
+  return [img.data[p], img.data[p + 1], img.data[p + 2]];
+}
+
+/** New primitives sharing `prim`'s vertices, one per key, each with the triangles `key` assigns to it. */
+function splitTriangles(doc: Document, prim: Primitive, key: (t: number) => string): Map<string, Primitive> {
+  const idx = prim.getIndices()!, lists = new Map<string, number[]>();
+  for (let t = 0; t < idx.getCount() / 3; t++) {
+    const k = key(t);
+    if (!lists.has(k)) lists.set(k, []);
+    lists.get(k)!.push(idx.getScalar(t * 3), idx.getScalar(t * 3 + 1), idx.getScalar(t * 3 + 2));
+  }
+  const buffer = doc.getRoot().listBuffers()[0];
+  return new Map([...lists].map(([k, list]) => [k, prim.clone().setIndices(doc.createAccessor().setType('SCALAR').setArray(new Uint32Array(list)).setBuffer(buffer))]));
+}
+
 function texel(img: Img, x: number, y: number): number[] {
   const p = (y * img.w + x) * 4;
   return [0, 1, 2].map(c => srgbToLinear(img.data[p + c] / 255));
@@ -163,7 +207,7 @@ export async function buildGentra(raw = RAW, out = OUT): Promise<Stats> {
   const root = doc.getRoot();
 
   // Bake every node's world transform (the Sketchfab root turns Z-up into Y-up) into its primitives.
-  const named: { name: string; prim: Primitive; material: string }[] = [];
+  const named: { name: string; prim: Primitive; material: string; group: Group }[] = [];
   const positions = new Set<unknown>();
   for (const node of root.listNodes()) {
     const mesh = node.getMesh();
@@ -174,7 +218,8 @@ export async function buildGentra(raw = RAW, out = OUT): Promise<Stats> {
       if (positions.has(pos)) throw new Error(`shared POSITION accessor on ${node.getName()}`);
       positions.add(pos);
       transformPrimitive(prim, world);
-      named.push({ name: node.getName(), prim, material: prim.getMaterial()?.getName() ?? '' });
+      const material = prim.getMaterial()?.getName() ?? '';
+      named.push({ name: node.getName(), prim, material, group: MATERIAL_GROUPS[material] });
     }
   }
   const badges: string[] = [];
@@ -194,7 +239,7 @@ export async function buildGentra(raw = RAW, out = OUT): Promise<Stats> {
     table.set(n.material, row);
   }
 
-  const kept = named.filter(n => MATERIAL_GROUPS[n.material] !== 'drop' && n.name !== WING);
+  let kept = named.filter(n => n.group !== 'drop' && n.name !== WING);
   const body = kept.filter(n => !MIRRORS.includes(n.name)).map(n => n.prim);
   const all = bounds(kept.map(n => n.prim)), shell = bounds(body);
   const cx = (shell.min[0] + shell.max[0]) / 2, cz = (all.min[2] + all.max[2]) / 2;
@@ -213,6 +258,21 @@ export async function buildGentra(raw = RAW, out = OUT): Promise<Stats> {
   const atlas = await decode(tex('Material___593'));
   const lamps = await decode(tex('HeadLights'));
   const sidewall = await decode(tex('Sidewall'));
+
+  kept = kept.flatMap(n => {
+    if (n.group !== 'lamp') return [n];
+    const uv = n.prim.getAttribute('TEXCOORD_0')!, pos = n.prim.getAttribute('POSITION')!, idx = n.prim.getIndices()!;
+    const split = splitTriangles(doc, n.prim, t => {
+      const ids = [0, 1, 2].map(k => idx.getScalar(t * 3 + k));
+      const u = ids.map(i => uv.getElement(i, [0, 0]));
+      const wild = Math.max(...u.map(p => p[0])) - Math.min(...u.map(p => p[0])) > 0.5;
+      const colour = wild ? 'grey' : lensColour(rawTexel(lamps, (u[0][0] + u[1][0] + u[2][0]) / 3, (u[0][1] + u[1][1] + u[2][1]) / 3));
+      const c = ids.map(i => pos.getElement(i, [0, 0, 0])).reduce((a, p) => a.map((v, k) => v + p[k] / 3), [0, 0, 0]);
+      return lampGroup(n.material, colour, c[0], c[1]);
+    });
+    return [...split].map(([group, prim]) => ({ ...n, prim, group: group as Group }));
+  });
+  for (const g of LAMP_GROUPS) if (!kept.some(n => n.group === g)) throw new Error(`no triangles for lamp group ${g}`);
   const suspension = await decode(tex('Suspension'));
   badges.push(`Material___593 bowtie at px 887-1002 x 1284-1343: ${eraseGold(atlas, [887, 1284, 1002, 1343])} px repainted`);
   eraseRect(atlas, [760, 1840, 845, 1885]);
@@ -236,7 +296,7 @@ export async function buildGentra(raw = RAW, out = OUT): Promise<Stats> {
   const factor = (m: Material | null) => (m?.getBaseColorFactor() ?? [1, 1, 1, 1]);
 
   for (const n of kept) {
-    const group = MATERIAL_GROUPS[n.material], p = n.prim, mat = p.getMaterial();
+    const group = n.group, p = n.prim, mat = p.getMaterial();
     if (group === 'paint') {
       if (n.material === 'Suspension') {
         const uv = p.getAttribute('TEXCOORD_0')!;
@@ -246,7 +306,7 @@ export async function buildGentra(raw = RAW, out = OUT): Promise<Stats> {
         setColours(doc, p, () => c, 3);
       }
     } else if (group === 'glass') {
-      const rgba = n.material === 'Material4' ? [0.04, 0.05, 0.06, 0.7] : n.material === 'Material8' ? factor(mat) : [0.8, 0.8, 0.8, 0.25];
+      const rgba = n.material === 'Material4' ? [0.04, 0.05, 0.06, 0.7] : n.material === 'Material8' ? [0.55, 0.02, 0.02, 0.45] : [0.8, 0.8, 0.8, 0.25];
       setColours(doc, p, () => rgba, 4);
     } else if (group === 'wheel') {
       if (n.material === 'Sidewall') setColours(doc, p, () => [1, 1, 1], 3);
@@ -273,8 +333,8 @@ export async function buildGentra(raw = RAW, out = OUT): Promise<Stats> {
     paint: material('paint').setBaseColorFactor([...linear(0xf4f4f2), 1] as [number, number, number, number]).setRoughnessFactor(0.35).setMetallicFactor(0.3),
     chrome: material('chrome').setBaseColorFactor([0.8, 0.8, 0.8, 1]).setRoughnessFactor(0.2).setMetallicFactor(1),
     shell: material('shell').setBaseColorTexture(tex('Material___593')).setRoughnessFactor(0.6),
-    lights: material('lights').setBaseColorTexture(tex('HeadLights')).setEmissiveTexture(tex('HeadLights'))
-      .setEmissiveFactor([0.5, 0.5, 0.5]).setRoughnessFactor(0.3),
+    ...Object.fromEntries(LAMP_GROUPS.map(g => [g, material(g).setBaseColorTexture(tex('HeadLights')).setEmissiveTexture(tex('HeadLights'))
+      .setEmissiveFactor([1, 1, 1]).setRoughnessFactor(0.3)])) as Record<LampGroup, Material>,
     interior: material('interior').setBaseColorTexture(tex('Material___585')).setRoughnessFactor(0.8),
     glass: material('glass').setAlphaMode('BLEND').setRoughnessFactor(0.05),
     wheel: material('wheel').setBaseColorTexture(tex('Sidewall')).setRoughnessFactor(0.7),
@@ -286,14 +346,14 @@ export async function buildGentra(raw = RAW, out = OUT): Promise<Stats> {
   const bodyNode = doc.createNode('body');
   scene.addChild(bodyNode);
   for (const g of BODY_GROUPS) {
-    const prims = kept.filter(n => MATERIAL_GROUPS[n.material] === g).map(n => n.prim);
+    const prims = kept.filter(n => n.group === g).map(n => n.prim);
     for (const p of prims) p.setMaterial(mats[g]);
     const mesh = doc.createMesh(g).addPrimitive(joinPrimitives(prims));
     bodyNode.addChild(doc.createNode(g).setMesh(mesh));
   }
 
   const wheels: Stats['wheels'] = [];
-  const wheelParts = kept.filter(n => MATERIAL_GROUPS[n.material] === 'wheel').map(n => {
+  const wheelParts = kept.filter(n => n.group === 'wheel').map(n => {
     const c = centroid([n.prim]);
     return { ...n, index: wheelIndex(c[0], c[2]) };
   });
@@ -324,7 +384,8 @@ export async function buildGentra(raw = RAW, out = OUT): Promise<Stats> {
 
   await doc.transform(
     prune(),
-    dedup(),
+    // Lamp groups share one texture and factors but must keep a material each.
+    dedup({ propertyTypes: [PropertyType.ACCESSOR, PropertyType.MESH, PropertyType.TEXTURE] }),
     weld(),
     textureCompress({ encoder: sharp, targetFormat: 'jpeg', resize: [1024, 1024], quality: 85 }),
     prune(),
