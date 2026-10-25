@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="700" height="700" viewBox="0 0 700 700" version="1.1">
+<title>3.25 Yuqori tezlik cheklangan hududning oxiri</title>
+<circle fill="#ffffff" cx="350" cy="350" r="350"/>
+<circle fill="none" stroke="#000000" stroke-width="2" cx="350" cy="350" r="349"/>
+<circle fill="none" stroke="#000000" stroke-width="10" cx="350" cy="350" r="335"/>
+<text transform="translate(350 475) scale(0.8 1)" x="0" y="0" font-family="Arial, Helvetica, 'Liberation Sans', sans-serif" font-weight="bold" font-size="349.2" text-anchor="middle" fill="#8c8c8c">{value}</text>
+<clipPath id="c"><circle cx="350" cy="350" r="330"/></clipPath>
+<g clip-path="url(#c)" stroke="#000000" stroke-width="9"><line x1="-122" y1="678" x2="678" y2="-122"/><line x1="-86" y1="714" x2="714" y2="-86"/><line x1="-50" y1="750" x2="750" y2="-50"/><line x1="-14" y1="786" x2="786" y2="-14"/><line x1="22" y1="822" x2="822" y2="22"/></g>
+</svg>

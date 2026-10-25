@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="700" height="700" viewBox="0 0 700 700" version="1.1">
+<title>3.35 Ekologik zonada oʻrta va zararli toifadagi avtotransport harakatlanishi taqiqlangan</title>
+<circle fill="#ffffff" cx="350" cy="350" r="350"/>
+<circle fill="none" stroke="#000000" stroke-width="2" cx="350" cy="350" r="349"/>
+<path fill="#ff0000" fill-rule="evenodd" d="M350 10a340 340 0 1 0 0.01 0zM350 67.74a282.26 282.26 0 1 1 -0.01 0z"/>
+<text transform="translate(350 305) scale(0.9 1)" x="0" y="0" font-family="Arial, Helvetica, 'Liberation Sans', sans-serif" font-weight="bold" font-size="86.6" text-anchor="middle" fill="#000000">EKO ZONA</text>
+<ellipse fill="#000000" cx="350" cy="340" rx="230" ry="6"/>
+<text transform="translate(350 420) scale(0.9 1)" x="0" y="0" font-family="Arial, Helvetica, 'Liberation Sans', sans-serif" font-weight="bold" font-size="86.6" text-anchor="middle" fill="#000000">ECO ZONE</text>
+<path fill="#2e9e3e" d="M352 560C300 470 220 455 175 470C215 520 280 560 352 560z"/>
+<path fill="#5cbf4a" d="M352 560C380 480 450 455 520 470C480 525 420 560 352 560z"/>
+<path fill="#2e9e3e" d="M350 562C340 520 330 490 300 470C350 480 362 520 350 562z"/>
+</svg>

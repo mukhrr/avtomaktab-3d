@@ -83,6 +83,12 @@ describe('lit materials per preset', () => {
     expect([m.transparent, m.opacity, m.depthWrite]).toEqual([true, 0.55, false]);
   });
 
+  it('keeps the alpha test, so atlas cut-outs stay cut out', () => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshLambertMaterial({ alphaTest: 0.5 }));
+    useSkyAmbient(mesh);
+    expect((mesh.material as THREE.Material).alphaTest).toBe(0.5);
+  });
+
   it('keeps userData.patchShader on the swapped material', () => {
     const patch = () => {};
     const l = new THREE.MeshLambertMaterial();

@@ -9,7 +9,7 @@ import { GROUND_TILE, type GroundSurface } from './groundMaterials';
 import { addMerged, polygonGeometry, ribbonGeometry, worldUVs } from './meshes';
 import { junctionPolygon, junctionTrim, trimEdge } from './roadGeometry';
 import { addCrossings } from './crossings';
-import { addSigns } from './signs';
+import { addSigns, type SignArt } from './signs';
 import { addSignals, type SignalLamps } from './signals';
 import { addFurniture } from './furniture';
 import { addStreetside } from './streetside';
@@ -24,7 +24,7 @@ const CHUNK_SIZE = 200;
 
 const lambert = (color: number) => new THREE.MeshLambertMaterial({ color });
 
-export function buildWorld(scene: THREE.Scene, d: DistrictData, mats: Record<GroundSurface, THREE.Material>, facadeAtlas: THREE.Texture, landmarkTextures?: LandmarkTextures): { signalLamps: SignalLamps } {
+export function buildWorld(scene: THREE.Scene, d: DistrictData, mats: Record<GroundSurface, THREE.Material>, facadeAtlas: THREE.Texture, landmarkTextures?: LandmarkTextures, signArt: SignArt | null = null): { signalLamps: SignalLamps } {
   const uv = (g: THREE.BufferGeometry, k: keyof typeof GROUND_TILE) => worldUVs(g, GROUND_TILE[k]);
   const roads = new Map(d.roads.map(r => [r.id, r]));
   const edges = new Map(d.graph.edges.map(e => [e.id, e]));
@@ -71,7 +71,7 @@ export function buildWorld(scene: THREE.Scene, d: DistrictData, mats: Record<Gro
   addStreetside(scene, d, CHUNK_SIZE);
   addFurniture(scene, d);
   addCrossings(scene, d);
-  addSigns(scene, d);
+  addSigns(scene, d, signArt);
   return { signalLamps: addSignals(scene, d) };
 }
 

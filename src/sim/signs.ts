@@ -1,11 +1,12 @@
-import type { DistrictData, GraphEdge, Sign, SignType } from '../shared/district';
+import type { DistrictData, GraphEdge, Sign } from '../shared/district';
+import { CODE } from '../shared/signCatalogue';
 import type { LaneRef } from '../traffic/lanes';
 
 const SCHOOL_ZONE_LIMIT = 30;
 const SCHOOL_ZONE_LENGTH = 150;
 /** How close to the end of an edge a sign must stand to govern its junction. */
 const JUNCTION_REACH = 40;
-const JUNCTION_TYPES = new Set<SignType>(['stop', 'giveWay', 'priorityRoad', 'noEntry', 'noLeftTurn', 'noRightTurn', 'noUTurn']);
+const JUNCTION_CODES = new Set<string>([CODE.stop, CODE.giveWay, CODE.priorityRoad, CODE.noEntry, CODE.noLeftTurn, CODE.noRightTurn, CODE.noUTurn]);
 
 const key = (edgeId: string, dir: number) => `${edgeId}:${dir}`;
 
@@ -47,16 +48,16 @@ export class SignSystem {
     const len = this.length(e);
     return (this.lists.get(key(ref.edgeId, ref.dir)) ?? []).filter(g => {
       const left = ref.dir === 1 ? len - g.at : g.at;
-      return JUNCTION_TYPES.has(g.type) && left <= JUNCTION_REACH;
+      return JUNCTION_CODES.has(g.code) && left <= JUNCTION_REACH;
     });
   }
 
   /** km/h: the latest speed limit sign passed, else a school zone, else the edge's own limit. */
   speedLimitAt(edgeId: string, dir: 1 | -1, s: number): number {
     const passed = (this.lists.get(key(edgeId, dir)) ?? []).filter(g => (s - g.at) * dir >= 0);
-    const limit = passed.filter(g => g.type === 'speedLimit').at(-1);
-    if (limit?.value !== undefined) return limit.value;
-    if (passed.some(g => g.type === 'school' && (s - g.at) * dir <= SCHOOL_ZONE_LENGTH)) return SCHOOL_ZONE_LIMIT;
+    const limit = passed.filter(g => g.code === CODE.speedLimit).at(-1);
+    if (typeof limit?.value === 'number') return limit.value;
+    if (passed.some(g => g.code === CODE.children && (s - g.at) * dir <= SCHOOL_ZONE_LENGTH)) return SCHOOL_ZONE_LIMIT;
     return this.edges.get(edgeId)?.maxspeed ?? 0;
   }
 

@@ -9,6 +9,7 @@ Scoring is labelled "practice scoring" until a driving instructor has reviewed t
 - About 2 × 1.5 km around Amir Temur square, built from OpenStreetMap
 - A Chevrolet Gentra (3D model "Lacetti" by uzb_rx7, CC-BY-4.0) with automatic and manual gearbox, cockpit view and working mirrors
 - AI traffic, traffic lights and pedestrians
+- All 297 official Uzbek road signs, drawn from public-domain art (see `CREDITS.md`)
 - An exam route of 3.8 km with 25 scored rules, voice directions and a debrief map of your mistakes
 - Free drive with no scoring
 
@@ -31,6 +32,9 @@ Controls: W/S or arrows to drive, A/D to steer, Z/X indicators, V hazard lights,
 npm test
 npm run build
 npm run city:build    # rebuild the district from OpenStreetMap data
+npm run signs:fetch   # download the public-domain sign art from Wikimedia Commons
+npm run signs:atlas   # rasterise all signs into public/signs/atlas.png
+npm run signs:credits # rewrite the road sign section of CREDITS.md
 ```
 
 Design notes and plans are in `docs/`.

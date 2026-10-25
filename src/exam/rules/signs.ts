@@ -1,4 +1,4 @@
-import type { SignType } from '../../shared/district';
+import { CODE } from '../../shared/signCatalogue';
 import type { Turn } from '../../traffic/turns';
 import type { DriveSnapshot } from '../snapshot';
 import { ManeuverWatch } from './maneuvers';
@@ -25,7 +25,7 @@ export class StopSignRule implements Rule {
     const key = roadKey(ref);
     if (this.approach?.key !== key) {
       if (inside(s)) return [];
-      const stop = this.road.junctionSigns(ref).some(g => g.type === 'stop');
+      const stop = this.road.junctionSigns(ref).some(g => g.code === CODE.stop);
       const line = this.road.laneEnd(ref);
       this.approach = stop ? { key, line, past: this.past(s, line), stopped: false, judged: false } : null;
     }
@@ -84,7 +84,7 @@ export class NoEntryRule implements Rule {
   }
 }
 
-const BANNED_BY: Partial<Record<SignType, Turn>> = { noLeftTurn: 'left', noRightTurn: 'right', noUTurn: 'uturn' };
+const BANNED_BY: Record<string, Turn> = { [CODE.noLeftTurn]: 'left', [CODE.noRightTurn]: 'right', [CODE.noUTurn]: 'uturn' };
 
 export class TurnRestrictionRule implements Rule {
   readonly id = 'turnRestriction';
@@ -97,8 +97,8 @@ export class TurnRestrictionRule implements Rule {
   update(s: DriveSnapshot): Violation[] {
     const m = this.watch.update(s);
     if (m?.kind !== 'turn') return [];
-    const sign = this.road.junctionSigns(m.from).find(g => BANNED_BY[g.type] === m.turn);
-    return sign ? [violation('turnRestriction', s, { sign: sign.type, edge: roadKey(m.from) })] : [];
+    const sign = this.road.junctionSigns(m.from).find(g => BANNED_BY[g.code] === m.turn);
+    return sign ? [violation('turnRestriction', s, { sign: sign.code, edge: roadKey(m.from) })] : [];
   }
 
   reset(): void {

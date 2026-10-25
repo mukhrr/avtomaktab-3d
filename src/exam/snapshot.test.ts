@@ -8,6 +8,7 @@ import { newCabin } from '../vehicle/cabin';
 import type { DrivetrainState } from '../vehicle/drivetrain';
 import { MapMatcher } from './mapMatch';
 import { buildSnapshot, type SnapshotContext, type SnapshotInput } from './snapshot';
+import { CODE } from '../shared/signCatalogue';
 
 const DT = 1 / 30;
 const EAST = Math.PI / 2;
@@ -39,7 +40,7 @@ test('copies the player and cabin state and derives acceleration from the previo
 
 test('speedLimit follows the edge and a speed sign passed', () => {
   const d = testNetwork();
-  d.signs.push({ id: 'sl', type: 'speedLimit', edgeId: 'w', dir: -1, at: 60, value: 40 });
+  d.signs.push({ id: 'sl', code: CODE.speedLimit, edgeId: 'w', dir: -1, at: 60, value: 40, origin: 'hand' });
   const c = setup(d);
   expect(c.snap([-90, 1.75], EAST).speedLimit).toBe(60);
   expect(c.snap([-50, 1.75], EAST).speedLimit).toBe(40);
@@ -78,9 +79,9 @@ test('crossingsAhead on the oneway side of the road counts only crossings in the
 test('signsAhead lists signs within range nearest first with their distance', () => {
   const d = testNetwork();
   d.signs.push(
-    { id: 'a', type: 'giveWay', edgeId: 'w', dir: -1, at: 30 },
-    { id: 'b', type: 'pedestrianCrossing', edgeId: 'w', dir: -1, at: 50 },
-    { id: 'far', type: 'school', edgeId: 'w', dir: -1, at: 5 },
+    { id: 'a', code: CODE.giveWay, edgeId: 'w', dir: -1, at: 30, origin: 'hand' },
+    { id: 'b', code: CODE.pedestrianCrossing, edgeId: 'w', dir: -1, at: 50, origin: 'hand' },
+    { id: 'far', code: CODE.children, edgeId: 'w', dir: -1, at: 5, origin: 'hand' },
   );
   const s = setup(d).snap([-100, 1.75], EAST);
   expect(s.signsAhead.map(g => [g.sign.id, Math.round(g.distance)])).toEqual([['b', 50], ['a', 70]]);
@@ -135,7 +136,7 @@ test('junctionConflicts lists cars on the other arms with side, oncoming and tim
 
 test('junctionConflicts carries each car\'s speed, approach priority rank and its turn at the junction', () => {
   const d = testNetwork();
-  d.signs.push({ id: 'gw', type: 'giveWay', edgeId: 's', dir: 1, at: 110 }, { id: 'pr', type: 'priorityRoad', edgeId: 'e', dir: -1, at: 10 });
+  d.signs.push({ id: 'gw', code: CODE.giveWay, edgeId: 's', dir: 1, at: 110, origin: 'hand' }, { id: 'pr', code: CODE.priorityRoad, edgeId: 'e', dir: -1, at: 10, origin: 'hand' });
   const c = conflictSetup(d);
   const right = c.place(SOUTH_ARM, 20, 10);
   const oncoming = c.place(EAST_ARM, 30, 5);

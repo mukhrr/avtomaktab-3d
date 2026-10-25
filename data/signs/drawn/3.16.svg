@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="600"
+   height="600"
+   id="svg2"
+   version="1.1"
+   inkscape:version="1.2.2 (732a01da63, 2022-12-09)"
+   sodipodi:docname="AZ_road_sign_3.16.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <title
+     id="title6240">3.16 Eng kam oraliq</title>
+  <defs
+     id="defs4" />
+  
+  
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,-452.36218)">
+    <path
+       sodipodi:type="arc"
+       style="opacity:1;color:#000000;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+       id="path5334"
+       sodipodi:cx="-87.720657"
+       sodipodi:cy="432.25998"
+       sodipodi:rx="22.107042"
+       sodipodi:ry="29.465372"
+       d="m -65.613615,432.25998 c 0,16.27327 -9.89766,29.46537 -22.107042,29.46537 -12.209383,0 -22.107043,-13.1921 -22.107043,-29.46537 0,-16.27328 9.89766,-29.46537 22.107043,-29.46537 12.209382,0 22.107042,13.19209 22.107042,29.46537 z"
+       transform="matrix(13.570336,0,0,10.181443,1490.3988,-3648.6681)" />
+    <path
+       transform="matrix(13.525102,0,0,10.147505,1486.4308,-3633.998)"
+       d="m -65.613615,432.25998 c 0,16.27327 -9.89766,29.46537 -22.107042,29.46537 -12.209383,0 -22.107043,-13.1921 -22.107043,-29.46537 0,-16.27328 9.89766,-29.46537 22.107043,-29.46537 12.209382,0 22.107042,13.19209 22.107042,29.46537 z"
+       sodipodi:ry="29.465372"
+       sodipodi:rx="22.107042"
+       sodipodi:cy="432.25998"
+       sodipodi:cx="-87.720657"
+       id="path3003"
+       style="color:#000000;fill:none;stroke:#000000;stroke-width:0.17071831000000001;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;opacity:1"
+       sodipodi:type="arc" />
+    <path
+       style="opacity:1;color:#000000;fill:#ff0000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+       d="M 300 10 C 139.83742 10 10 139.83742 10 300 C 10 460.16258 139.83742 590 300 590 C 460.16258 590 590 460.16258 590 300 C 590 139.83742 460.16258 10 300 10 z M 300 59.03125 C 433.0828 59.03125 540.96875 166.91719 540.96875 300 C 540.96875 433.08281 433.0828 540.96875 300 540.96875 C 166.9172 540.96875 59.03125 433.08281 59.03125 300 C 59.03125 166.91719 166.9172 59.03125 300 59.03125 z "
+       transform="translate(0,452.36218)"
+       id="path4775-9" />
+    <path
+       inkscape:connector-curvature="0"
+       style="opacity:1;color:#000000;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+       d="m 522.12708,687.73508 c -1.16082,0.7779 -2.26467,1.68027 -3.23588,2.72177 l -64.05242,68.67943 c -2.87302,3.08093 -6.71545,5.09919 -10.8871,5.68549 l -98.04435,13.76008 c -9.19791,1.29269 -15.97863,9.25139 -15.81653,18.5383 l 0.60483,34.8992 c 0.28607,8.1929 6.91462,14.70271 15.06049,14.93951 4.602,-22.22559 24.40185,-38.95161 48.11492,-38.95161 27.12432,0 49.1129,21.88027 49.1129,48.87097 l 63.38709,0 c 14.00199,-27.59544 22.64404,-58.37698 24.52621,-90.96774 l -37.13709,0 c -6.41363,0 -11.61291,-5.19927 -11.61291,-11.61291 0,-2.9397 1.11005,-5.77342 3.11492,-7.92338 l 40.61492,-43.54839 c 0.0193,-0.0206 0.0411,-0.04 0.0605,-0.0605 -1.10803,-5.06971 -2.37592,-10.0909 -3.81049,-15.03024 z"
+       id="path7930" />
+    <path
+       id="path7936"
+       d="m 393.87104,816.23304 c -22.44765,0 -40.64516,18.19746 -40.64516,40.64516 0,22.4477 18.19751,40.64516 40.64516,40.64516 22.44774,0 40.64518,-18.19746 40.64518,-40.64516 0,-22.4477 -18.19744,-40.64516 -40.64518,-40.64516 z m 0,16.45161 c 13.36171,0 24.19354,10.83182 24.19354,24.19355 0,13.36173 -10.83183,24.19355 -24.19354,24.19355 -13.36171,0 -24.19355,-10.83182 -24.19355,-24.19355 0,-13.36173 10.83184,-24.19355 24.19355,-24.19355 z"
+       style="opacity:1;color:#000000;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+       inkscape:connector-curvature="0" />
+    <path
+       inkscape:connector-curvature="0"
+       style="opacity:1;color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+       d="m 78.810554,684.62016 c -1.46079,4.77521 -2.776942,9.61506 -3.931452,14.51612 l 85.312508,0 c 7.14037,0 13.21767,5.19551 14.33467,12.24799 l 5.98791,37.74193 c 1.25413,7.91833 -4.1482,15.34868 -12.06654,16.60283 -0.75109,0.11896 -1.50769,0.18145 -2.26814,0.18145 l -97.076617,0 c 1.88217,32.59076 10.524222,63.3723 24.526209,90.96774 l 23.709678,0 c 0,-26.9907 21.98859,-48.87097 49.11291,-48.87097 24.85413,0 45.39481,18.37752 48.65927,42.21774 l 9.34476,-2.51008 c 5.71819,-1.53218 10.05995,-6.19491 11.18951,-12.00605 l 9.61694,-49.4758 c 1.06924,-5.50073 -0.44336,-11.19255 -4.08266,-15.45363 l -68.0746,-79.71774 c -3.49338,-4.09023 -8.62301,-6.44153 -14.00201,-6.44153 l -80.292346,0 z"
+       id="path7947" />
+    <path
+       id="path7949"
+       d="m 166.45169,816.23304 c -22.44771,0 -40.64516,18.19746 -40.64516,40.64516 0,22.4477 18.19745,40.64516 40.64516,40.64516 22.4477,0 40.64516,-18.19746 40.64516,-40.64516 0,-22.4477 -18.19746,-40.64516 -40.64516,-40.64516 z m 0,16.45161 c 13.36172,0 24.19354,10.83182 24.19354,24.19355 0,13.36173 -10.83182,24.19355 -24.19354,24.19355 -13.36173,0 -24.19355,-10.83182 -24.19355,-24.19355 0,-13.36173 10.83182,-24.19355 24.19355,-24.19355 z"
+       style="opacity:1;color:#000000;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+       inkscape:connector-curvature="0" />
+    <g
+       id="g6202">
+      <g
+         aria-label="70"
+         id="text6190"
+         style="font-size:172.81px;line-height:1.5;font-family:'Russian Road Sign';-inkscape-font-specification:'Russian Road Sign';fill-rule:evenodd;stroke-width:1.7281;stroke-linecap:round;paint-order:stroke fill markers">
+        
+        
+      </g>
+      <g
+         id="text4575"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:151.27168274px;line-height:100%;font-family:'Transport Heavy';-inkscape-font-specification:'Transport Heavy,';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:8.19553185;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         transform="matrix(0.59403608,0,0,0.62269352,209.02188,-271.72549)">
+        
+      </g>
+    </g>
+  </g>
+<text transform="translate(337 214) scale(0.85 1)" x="0" y="0" font-family="Arial, Helvetica, 'Liberation Sans', sans-serif" font-weight="bold" font-size="138.3" text-anchor="end" fill="#000000">{value}</text><text transform="translate(360 213) scale(0.9 1)" x="0" y="0" font-family="Arial, Helvetica, 'Liberation Sans', sans-serif" font-weight="bold" font-size="114.5" text-anchor="start" fill="#000000">m</text>
+</svg>

@@ -93,19 +93,21 @@ export interface Crossing {
   walkPhase?: number;
 }
 
-export type SignType =
-  | 'stop' | 'giveWay' | 'priorityRoad' | 'noEntry' | 'noLeftTurn' | 'noRightTurn' | 'noUTurn'
-  | 'speedLimit' | 'pedestrianCrossing' | 'school';
-
 /** Stands beside the lane travelling `dir` on `edgeId`, `at` metres from `edge.from`, facing that traffic. */
 export interface Sign {
   id: string;
-  type: SignType;
+  /** Uzbek catalogue number, e.g. '2.5'. */
+  code: string;
   edgeId: string;
   dir: 1 | -1;
   at: number;
-  /** km/h, for speedLimit only. */
-  value?: number;
+  /** Required when the catalogue entry has a valueKind; km/h for a speed limit. A string for time ('8-19') and text kinds, a number otherwise. */
+  value?: number | string;
+  /** Group 7 plates under the sign, top to bottom. */
+  plates?: { code: string; value?: number | string }[];
+  /** Side of the road the pole stands on, relative to travel. Defaults to right. */
+  side?: 'right' | 'left';
+  origin: 'hand' | 'rule' | 'coverage';
 }
 
 export type FurnitureKind = 'busStop' | 'bench' | 'bin';

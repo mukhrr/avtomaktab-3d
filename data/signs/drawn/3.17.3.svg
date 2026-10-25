@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="700"
+   height="700"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.48.4 r9939"
+   sodipodi:docname="3.17.3.svg">
+  <title
+     id="title3002">3.17.3 Nazorat joyi</title>
+  <defs
+     id="defs4" />
+  
+  
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,-352.36218)">
+    <path
+       transform="matrix(2.8577184,0,0,3.7498086,1269.0072,-2310.3252)"
+       d="m -199.11241,803.42432 a 122.47533,93.338097 0 1 1 -244.95065,0 122.47533,93.338097 0 1 1 244.95065,0 z"
+       sodipodi:ry="93.338097"
+       sodipodi:rx="122.47533"
+       sodipodi:cy="803.42432"
+       sodipodi:cx="-321.58774"
+       id="path12388"
+       style="opacity:1;color:#000000;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+       sodipodi:type="arc" />
+    <path
+       sodipodi:type="arc"
+       style="color:#000000;fill:none;stroke:#000000;stroke-width:0.61271476999999996;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;opacity:1"
+       id="path12442"
+       sodipodi:cx="-321.58774"
+       sodipodi:cy="803.42432"
+       sodipodi:rx="122.47533"
+       sodipodi:ry="93.338097"
+       d="m -199.11241,803.42432 c 0,51.5492 -54.83407,93.33809 -122.47533,93.33809 -67.64125,0 -122.47532,-41.78889 -122.47532,-93.33809 0,-51.54921 54.83407,-93.3381 122.47532,-93.3381 67.64126,0 122.47533,41.78889 122.47533,93.3381 z"
+       transform="matrix(2.8495535,0,0,3.7390949,1266.3815,-2301.7176)" />
+    
+    <path
+       inkscape:connector-curvature="0"
+       style="opacity:1;color:#000000;fill:#ff0000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+       d="m 349.99638,362.35924 c -187.7769,0 -340.0000026,152.22318 -340.0000026,340 0,187.77681 152.2231026,340.00006 340.0000026,340.00006 187.77681,0 340.00001,-152.22325 340.00001,-340.00006 0,-187.77682 -152.2232,-340 -340.00001,-340 z m 0,58.875 c 155.26321,0 281.12501,125.86172 281.12501,281.125 0,155.26327 -125.8618,281.125 -281.12501,281.125 -155.2633,0 -281.125003,-125.86173 -281.125003,-281.125 0,-155.26328 125.861703,-281.125 281.125003,-281.125 z"
+       id="path8171" />
+    <g
+       style="font-size:141.95307922px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:-0.90322578px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial"
+       id="text7949-4">
+      <path
+         d="m 169.89338,596.44385 13.16947,9.35726 c 4.29737,1.98699 9.95793,2.98047 16.9817,2.98046 4.80564,10e-6 8.53698,-1.49022 11.19405,-4.47069 2.65693,-2.98044 3.98543,-6.48075 3.9855,-10.50093 -7e-5,-2.63386 -0.65855,-5.0136 -1.97542,-7.13924 -1.31702,-2.12556 -3.17692,-3.60424 -5.5797,-4.43603 l -19.96215,-5.12917 c -7.62447,-2.54142 -13.14641,-5.33705 -16.56582,-8.38687 -4.94435,-4.66702 -7.41651,-10.78966 -7.41649,-18.36795 -2e-5,-8.27128 3.5927,-15.32965 10.77817,-21.17513 7.18542,-5.8453 14.8445,-8.768 22.97727,-8.7681 8.08646,10e-5 15.02931,1.0629 20.82857,3.1884 5.79911,2.12569 11.42501,5.63755 16.87772,10.53558 l -11.78321,11.02077 -7.34719,-5.61436 c -3.74297,-2.77243 -9.01075,-4.15869 -15.80337,-4.15878 -4.89817,9e-5 -9.25333,1.59429 -13.0655,4.7826 -3.81226,3.18848 -5.71836,6.44619 -5.71833,9.77314 l 0.41588,2.56458 1.0397,2.21802 c 1.06276,1.47874 2.51833,2.81879 4.36672,4.02015 l 25.36857,7.76306 c 8.36369,3.32708 13.67768,5.84545 15.94199,7.55512 5.08287,4.0202 7.62434,10.07353 7.62444,18.16001 -1e-4,8.77968 -3.85852,16.49652 -11.57528,23.15056 -7.20863,6.3768 -15.34135,9.56519 -24.39819,9.56519 -7.99415,0 -15.50305,-1.52488 -22.52673,-4.57466 -5.86853,-2.63389 -12.59189,-6.88508 -20.17009,-12.75359 z"
+         style="fill:#000000;font-family:IndorSoft RoadSign Letters;-inkscape-font-specification:IndorSoft RoadSign Letters"
+         id="path14238" />
+      <path
+         d="m 263.11724,521.79372 76.45227,0 0,15.11024 -30.01254,0 0,86.50266 -16.35787,0 0,-86.50266 -30.08186,0 z"
+         style="fill:#000000;font-family:IndorSoft RoadSign Letters;-inkscape-font-specification:IndorSoft RoadSign Letters"
+         id="path14240" />
+      <path
+         d="m 384.55151,572.66948 c -3e-5,10.02733 2.17178,18.58748 6.51543,25.68048 4.34357,7.09305 9.63446,10.63956 15.87268,10.63955 6.14569,10e-6 11.41348,-3.5465 15.80337,-10.63955 4.38975,-7.093 6.58466,-15.65315 6.58474,-25.68048 -8e-5,-10.02722 -2.19499,-18.61048 -6.58474,-25.74979 -4.38989,-7.13916 -9.65768,-10.70877 -15.80337,-10.70886 -6.23822,9e-5 -11.52911,3.5697 -15.87268,10.70886 -4.34365,7.13931 -6.51546,15.72257 -6.51543,25.74979 z m -18.0907,-0.0693 c -10e-6,-14.6943 3.93927,-27.21684 11.81787,-37.56766 7.87855,-10.35065 17.36287,-15.52602 28.453,-15.52612 11.18244,10e-5 20.71297,5.17547 28.59162,15.52612 7.87849,10.35082 11.81778,22.87336 11.81787,37.56766 -9e-5,14.60198 -3.93938,27.07831 -11.81787,37.42903 -7.87865,10.35075 -17.40918,15.52612 -28.59162,15.52612 -11.09013,0 -20.57445,-5.17537 -28.453,-15.52612 -7.8786,-10.35072 -11.81788,-22.82705 -11.81787,-37.42903 z"
+         style="fill:#000000;font-family:IndorSoft RoadSign Letters;-inkscape-font-specification:IndorSoft RoadSign Letters"
+         id="path14242" />
+      <path
+         d="m 542.44443,552.29145 c -8e-5,7.99417 -2.2412,15.17961 -6.72336,21.55635 -5.26786,7.57827 -12.03743,11.36738 -20.30872,11.36734 l -24.39818,0 0,38.19148 -17.05101,0 0,-101.6129 41.44919,0 c 7.85541,10e-5 14.57877,3.25781 20.17009,9.77314 4.57458,5.961 6.86191,12.86919 6.86199,20.72459 z m -17.051,0.83176 c -7e-5,-4.20492 -0.94735,-7.87851 -2.84184,-11.02077 -2.58774,-3.51178 -6.58479,-5.26771 -11.99115,-5.26779 l -19.54627,0 0,33.13162 19.54627,0 c 4.62081,6e-5 8.34061,-1.8945 11.1594,-5.68367 2.44899,-3.14212 3.67352,-6.86192 3.67359,-11.15939 z"
+         style="fill:#000000;font-family:IndorSoft RoadSign Letters;-inkscape-font-specification:IndorSoft RoadSign Letters"
+         id="path14244" />
+    </g>
+    <g
+       style="font-size:78.86282349px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0.62096775px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial"
+       id="text13519">
+      
+      
+      
+      
+      
+      
+      
+      
+    </g>
+  </g>
+<text transform="translate(350 487) scale(0.95 1)" x="0" y="0" font-family="Arial, Helvetica, 'Liberation Sans', sans-serif" font-weight="bold" font-size="83.8" text-anchor="middle" fill="#000000">NAZORAT</text>
+</svg>

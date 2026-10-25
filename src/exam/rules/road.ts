@@ -1,4 +1,5 @@
 import type { DistrictData, Sign } from '../../shared/district';
+import { CODE } from '../../shared/signCatalogue';
 import type { SignSystem } from '../../sim/signs';
 import type { LaneNetwork, LaneRef } from '../../traffic/lanes';
 import { approachRank } from '../../traffic/trafficSim';
@@ -25,7 +26,7 @@ export class RoadInfo {
   noEntry({ edgeId, dir }: Approach): boolean {
     if (!this.edges.has(edgeId)) return false;
     const start = dir === 1 ? 0 : this.length(edgeId);
-    return this.signs.ahead(edgeId, dir, start, NO_ENTRY_REACH).some(g => g.type === 'noEntry');
+    return this.signs.ahead(edgeId, dir, start, NO_ENTRY_REACH).some(g => g.code === CODE.noEntry);
   }
 
   twoWay({ edgeId }: Approach): boolean {

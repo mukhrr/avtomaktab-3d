@@ -1,4 +1,5 @@
 import type { Crossing, DistrictData, GraphEdge, Vec2 } from '../shared/district';
+import { CODE } from '../shared/signCatalogue';
 import { rng } from '../sim/rng';
 import type { SignalSystem } from '../sim/signals';
 import { SignSystem } from '../sim/signs';
@@ -14,9 +15,9 @@ import { approachKey, laneKey, nearestObstacle, type LookaheadWorld, type Obstac
 import { classifyTurn, endHeading, project, turnBetween, wrapAngle, type Turn } from './turns';
 
 /** Junction priority of an approach from its signs: priorityRoad 2, unsigned 1, stop or giveWay 0. */
-export function approachRank(signs: readonly { type: string }[]): number {
-  const types = new Set(signs.map(g => g.type));
-  return types.has('stop') || types.has('giveWay') ? 0 : types.has('priorityRoad') ? 2 : 1;
+export function approachRank(signs: readonly { code: string }[]): number {
+  const codes = new Set(signs.map(g => g.code));
+  return codes.has(CODE.stop) || codes.has(CODE.giveWay) ? 0 : codes.has(CODE.priorityRoad) ? 2 : 1;
 }
 
 export interface PlayerState {
@@ -257,7 +258,7 @@ export class TrafficSim {
         if (lanes === 0) continue;
         const ref: LaneRef = { edgeId: e.id, dir, lane: 0 };
         const at = signs.atJunction(ref);
-        if (at.some(g => g.type === 'stop')) this.stopSigns.add(approachKey(ref));
+        if (at.some(g => g.code === CODE.stop)) this.stopSigns.add(approachKey(ref));
         if ((nodeEdges.get(end) ?? 0) < 3) continue;
         const rank = approachRank(at);
         this.approaches.set(approachKey(ref), { node: end, rank, heading: endHeading(net.path(ref).points) });

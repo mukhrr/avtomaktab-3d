@@ -1,4 +1,5 @@
 import type { DistrictData, GraphEdge, GraphNode, Vec2 } from '../shared/district';
+import { CODE } from '../shared/signCatalogue';
 import type { SignSystem } from '../sim/signs';
 import { junctionTrim, pointAlong, trimEdge } from '../world/roadGeometry';
 import { turnBetween } from './turns';
@@ -53,7 +54,7 @@ const key = (r: LaneRef) => `${r.edgeId}|${r.dir}|${r.lane}`;
 
 /** A noEntry sign this close to where a lane begins closes it to traffic turning in. */
 const NO_ENTRY_REACH = 40;
-const BANNED_BY = { noLeftTurn: 'left', noRightTurn: 'right', noUTurn: 'uturn' } as const;
+const BANNED_BY: Record<string, 'left' | 'right' | 'uturn'> = { [CODE.noLeftTurn]: 'left', [CODE.noRightTurn]: 'right', [CODE.noUTurn]: 'uturn' };
 
 export class LaneNetwork {
   private edges = new Map<string, GraphEdge>();
@@ -122,9 +123,9 @@ export class LaneNetwork {
   private allowed(from: LaneRef, to: LaneRef, signs: SignSystem): boolean {
     const e = this.edge(to.edgeId);
     const start = to.dir === 1 ? 0 : polyLength(e.points);
-    if (signs.ahead(to.edgeId, to.dir, start, NO_ENTRY_REACH).some(g => g.type === 'noEntry')) return false;
+    if (signs.ahead(to.edgeId, to.dir, start, NO_ENTRY_REACH).some(g => g.code === CODE.noEntry)) return false;
     const turn = turnBetween(this, from, to);
-    return !signs.atJunction(from).some(g => g.type in BANNED_BY && BANNED_BY[g.type as keyof typeof BANNED_BY] === turn);
+    return !signs.atJunction(from).some(g => BANNED_BY[g.code] === turn);
   }
 
   connector(from: LaneRef, to: LaneRef): Vec2[] {

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="300" height="1000" viewBox="0 0 300 1000" version="1.1">
+<title>7.22.1 Toʻsiq</title>
+<rect fill="#ffffff" x="0" y="0" width="300" height="1000" rx="20"/>
+<rect fill="none" stroke="#000000" stroke-width="4" x="2" y="2" width="296" height="996" rx="18"/>
+<clipPath id="m"><rect x="16" y="16" width="268" height="968"/></clipPath>
+<g clip-path="url(#m)" fill="#ff0000"><polygon points="0,-400 300,-100 300,10 0,-290"/><polygon points="0,-180 300,120 300,230 0,-70"/><polygon points="0,40 300,340 300,450 0,150"/><polygon points="0,260 300,560 300,670 0,370"/><polygon points="0,480 300,780 300,890 0,590"/><polygon points="0,700 300,1000 300,1110 0,810"/><polygon points="0,920 300,1220 300,1330 0,1030"/></g>
+</svg>

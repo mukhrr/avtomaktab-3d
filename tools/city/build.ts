@@ -6,6 +6,9 @@ import { buildControllers } from './controllers';
 import { crossingsOffJunctions } from './crossings';
 import { placeFurniture } from './furniture';
 import { extractFeatures, type Overrides } from './extract';
+import { entry } from '../../src/shared/signCatalogue';
+import { signSpots } from '../../src/world/signMount';
+import { checkAtlasCovers, type Atlas } from '../signs/atlas';
 import { buildRoadGraph } from './graph';
 import { extractLandmarks } from './landmarks';
 import { parseOsm } from './osm';
@@ -21,7 +24,23 @@ export function validateSigns(signs: Sign[], edges: DistrictData['graph']['edges
     if (!e) throw new Error(`sign ${s.id} refers to missing edge ${s.edgeId}`);
     if (!(s.at >= 0 && s.at <= edgeLength(e))) throw new Error(`sign ${s.id} is ${s.at} m along ${e.id}, outside its length`);
     if ((s.dir === 1 ? e.lanesForward : e.lanesBackward) === 0) throw new Error(`sign ${s.id} faces a direction ${e.id} has no lanes in`);
-    if (s.type === 'speedLimit' && !(s.value && s.value > 0)) throw new Error(`speed limit sign ${s.id} needs a value`);
+    const checkValue = (code: string, value: number | string | undefined, what: string) => {
+      const kind = entry(code).valueKind;
+      if (!kind) return;
+      const text = kind === 'time' || kind === 'text';
+      const ok = text ? typeof value === 'string' && value !== '' : typeof value === 'number' && Number.isFinite(value) && value > 0;
+      if (!ok) throw new Error(`${what} ${s.id} (${code}) needs ${text ? 'a text' : 'a positive numeric'} value (${kind})`);
+    };
+    checkValue(s.code, s.value, 'sign');
+    for (const p of s.plates ?? []) {
+      if (entry(p.code).group !== 7) throw new Error(`sign ${s.id}: ${p.code} is not a group 7 plate`);
+      checkValue(p.code, p.value, 'plate on sign');
+    }
+  }
+  for (const spot of signSpots(signs)) {
+    if (spot.signs.length > 3) {
+      throw new Error(`${spot.signs.length} signs on one pole at ${spot.at} m along ${spot.edgeId} (dir ${spot.dir}, ${spot.side}): ${spot.signs.map(s => s.id).join(', ')}; at most 3`);
+    }
   }
 }
 
@@ -68,6 +87,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     existsSync(`${dir}/signs.json`) ? JSON.parse(readFileSync(`${dir}/signs.json`, 'utf8')) : [],
     console.info,
   );
+  checkAtlasCovers(d.signs, JSON.parse(readFileSync('public/signs/atlas.json', 'utf8')) as Atlas);
   const outDir = `public/districts/${district}`;
   mkdirSync(outDir, { recursive: true });
   const json = JSON.stringify(d);

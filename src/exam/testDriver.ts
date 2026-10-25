@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import type { DistrictData, Vec2 } from '../shared/district';
+import { CODE } from '../shared/signCatalogue';
 import type { GameEvent } from '../sim/events';
 import { SignalSystem, type LightState } from '../sim/signals';
 import { SignSystem } from '../sim/signs';
@@ -640,7 +641,7 @@ export class ScriptedDriver {
     // The yield rule judges when the centre enters the junction, so a crawling car may still wait until then.
     if (gap > LOOKAHEAD || this.s > p.s1 - 0.2 || (gap < -0.3 && this.v > CRAWL)) return;
     const ref = this.steps[i];
-    if (gap >= -0.3 && this.road.junctionSigns(ref).some(g => g.type === 'stop') && !this.stopSignDone.has(i)) {
+    if (gap >= -0.3 && this.road.junctionSigns(ref).some(g => g.code === CODE.stop) && !this.stopSignDone.has(i)) {
       this.stopSignStill = this.v < STOP_SPEED && gap < 9 ? this.stopSignStill + dt : 0;
       if (this.stopSignStill >= STOP_SIGN_HOLD) this.stopSignDone.add(i);
       else return target(gap - 0.5, 0, `stop sign ${i}`);
