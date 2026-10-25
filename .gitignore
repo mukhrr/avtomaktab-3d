@@ -8,3 +8,4 @@ spike/osm.json
 .claude/
 tools/voice/.venv
 .playwright-mcp/
+assets-src/
