@@ -35,7 +35,10 @@ export function trafficView(scene: THREE.Scene, count: number): { update(agents:
     cars.setVisibleAt(i, false);
   }
   cars.castShadow = true;
+  // BatchedMesh re-culls, re-sorts and re-uploads in onBeforeShadow for every cascade unless both are off.
   cars.frustumCulled = false;
+  cars.perObjectFrustumCulled = false;
+  cars.sortObjects = false;
 
   // Per car: two brake lamps, then four indicators, all one unit box sized by the instance matrix.
   const lamps = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 0.05), new THREE.MeshBasicMaterial(), LAMPS * count);

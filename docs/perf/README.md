@@ -342,3 +342,23 @@ Result:
 ### Tuning (Task 5)
 
 No values changed: calls are in budget and the one gpu overrun is not triangle bound.
+
+### Final fix pass: car batch shadows (2026-10-25)
+
+`BatchedMesh.onBeforeShadow` (three r169) runs `onBeforeRender` for every shadow cascade, which re-culls, re-sorts and re-uploads the batch unless `perObjectFrustumCulled` and `sortObjects` are both false. Both are now off on the car batch (`frustumCulled` already was). Every car is drawn in every pass, so main-pass triangles on the avenue rise from 604k to 661k, but the per-cascade work is gone.
+
+Method as above (production builds side by side, before = 34c8009, Playwright Chromium build 1243, 1280x720 at DPR 2, high, noon, 4.5 s after a 1.5 s warm-up). The GPU was not quiet: with the game closed, `ioreg` showed 55 to 62% device utilisation from another Chrome window, and the same build moved by up to 4 ms p50 between rounds (one early round read 21 to 25 ms p50 on both sides and is discarded). Cells give the range over the rounds kept. Times in ms.
+
+| View | gpu p50 / p95 before | gpu p50 / p95 after | rounds |
+|---|---|---|---|
+| avenue | 7.2 to 8.9 / 8.6 to 10.6 | 5.8 to 6.8 / 6.9 to 8.7 | 5 |
+| chase, spawn | 17.5 to 18.2 / 20.7 to 21.5 | 14.8 to 15.0 / 16.1 to 16.3 | 3 |
+
+Car shadows on against off (avenue, two interleaved pairs per side):
+
+| | castShadow on, p50 / p95 | castShadow off, p50 / p95 |
+|---|---|---|
+| before | 7.2 / 8.6, 7.8 / 9.2 | 5.5 / 7.3, 6.0 / 8.1 |
+| after | 5.9 / 7.2, 5.8 / 7.9 | 6.1 / 11.1, 6.3 / 7.2 |
+
+Before, car shadows cost about 1.7 ms p50; after, on and off are equal within noise, so the shadow proxy (one box per car casting instead of the batch) was not built. The after build improves avenue p50 by about 2 ms and chase by about 3 ms against the before build in the same rounds. Avenue p95 after is 6.9 to 8.7, so the 8 ms budget is met in most rounds but not proven; chase cannot be judged on this GPU. High gpu has to be re-checked on a quiet machine.
