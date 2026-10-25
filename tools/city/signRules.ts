@@ -28,6 +28,8 @@ const PARKING_REACH = 40;
 const HOSPITAL_REACH = 80;
 /** Matches JUNCTION_REACH in src/sim/signs.ts: a signal or sign this close to a node governs it. */
 const JUNCTION_REACH = 40;
+const DIVIDED_GAP = 40;
+const DIVIDED_KINDS = new Set(['primary', 'secondary', 'tertiary']);
 const MERGE_SPAN = 15;
 const MOVE_STEP = 15;
 const POLE_CAPACITY = 3;
@@ -106,10 +108,37 @@ export function residentialZoneSigns(d: RuleInput): Sign[] {
   return out;
 }
 
+const isOneWay = (e: GraphEdge) => e.lanesBackward === 0 && e.lanesForward > 0;
+
+/** One-way major-road edges with a same-named one-way running the other way within 40 m: the two carriageways of a divided road. */
+export function dividedCarriageways(d: RuleInput): Set<string> {
+  const candidates = d.graph.edges.filter(e => isOneWay(e) && e.name !== '' && DIVIDED_KINDS.has(e.kind.replace(/_link$/, '')));
+  const bearing = (e: GraphEdge) => {
+    const a = e.points[0], b = e.points[e.points.length - 1];
+    return [b[0] - a[0], b[1] - a[1]];
+  };
+  const near = (a: GraphEdge, b: GraphEdge) =>
+    a.points.some(p => distanceToPolyline(b.points, p).dist <= DIVIDED_GAP) || b.points.some(p => distanceToPolyline(a.points, p).dist <= DIVIDED_GAP);
+  const out = new Set<string>();
+  for (const a of candidates) {
+    const [ax, az] = bearing(a);
+    for (const b of candidates) {
+      if (a === b || a.name !== b.name) continue;
+      const [bx, bz] = bearing(b);
+      if (ax * bx + az * bz < 0 && near(a, b)) {
+        out.add(a.id);
+        out.add(b.id);
+      }
+    }
+  }
+  return out;
+}
+
 export function oneWaySigns(d: RuleInput): Sign[] {
   const g = new Graph(d), out: Sign[] = [];
+  const divided = dividedCarriageways(d);
   for (const e of d.graph.edges) {
-    if (e.lanesBackward !== 0 || e.lanesForward === 0) continue;
+    if (!isOneWay(e) || divided.has(e.id)) continue;
     const len = g.length(e);
     if (g.degree(e.from) >= 3 && len >= ONE_WAY_AT) out.push(sign('oneWay', RULE_CODE.oneWay, e, 1, ONE_WAY_AT));
     // Only where some other road delivers traffic to the end node could a car turn in against the flow.
@@ -142,8 +171,9 @@ export function prioritySigns(d: RuleInput): Sign[] {
     if (arms.length < 3 || signalled.has(n.id)) continue;
     const ranks = arms.map(e => rank(e.kind));
     const top = Math.max(...ranks);
-    if (ranks.filter(r => r === top).length !== 2 || ranks.every(r => r === top)) continue;
+    if (ranks.filter(r => r === top).length !== 2 || arms.every((e, i) => ranks[i] === top || e.kind === 'service')) continue;
     arms.forEach((e, i) => {
+      if (ranks[i] < top && e.kind === 'service') return;
       const len = g.length(e);
       const [rule, code] = ranks[i] === top ? ['priority', CODE.priorityRoad] : ['giveWay', CODE.giveWay];
       for (const dir of directions(e)) {
@@ -175,6 +205,7 @@ export function poiSigns(d: RuleInput): Sign[] {
   for (const p of d.pois) {
     if (p.kind === 'school' || p.kind === 'kindergarten') {
       for (const e of d.graph.edges) {
+        if (e.kind === 'service' || e.kind === 'living_street') continue;
         const hit = distanceToPolyline(e.points, p.position);
         if (hit.dist > SCHOOL_REACH) continue;
         const len = g.length(e);

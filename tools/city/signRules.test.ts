@@ -1,6 +1,6 @@
 import type { GraphEdge, GraphNode, Sign, Vec2 } from '../../src/shared/district';
 import {
-  crossingSigns, oneWaySigns, placeRuleSigns, poiSigns, prioritySigns, residentialZoneSigns, speedSigns, type RuleInput,
+  crossingSigns, dividedCarriageways, oneWaySigns, placeRuleSigns, poiSigns, prioritySigns, residentialZoneSigns, speedSigns, type RuleInput,
 } from './signRules';
 
 const POS: Record<string, Vec2> = {
@@ -67,6 +67,28 @@ describe('rule signs', () => {
     ]);
   });
 
+  const pair = (o: Partial<GraphEdge> = {}) => [
+    edge('a', 'A', 'J'), edge('n', 'N', 'J'), edge('x', 'F', 'E'), edge('c', 'E', 'D'),
+    edge('ow', 'J', 'E', { lanesBackward: 0, kind: 'primary', name: 'Amir Temur', ...o }),
+    edge('back', 'E', 'J', { lanesBackward: 0, kind: 'primary', name: 'Amir Temur', points: [[200, 20], [100, 20]], ...o }),
+  ];
+
+  it('finds both carriageways of a divided road', () => {
+    expect([...dividedCarriageways(input(pair()))].sort()).toEqual(['back', 'ow']);
+  });
+
+  it('does not pair carriageways with different names, empty names or minor kinds', () => {
+    expect(dividedCarriageways(input(pair({ name: '' })))).toEqual(new Set());
+    expect(dividedCarriageways(input(pair({ kind: 'residential' })))).toEqual(new Set());
+    const far = pair();
+    far[5] = { ...far[5], points: [[200, 60], [100, 60]] };
+    expect(dividedCarriageways(input(far))).toEqual(new Set());
+  });
+
+  it('gives a divided road neither 5.5 nor 3.1', () => {
+    expect(oneWaySigns(input(pair())).filter(s => s.edgeId === 'ow' || s.edgeId === 'back')).toEqual([]);
+  });
+
   it('puts no 3.1 where the one-way only continues into another one-way', () => {
     const signs = oneWaySigns(input([edge('ow', 'A', 'B', { lanesBackward: 0 }), edge('ow2', 'B', 'C', { lanesBackward: 0 })]));
     expect(signs.filter(s => s.code === '3.1')).toEqual([]);
@@ -87,6 +109,16 @@ describe('rule signs', () => {
   it('ranks a _link road as its base kind', () => {
     const d = input([edge('p1', 'A', 'J', { kind: 'primary' }), edge('p2', 'J', 'C', { kind: 'primary_link' }), edge('r', 'S', 'J')]);
     expect(prioritySigns(d).map(s => s.code).sort()).toEqual(['2.1', '2.1', '2.4']);
+  });
+
+  it('gives a service road no 2.4', () => {
+    const d = input([...tee(), edge('s', 'J', 'N', { kind: 'service' })]);
+    expect(pick(prioritySigns(d)).filter(s => s.edgeId === 's')).toEqual([]);
+    expect(prioritySigns(d).filter(s => s.code === '2.4').map(s => s.edgeId)).toEqual(['r']);
+  });
+
+  it('puts no 2.1 where only service roads are lower ranked', () => {
+    expect(prioritySigns(input([edge('p1', 'A', 'J'), edge('p2', 'J', 'C'), edge('s', 'S', 'J', { kind: 'service' })]))).toEqual([]);
   });
 
   it('puts no priority signs where all approaches rank equal', () => {
@@ -124,6 +156,11 @@ describe('rule signs', () => {
       { code: '1.21', edgeId: 'e', dir: 1, at: 105, side: 'right' },
       { code: '1.21', edgeId: 'e', dir: -1, at: 200, side: 'right' },
     ]);
+  });
+
+  it('puts no children sign on service roads or living streets', () => {
+    const pois = [{ id: 's', kind: 'school' as const, position: [100, 30] as Vec2 }];
+    expect(poiSigns(input([edge('e', 'A', 'B', { kind: 'service' }), edge('f', 'B', 'C', { kind: 'living_street' })], { pois }))).toEqual([]);
   });
 
   it('marks a car park and a hospital on the nearest non-service road', () => {

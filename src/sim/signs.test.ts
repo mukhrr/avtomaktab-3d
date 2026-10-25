@@ -88,6 +88,12 @@ describe('speedLimitAt', () => {
     expect(school.speedLimitAt('e', 1, 171)).toBe(60);
   });
 
+  it('never raises a lower limit with a school zone', () => {
+    const d = withSigns([sign('sch', CODE.children, 20)]);
+    d.graph.edges = d.graph.edges.map(e => (e.id === 'e' ? { ...e, maxspeed: 20 } : e));
+    expect(new SignSystem(d).speedLimitAt('e', 1, 50)).toBe(20);
+  });
+
   it('lets an explicit speed limit sign win over a school zone', () => {
     const both = new SignSystem(withSigns([sign('sch', CODE.children, 20), sign('lim', CODE.speedLimit, 60, 1, { value: 50 })]));
     expect(both.speedLimitAt('e', 1, 100)).toBe(50);

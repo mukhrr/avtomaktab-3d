@@ -52,13 +52,14 @@ export class SignSystem {
     });
   }
 
-  /** km/h: the latest speed limit sign passed, else a school zone, else the edge's own limit. */
+  /** km/h: the latest speed limit sign passed, else a school zone (never above the edge's limit), else the edge's own limit. */
   speedLimitAt(edgeId: string, dir: 1 | -1, s: number): number {
     const passed = (this.lists.get(key(edgeId, dir)) ?? []).filter(g => (s - g.at) * dir >= 0);
     const limit = passed.filter(g => g.code === CODE.speedLimit).at(-1);
     if (typeof limit?.value === 'number') return limit.value;
-    if (passed.some(g => g.code === CODE.children && (s - g.at) * dir <= SCHOOL_ZONE_LENGTH)) return SCHOOL_ZONE_LIMIT;
-    return this.edges.get(edgeId)?.maxspeed ?? 0;
+    const own = this.edges.get(edgeId)?.maxspeed ?? 0;
+    if (passed.some(g => g.code === CODE.children && (s - g.at) * dir <= SCHOOL_ZONE_LENGTH)) return Math.min(SCHOOL_ZONE_LIMIT, own);
+    return own;
   }
 
   private length(e: GraphEdge): number {
