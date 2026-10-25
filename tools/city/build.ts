@@ -7,6 +7,7 @@ import { crossingsOffJunctions } from './crossings';
 import { placeFurniture } from './furniture';
 import { extractFeatures, type Overrides } from './extract';
 import { entry } from '../../src/shared/signCatalogue';
+import { signSpots } from '../../src/world/signMount';
 import { checkAtlasCovers, type Atlas } from '../signs/atlas';
 import { buildRoadGraph } from './graph';
 import { extractLandmarks } from './landmarks';
@@ -34,6 +35,11 @@ export function validateSigns(signs: Sign[], edges: DistrictData['graph']['edges
     for (const p of s.plates ?? []) {
       if (entry(p.code).group !== 7) throw new Error(`sign ${s.id}: ${p.code} is not a group 7 plate`);
       checkValue(p.code, p.value, 'plate on sign');
+    }
+  }
+  for (const spot of signSpots(signs)) {
+    if (spot.signs.length > 3) {
+      throw new Error(`${spot.signs.length} signs on one pole at ${spot.at} m along ${spot.edgeId} (dir ${spot.dir}, ${spot.side}): ${spot.signs.map(s => s.id).join(', ')}; at most 3`);
     }
   }
 }
