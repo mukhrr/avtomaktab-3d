@@ -4,7 +4,7 @@ import { dashes, edgeMarkings } from './markings';
 const straight: Vec2[] = [[0, 0], [100, 0]];
 const road = (kind: string): Road => ({ id: 'r', kind, width: 0, lanes: 0, oneway: false, name: '', maxspeed: 60, points: straight });
 const edge = (width: number, f: number, b: number): GraphEdge => ({
-  id: 'r:0', from: 'a', to: 'b', roadId: 'r', points: straight, nodeIds: ['a', 'b'], lanesForward: f, lanesBackward: b, width, maxspeed: 60, name: '',
+  id: 'r:0', from: 'a', to: 'b', roadId: 'r', points: straight, nodeIds: ['a', 'b'], lanesForward: f, lanesBackward: b, width, maxspeed: 60, name: '', kind: 'residential',
 });
 
 test('dashes are 3 m on, 6 m off', () => {

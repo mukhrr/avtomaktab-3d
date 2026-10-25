@@ -3,7 +3,7 @@ import { edgeLength, locateNode } from './attach';
 
 const edge = (id: string, points: [number, number][], nodeIds: string[]): GraphEdge => ({
   id, from: nodeIds[0], to: nodeIds.at(-1)!, roadId: 'r', points, nodeIds,
-  lanesForward: 1, lanesBackward: 1, width: 7, maxspeed: 60, name: '',
+  lanesForward: 1, lanesBackward: 1, width: 7, maxspeed: 60, name: '', kind: 'residential',
 });
 
 const e1 = edge('r:0', [[0, 0], [10, 0], [10, 10]], ['a', 'b', 'c']);

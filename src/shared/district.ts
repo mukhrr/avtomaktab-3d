@@ -77,6 +77,8 @@ export interface GraphEdge {
   width: number;
   maxspeed: number;
   name: string;
+  /** OSM highway value of the road this edge belongs to. */
+  kind: string;
 }
 
 export type CrossingKind = 'signal' | 'zebra' | 'unmarked';
@@ -137,6 +139,11 @@ export interface Landmark {
   anchor?: Vec2;
 }
 
+export type PoiKind = 'school' | 'kindergarten' | 'parking' | 'hospital' | 'fuel';
+
+/** Polygon POIs use their centroid. */
+export interface Poi { id: string; kind: PoiKind; position: Vec2 }
+
 export interface DistrictData {
   name: string;
   origin: { lat: number; lon: number };
@@ -151,6 +158,7 @@ export interface DistrictData {
   signs: Sign[];
   furniture: Furniture[];
   landmarks: Landmark[];
+  pois: Poi[];
   graph: { nodes: GraphNode[]; edges: GraphEdge[] };
 }
 

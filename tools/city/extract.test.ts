@@ -102,3 +102,23 @@ test('a bus stop, a bench and a bin node become three furniture items of their k
   expect(f.map(i => [i.id, i.kind])).toEqual([['30', 'busStop'], ['31', 'bench'], ['32', 'bin']]);
   expect(f[0].position).toEqual(project(41.3117, 69.2785));
 });
+
+test('extracts schools, kindergartens, car parks and hospitals as POIs at their centroid', () => {
+  const { pois } = run();
+  expect(pois).toHaveLength(2);
+  const school = pois.find(p => p.kind === 'school')!;
+  const [lat, lon] = [(41.3101 + 41.3103) / 2, (69.2781 + 69.2785) / 2];
+  const [x, z] = project(lat, lon);
+  expect(school.id).toBe('107');
+  expect(school.position[0]).toBeCloseTo(x, 1);
+  expect(school.position[1]).toBeCloseTo(z, 1);
+  expect(pois.find(p => p.kind === 'parking')).toMatchObject({ id: '44', position: project(41.3114, 69.2796) });
+});
+
+test('a POI way that is also a building stays a building', () => {
+  const osm = parseOsm(xml);
+  osm.ways.find(w => w.id === '103')!.tags.amenity = 'hospital';
+  const f = run(none, osm);
+  expect(f.pois.find(p => p.id === '103')?.kind).toBe('hospital');
+  expect(f.buildings.some(b => b.id === '103')).toBe(true);
+});

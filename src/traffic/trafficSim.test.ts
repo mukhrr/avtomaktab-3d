@@ -497,13 +497,13 @@ function twinJunctions(): DistrictData {
   const pos: Record<string, Vec2> = { p: [0, 0], q: [10, 0], pn: [0, -100], ps: [0, 100], qn: [10, -100], qs: [10, 100] };
   const mk = (id: string, from: string, to: string) => ({
     id, from, to, roadId: id, points: [pos[from], pos[to]], nodeIds: [from, to],
-    lanesForward: 1, lanesBackward: 1, width: 7, maxspeed: 60, name: id,
+    lanesForward: 1, lanesBackward: 1, width: 7, maxspeed: 60, name: id, kind: 'residential',
   });
   const edges = [mk('link', 'p', 'q'), mk('pn', 'pn', 'p'), mk('ps', 'p', 'ps'), mk('qn', 'qn', 'q'), mk('qs', 'q', 'qs')];
   const nodes = Object.entries(pos).map(([id, position]) => ({ id, position, edges: edges.filter(e => e.from === id || e.to === id).map(e => e.id) }));
   return {
     name: 'twin', origin: { lat: 0, lon: 0 }, bounds: { minX: -110, maxX: 120, minZ: -110, maxZ: 110 },
-    roads: [], buildings: [], areas: [], waterways: [], signals: [], crossings: [], controllers: [], signs: [], furniture: [], landmarks: [], graph: { nodes, edges },
+    roads: [], buildings: [], areas: [], waterways: [], signals: [], crossings: [], controllers: [], signs: [], furniture: [], landmarks: [], pois: [], graph: { nodes, edges },
   };
 }
 

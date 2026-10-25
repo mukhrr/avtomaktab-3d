@@ -40,3 +40,8 @@ test('every edge has one OSM node id per point', () => {
   for (const e of g.edges) expect(e.nodeIds).toHaveLength(e.points.length);
   expect(g.edges.find(e => e.id === '100:0')!.nodeIds).toEqual(['1', '17', '2']);
 });
+
+test('keeps the road kind on every graph edge', () => {
+  expect(g.edges.find(e => e.roadId === '102')!.kind).toBe('primary');
+  expect(g.edges.find(e => e.roadId === '100')!.kind).toBe('residential');
+});

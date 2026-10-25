@@ -4,7 +4,7 @@ import { buildControllers } from './controllers';
 
 const arm = (name: string, end: [number, number], lanesBackward = 2): GraphEdge => ({
   id: name, from: 'c', to: `${name}-end`, roadId: name, points: [[0, 0], end], nodeIds: ['c', `${name}-end`],
-  lanesForward: 2, lanesBackward, width: 7, maxspeed: 60, name,
+  lanesForward: 2, lanesBackward, width: 7, maxspeed: 60, name, kind: 'residential',
 });
 const arms = (n = 2, e = 2, s = 2, w = 2) => [arm('N', [0, -60], n), arm('E', [60, 0], e), arm('S', [0, 60], s), arm('W', [-60, 0], w)];
 const nodes = (edges: GraphEdge[]): GraphNode[] => [

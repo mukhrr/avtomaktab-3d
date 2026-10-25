@@ -1,4 +1,4 @@
-import type { Area, Building, BuildingStyle, CrossingKind, FurnitureKind, LandmarkKind, Road, Signal, Vec2, Waterway } from '../../src/shared/district';
+import type { Area, Building, BuildingStyle, CrossingKind, FurnitureKind, LandmarkKind, Poi, PoiKind, Road, Signal, Vec2, Waterway } from '../../src/shared/district';
 import type { OsmData, OsmWay } from './osm';
 import { classifyBuilding, LEVEL_HEIGHT, levelsFor, minAreaRect } from './styles';
 
@@ -22,6 +22,7 @@ export interface ExtractResult {
   signals: (Signal & { direction?: SignalDirection })[];
   /** Bus stop, bench and bin nodes at their OSM positions; build.ts snaps them to the street. */
   furniture: RawFurniture[];
+  pois: Poi[];
   /** OSM node ids per road, in order, for the graph builder. */
   roadNodeIds: Map<string, string[]>;
   /** Crossing nodes that lie on car roads. */
@@ -39,6 +40,8 @@ const SLOW_KINDS = new Set(['living_street', 'service']);
 const GREEN_LEISURE = new Set(['park', 'garden']);
 const GREEN_LANDUSE = new Set(['grass', 'forest', 'recreation_ground']);
 const WATERWAY_WIDTH: Record<string, number> = { canal: 9, river: 9, stream: 3 };
+
+const POI_AMENITIES = new Set<string>(['school', 'kindergarten', 'parking', 'hospital', 'fuel']);
 
 export const FOOT_KINDS = new Set(['footway', 'path', 'cycleway', 'pedestrian']);
 
@@ -86,17 +89,30 @@ function ring(pts: Vec2[]): Vec2[] | null {
   return a > 0 ? out : out.reverse();
 }
 
+function centroid(poly: Vec2[]): Vec2 {
+  const a = signedArea(poly);
+  let cx = 0, cz = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const [x0, z0] = poly[i], [x1, z1] = poly[(i + 1) % poly.length];
+    const f = x0 * z1 - x1 * z0;
+    cx += (x0 + x1) * f;
+    cz += (z0 + z1) * f;
+  }
+  return [cx / (6 * a), cz / (6 * a)];
+}
+
 export function extractFeatures(
   osm: OsmData,
   project: (lat: number, lon: number) => Vec2,
   overrides: Overrides,
 ): ExtractResult {
   const removed = new Set(overrides.removeWays);
-  const result: ExtractResult = { roads: [], buildings: [], areas: [], waterways: [], signals: [], furniture: [], roadNodeIds: new Map(), crossingNodes: [] };
+  const result: ExtractResult = { roads: [], buildings: [], areas: [], waterways: [], signals: [], furniture: [], pois: [], roadNodeIds: new Map(), crossingNodes: [] };
 
   for (const n of osm.nodes.values()) {
     const furniture = FURNITURE_TAGS.find(([k, v]) => n.tags[k] === v);
     if (furniture) result.furniture.push({ id: n.id, kind: furniture[2], position: project(n.lat, n.lon) });
+    if (POI_AMENITIES.has(n.tags.amenity)) result.pois.push({ id: n.id, kind: n.tags.amenity as PoiKind, position: project(n.lat, n.lon) });
     if (n.tags.highway !== 'traffic_signals') continue;
     const dir = n.tags['traffic_signals:direction'];
     result.signals.push({
@@ -121,6 +137,11 @@ export function extractFeatures(
     const t = w.tags;
     const pts = resolve(w);
     if (!pts) continue;
+
+    if (POI_AMENITIES.has(t.amenity)) {
+      const outline = ring(pts);
+      if (outline) result.pois.push({ id: w.id, kind: t.amenity as PoiKind, position: centroid(outline) });
+    }
 
     const kind = t.highway;
     const baseWidth = kind ? roadWidth(kind) : undefined;
