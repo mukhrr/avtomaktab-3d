@@ -54,7 +54,7 @@ What it does not do: no gear shift sounds, no road or wind noise, no collision s
 | [gentra-real-chase.jpg](gentra-real-chase.jpg) | chase view at the spawn |
 | [cockpit-real.jpg](cockpit-real.jpg) | cockpit view: the model's interior is on CAR_LAYER and does not show through the dashboard |
 
-Player car draws in 10 meshes (6 body groups, one per wheel), only the paint casts a shadow. Chase view at the spawn, high: 86 main-pass calls with the glb, 89 with the code-built body (the car itself 14 and 17 calls, measured by hiding it). Triangles in the main pass 800k against 753k.
+Player car draws in 14 meshes (5 body groups, 5 lamp groups, one per wheel), only the paint casts a shadow. Chase view at the spawn, high: 90 main-pass calls with the glb and its lamps, 89 with the old code-built body (86 for the glb before the lamp split). Triangles in the main pass 800k against 753k. The glb is 1.61 MB (1,608,708 bytes).
 
 Mesh to material table the pipeline found in assets-src/gentra/raw (98 meshes, 22,685 triangles):
 
