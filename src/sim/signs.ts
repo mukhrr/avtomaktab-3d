@@ -6,7 +6,7 @@ const SCHOOL_ZONE_LIMIT = 30;
 const SCHOOL_ZONE_LENGTH = 150;
 /** How close to the end of an edge a sign must stand to govern its junction. */
 export const JUNCTION_REACH = 40;
-const JUNCTION_CODES = new Set<string>([CODE.stop, CODE.giveWay, CODE.priorityRoad, CODE.noEntry, CODE.noLeftTurn, CODE.noRightTurn, CODE.noUTurn]);
+export const JUNCTION_CODES = new Set<string>([CODE.stop, CODE.giveWay, CODE.priorityRoad, CODE.noEntry, CODE.noLeftTurn, CODE.noRightTurn, CODE.noUTurn]);
 
 const key = (edgeId: string, dir: number) => `${edgeId}:${dir}`;
 
