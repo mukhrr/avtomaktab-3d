@@ -4,6 +4,8 @@ import type { LaneRef } from '../traffic/lanes';
 
 const SCHOOL_ZONE_LIMIT = 30;
 const SCHOOL_ZONE_LENGTH = 150;
+const SETTLEMENT_LIMIT = 60;
+const END_OF_LIMIT = '3.25';
 /** How close to the end of an edge a sign must stand to govern its junction. */
 export const JUNCTION_REACH = 40;
 const JUNCTION_CODES = new Set<string>([CODE.stop, CODE.giveWay, CODE.priorityRoad, CODE.noEntry, CODE.noLeftTurn, CODE.noRightTurn, CODE.noUTurn]);
@@ -52,14 +54,23 @@ export class SignSystem {
     });
   }
 
-  /** km/h: the latest speed limit sign passed, else a school zone (never above the edge's limit), else the edge's own limit. */
+  /** km/h: the latest of a passed speed limit, end of limit (back to 60) or school zone (30, never a raise), else the edge's own limit. */
   speedLimitAt(edgeId: string, dir: 1 | -1, s: number): number {
-    const passed = (this.lists.get(key(edgeId, dir)) ?? []).filter(g => (s - g.at) * dir >= 0);
-    const limit = passed.filter(g => g.code === CODE.speedLimit).at(-1);
-    if (typeof limit?.value === 'number') return limit.value;
-    const own = this.edges.get(edgeId)?.maxspeed ?? 0;
-    if (passed.some(g => g.code === CODE.children && (s - g.at) * dir <= SCHOOL_ZONE_LENGTH)) return Math.min(SCHOOL_ZONE_LIMIT, own);
-    return own;
+    let limit = this.edges.get(edgeId)?.maxspeed ?? 0;
+    let signed = false, school: number | null = null;
+    for (const g of this.lists.get(key(edgeId, dir)) ?? []) {
+      if ((s - g.at) * dir < 0) break;
+      if (g.code === CODE.speedLimit && typeof g.value === 'number') {
+        limit = g.value;
+        signed = true;
+        school = null;
+      } else if (g.code === END_OF_LIMIT && signed) {
+        limit = SETTLEMENT_LIMIT;
+        signed = false;
+        school = null;
+      } else if (g.code === CODE.children) school = g.at;
+    }
+    return school !== null && (s - school) * dir <= SCHOOL_ZONE_LENGTH ? Math.min(SCHOOL_ZONE_LIMIT, limit) : limit;
   }
 
   private length(e: GraphEdge): number {

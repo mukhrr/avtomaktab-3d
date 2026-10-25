@@ -82,7 +82,7 @@ describe('tashkent-center coverage', () => {
     for (const r of routes) expect(signsOnRoute(d, r).filter(s => s.origin === 'coverage').length, r.id).toBeLessThanOrEqual(60);
   });
 
-  // speedLimitAt lets any passed 3.24 override a school zone, whatever the order.
+  // A coverage 3.24 passed after a school sign would lift the school zone.
   it('puts no coverage speed limit on an edge with a school sign', () => {
     const school = new Set(d.signs.filter(s => s.code === CODE.children).map(s => s.edgeId));
     expect(d.signs.filter(s => s.origin === 'coverage' && s.code === CODE.speedLimit && school.has(s.edgeId))).toEqual([]);

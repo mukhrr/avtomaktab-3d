@@ -98,4 +98,27 @@ describe('speedLimitAt', () => {
     const both = new SignSystem(withSigns([sign('sch', CODE.children, 20), sign('lim', CODE.speedLimit, 60, 1, { value: 50 })]));
     expect(both.speedLimitAt('e', 1, 100)).toBe(50);
   });
+
+  it('lets a school zone passed after a speed limit sign win', () => {
+    const both = new SignSystem(withSigns([sign('lim', CODE.speedLimit, 20, 1, { value: 50 }), sign('sch', CODE.children, 60)]));
+    expect(both.speedLimitAt('e', 1, 40)).toBe(50);
+    expect(both.speedLimitAt('e', 1, 100)).toBe(30);
+    expect(both.speedLimitAt('e', 1, 211)).toBe(50);
+  });
+
+  it('restores the 60 km/h settlement limit after an end of limit sign', () => {
+    const d = withSigns([sign('lim', CODE.speedLimit, 20, 1, { value: 40 }), sign('end', '3.25', 100, 1, { value: 40 })]);
+    d.graph.edges = d.graph.edges.map(e => (e.id === 'e' ? { ...e, maxspeed: 50 } : e));
+    const sys = new SignSystem(d);
+    expect(sys.speedLimitAt('e', 1, 99)).toBe(40);
+    expect(sys.speedLimitAt('e', 1, 100)).toBe(60);
+  });
+
+  it('ignores an end of limit sign with no speed limit sign before it', () => {
+    const d = withSigns([sign('end', '3.25', 100, 1, { value: 40 }), sign('lim', CODE.speedLimit, 150, 1, { value: 30 })]);
+    d.graph.edges = d.graph.edges.map(e => (e.id === 'e' ? { ...e, maxspeed: 50 } : e));
+    const sys = new SignSystem(d);
+    expect(sys.speedLimitAt('e', 1, 120)).toBe(50);
+    expect(sys.speedLimitAt('e', 1, 160)).toBe(30);
+  });
 });
