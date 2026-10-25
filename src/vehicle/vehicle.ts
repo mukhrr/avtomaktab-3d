@@ -23,6 +23,34 @@ const ROLLING_RESISTANCE = 0.012 * MASS * 9.81;
 const FRONT = [0, 1];
 const REAR = [2, 3];
 
+const WHEEL_FRICTION = 2.2;
+const HARD_BRAKE = 0.8;
+const HARD_BRAKE_MIN_SPEED = 3;
+
+interface SlipSource {
+  numWheels(): number;
+  wheelSideImpulse(i: number): number | null;
+  wheelForwardImpulse(i: number): number | null;
+  wheelSuspensionForce(i: number): number | null;
+}
+
+/**
+ * Worst wheel as a 0 to 1 share of the grip it has: the impulse Rapier applied against friction slip times
+ * suspension force times dt. The forward impulse only counts when `braking`, as it also carries the engine's drive.
+ */
+export function wheelSlip(c: SlipSource, frictionSlip: number, dt: number, braking: boolean): number {
+  let worst = 0;
+  for (let i = 0; i < c.numWheels(); i++) {
+    const grip = frictionSlip * (c.wheelSuspensionForce(i) ?? 0) * dt;
+    if (!(grip > 0)) continue;
+    const side = Math.abs(c.wheelSideImpulse(i) ?? 0);
+    const forward = braking ? Math.abs(c.wheelForwardImpulse(i) ?? 0) : 0;
+    const ratio = Math.max(side, forward) / grip;
+    if (ratio > worst) worst = ratio;
+  }
+  return Math.min(1, worst);
+}
+
 export interface Spawn { position: Vec2; heading: number }
 
 export class Vehicle {
@@ -36,6 +64,7 @@ export class Vehicle {
   private tilt = { pitch: 0, roll: 0 };
   private lastVel = new THREE.Vector3();
   private state: DrivetrainState;
+  private slipNow = 0;
 
   constructor(world: RAPIER.World, spawn: Spawn, gearbox: Gearbox = 'auto') {
     const model = createCarModel();
@@ -66,7 +95,7 @@ export class Vehicle {
       this.controller.setWheelSuspensionCompression(i, 4.4);
       this.controller.setWheelSuspensionRelaxation(i, 2.3);
       this.controller.setWheelMaxSuspensionForce(i, 12000);
-      this.controller.setWheelFrictionSlip(i, 2.2);
+      this.controller.setWheelFrictionSlip(i, WHEEL_FRICTION);
     }
     this.reset(spawn);
   }
@@ -81,6 +110,11 @@ export class Vehicle {
 
   set gearbox(g: Gearbox) {
     this.state = { gearbox: g, gear: g === 'auto' ? 1 : 0, rpm: IDLE_RPM, running: true };
+  }
+
+  /** 0 to 1 from the last physics step; read-only, it feeds the tyre sound. */
+  get slip(): number {
+    return this.slipNow;
   }
 
   /** Visual body pitch and roll in radians; the physics pose never sees it. */
@@ -103,6 +137,7 @@ export class Vehicle {
     this.lastVel.set(0, 0, 0);
     this.bodyLean.reset();
     this.tilt = { pitch: 0, roll: 0 };
+    this.slipNow = 0;
   }
 
   /** One fixed physics step; call before world.step(). */
@@ -123,6 +158,7 @@ export class Vehicle {
     for (const i of REAR) this.controller.setWheelBrake(i, (service + (c.handbrake ? HANDBRAKE_FORCE : 0)) * dt);
     this.applyResistance();
     this.controller.updateVehicle(dt);
+    this.slipNow = wheelSlip(this.controller, WHEEL_FRICTION, dt, c.brake >= HARD_BRAKE && Math.abs(speed) > HARD_BRAKE_MIN_SPEED);
   }
 
   private applyResistance(): void {

@@ -44,6 +44,10 @@ export function StartScreen({ initial, routeKm, quality, loadedQuality, probing,
         <Pick value={c.gearbox} options={[['auto', t(L, 'ui.auto')], ['manual', t(L, 'ui.manual')]]} onPick={gearbox => set({ gearbox })} />
         <label>{t(L, 'ui.timeOfDay')}</label>
         <Pick<TimeOfDay> value={c.timeOfDay} options={[['morning', t(L, 'ui.morning')], ['noon', t(L, 'ui.noon')], ['evening', t(L, 'ui.evening')]]} onPick={timeOfDay => set({ timeOfDay })} />
+        <label>{t(L, 'ui.sound')}</label>
+        <Pick<'on' | 'off'> value={c.sound ? 'on' : 'off'} options={[['on', t(L, 'ui.on')], ['off', t(L, 'ui.off')]]} onPick={v => set({ sound: v === 'on' })} />
+        <label htmlFor="volume">{t(L, 'ui.volume')} · {Math.round(c.volume * 100)}%</label>
+        <input id="volume" className="volume" type="range" min={0} max={100} step={5} value={Math.round(c.volume * 100)} disabled={!c.sound} onChange={e => set({ volume: Number(e.target.value) / 100 })} />
         <label>{t(L, 'ui.quality')}</label>
         <Pick<Quality> value={q} options={[['low', t(L, 'ui.low')], ['medium', t(L, 'ui.medium')], ['high', t(L, 'ui.high')]]} onPick={setQ} disabled={probing} />
         {probing && <p className="note">{t(L, 'ui.checkingGraphics')}</p>}

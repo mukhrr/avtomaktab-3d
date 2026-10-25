@@ -65,3 +65,10 @@ test('right stick past 0.6 glances left, up (rear) or right', () => {
   expect(r.read(none, none, [pad({}, [0, 0, 0.7, 0])], 1 / 60).glance).toBe('right');
   expect(r.read(none, none, [pad({}, [0, 0, 0.5, 0.5])], 1 / 60).glance).toBeNull();
 });
+
+test('N or pad A holds the horn', () => {
+  const r = new InputReader();
+  expect(r.horn(new Set(['KeyN']), [null])).toBe(true);
+  expect(r.horn(none, [pad({ 0: 1 })])).toBe(true);
+  expect(r.horn(none, [null])).toBe(false);
+});

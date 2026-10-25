@@ -62,6 +62,14 @@ export function engineParams(s: CarSound): EngineParams {
   };
 }
 
+const ok = Number.isFinite;
+
+/** Param setters throw on NaN and Infinity, so a bad frame from the sim must not reach them. */
+function finiteSound(s: CarSound): CarSound {
+  if (ok(s.rpm) && ok(s.throttle) && ok(s.slip) && ok(s.speed)) return s;
+  return { ...s, rpm: ok(s.rpm) ? s.rpm : IDLE_RPM, throttle: ok(s.throttle) ? s.throttle : 0, slip: ok(s.slip) ? s.slip : 0, speed: ok(s.speed) ? s.speed : 0 };
+}
+
 export const tyreGain = (slip: number): number => Math.min(TYRE_MAX, Math.max(0, slip - TYRE_SLIP_MIN) * TYRE_PER_SLIP);
 
 interface Transient { sources: AudioScheduledSourceNode[]; nodes: AudioNode[] }
@@ -180,8 +188,9 @@ export class CarAudio {
     return src;
   }
 
-  update(s: CarSound, dt: number): void {
-    if (this.disposed) return;
+  update(sound: CarSound, dt: number): void {
+    if (this.disposed || !ok(dt) || dt < 0) return;
+    const s = finiteSound(sound);
     this.clock += dt;
     const now = this.ctx.currentTime;
     if (this.clock >= this.stallUntil) {

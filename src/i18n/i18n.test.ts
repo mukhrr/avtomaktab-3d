@@ -47,3 +47,11 @@ test('the picker labels exist in both languages', () => {
     expect(ruStrings).toHaveProperty([key]);
   }
 });
+
+test('the sound picker labels and the horn key exist in both languages', () => {
+  for (const key of ['ui.sound', 'ui.on', 'ui.off', 'ui.volume']) {
+    expect(uzStrings).toHaveProperty([key]);
+    expect(ruStrings).toHaveProperty([key]);
+  }
+  for (const lang of ['uz', 'ru'] as const) expect(HELP_LINES.map(k => t(lang, k)).join(' ')).toContain('[N]');
+});

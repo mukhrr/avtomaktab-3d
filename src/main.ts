@@ -23,7 +23,8 @@ import { LaneNetwork } from './traffic/lanes';
 import { approachSpeeds, closingSpeed, TrafficBodies } from './traffic/trafficBodies';
 import { TrafficSim, type PlayerState } from './traffic/trafficSim';
 import { HornMonitor } from './traffic/horn';
-import { Sfx } from './audio/sfx';
+import { AudioRig } from './audio/audioRig';
+import { setVoiceMuted } from './audio/voice';
 import { MapMatcher } from './exam/mapMatch';
 import { trafficView } from './traffic/trafficView';
 import { newCabin, stepCabin } from './vehicle/cabin';
@@ -160,7 +161,11 @@ if (params.has('debug')) events.on(e => console.log('[event]', e));
 const minimap = createMinimap(district);
 
 let screen: Screen = 'menu', seq = 0;
-const show = (s: Screen) => hud.set({ screen: (screen = s) });
+const show = (s: Screen) => {
+  hud.set({ screen: (screen = s) });
+  if (s === 'drive') audio?.enter();
+  else audio?.leave();
+};
 
 const session = new ExamSession({
   d: district, net, signals, signs, peds, traffic, route, penalties: loadPenalties(), playerLength: PLAYER_LENGTH,
@@ -210,24 +215,24 @@ let probeDone = probe === null;
 let pickUnmeasured = false;
 
 const horns = new HornMonitor({ matcher: new MapMatcher(district, net), signals, net });
-let sfx: Sfx | null = null;
+let audio: AudioRig | null = null;
 const camDir = new THREE.Vector3();
 
 /** Called from click handlers only: browsers keep an AudioContext suspended until a user gesture. */
 function unlockAudio() {
   const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!Ctor) return;
+  setVoiceMuted(!choice.sound);
   try {
-    sfx ??= new Sfx(new Ctor());
-    if (sfx.ctx.state !== 'running') void sfx.ctx.resume();
+    if (audio) audio.apply(choice);
+    else audio = new AudioRig(new Ctor(), choice, audible => setVoiceMuted(!audible));
+    if (audio.ctx.state !== 'running') void audio.ctx.resume();
   } catch {
-    sfx = null;
+    audio = null;
   }
 }
 
-document.addEventListener('visibilitychange', () => {
-  if (sfx && document.visibilityState === 'visible' && sfx.ctx.state !== 'running') void sfx.ctx.resume();
-});
+document.addEventListener('visibilitychange', () => audio?.visibility(document.visibilityState === 'hidden'));
 
 /** Runs inside the click handler, so the brief's audio starts within the user gesture. */
 function startExam() {
@@ -243,8 +248,8 @@ mountHud(hud, minimap.canvas, params.has('debug'), {
   routeKm: route.lengthM / 1000,
   choice: () => choice,
   onStart: (c, q) => {
-    unlockAudio();
     choice = c;
+    unlockAudio();
     if (!(pickUnmeasured && q === hud.get().quality)) {
       saveQuality(q);
       pickUnmeasured = false;
@@ -324,10 +329,16 @@ renderer.setAnimationLoop(() => {
     }
     if (session.active) examStep(c.steer);
   }
-  if (sfx && driving) {
+  if (audio && driving) {
     camera.getWorldDirection(camDir);
     const listener = { position: [camera.position.x, camera.position.z] as [number, number], heading: Math.atan2(camDir.x, camDir.z) };
-    for (const h of horns.update(dt, playerState(), traffic.agents, signals, listener)) sfx.horn(h.volume, h.pan);
+    for (const h of horns.update(dt, playerState(), traffic.agents, signals, listener)) audio.sfx.horn(h.volume, h.pan);
+    const d = car.drivetrain;
+    audio.frame(
+      { rpm: d.rpm, throttle: controls.throttle, running: d.running, speed: car.speed, slip: car.slip, gear: d.gear, belt: cabin.belt, blinker: cabin.hazard ? 'hazard' : cabin.indicator },
+      dt,
+      input.horn(held, navigator.getGamepads?.() ?? []),
+    );
   }
   signalLamps.update(signals);
   carsView.update(traffic.agents, signals.time);
@@ -427,7 +438,7 @@ renderer.setAnimationLoop(() => {
   }
 });
 
-Object.assign(window, { __game: { car, env, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, cabin: () => cabin, lastFrame, session, hud, route, start: (c: Partial<StartChoice>) => {
+Object.assign(window, { __game: { car, env, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, audio: () => audio, cabin: () => cabin, lastFrame, session, hud, route, start: (c: Partial<StartChoice>) => {
   choice = { ...choice, ...c };
   if (choice.mode === 'exam') startExam();
   else show('drive');

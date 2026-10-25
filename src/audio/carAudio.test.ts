@@ -1,56 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUS_GAIN, CarAudio, CHIME_HZ, CLICK_HZ, engineParams, TYRE_MAX, tyreGain, type CarSound } from './carAudio';
 
-type Ev = { kind: 'target' | 'set' | 'linear' | 'exp' | 'cancel'; v: number; t: number; tau?: number };
-interface Param { value: number; events: Ev[]; setTargetAtTime: (v: number, t: number, tau: number) => void; setValueAtTime: (v: number, t: number) => void; linearRampToValueAtTime: (v: number, t: number) => void; exponentialRampToValueAtTime: (v: number, t: number) => void; cancelScheduledValues: (t: number) => void }
-interface Node {
-  kind: string; type?: string; connected: unknown[]; disconnects?: number; started?: number; stopped?: number; stopCalls?: number;
-  onended?: (() => void) | null; frequency: Param; gain: Param; detune: Param; threshold: Param;
-  connect: (n: unknown) => unknown; disconnect: () => void;
-}
-
-function param(): Param {
-  const p: Param = {
-    value: 0, events: [],
-    setTargetAtTime(v, t, tau) { p.events.push({ kind: 'target', v, t, tau }); },
-    setValueAtTime(v, t) { p.value = v; p.events.push({ kind: 'set', v, t }); },
-    linearRampToValueAtTime(v, t) { p.events.push({ kind: 'linear', v, t }); },
-    exponentialRampToValueAtTime(v, t) { p.events.push({ kind: 'exp', v, t }); },
-    cancelScheduledValues(t) { p.events.push({ kind: 'cancel', v: 0, t }); },
-  };
-  return p;
-}
-
-function stubContext(now = 10, state = 'running') {
-  const nodes: Node[] = [];
-  const make = (kind: string, params: string[] = [], source = false): Node => {
-    const n = { kind, connected: [] as unknown[] } as unknown as Node;
-    n.connect = to => { n.connected.push(to); return to; };
-    n.disconnect = () => { n.disconnects = (n.disconnects ?? 0) + 1; };
-    for (const k of params) (n as unknown as Record<string, Param>)[k] = param();
-    if (source) {
-      (n as unknown as { start: (t?: number) => void }).start = t => { n.started = t ?? 0; };
-      (n as unknown as { stop: (t?: number) => void }).stop = t => { n.stopCalls = (n.stopCalls ?? 0) + 1; if (t !== undefined) n.stopped = t; };
-    }
-    nodes.push(n);
-    return n;
-  };
-  const ctx = {
-    currentTime: now,
-    sampleRate: 48000,
-    state,
-    destination: make('destination'),
-    createGain: () => make('gain', ['gain']),
-    createBiquadFilter: () => make('filter', ['frequency', 'Q', 'gain']),
-    createStereoPanner: () => make('panner', ['pan']),
-    createOscillator: () => make('osc', ['frequency', 'detune'], true),
-    createBufferSource: () => make('buffer', ['playbackRate', 'detune'], true),
-    createDynamicsCompressor: () => make('compressor', ['threshold', 'knee', 'ratio', 'attack', 'release']),
-    createBuffer: (_c: number, length: number) => ({ length, getChannelData: () => new Float32Array(length) }),
-  };
-  return { ctx: ctx as unknown as AudioContext, nodes, raw: ctx };
-}
-
+import { stubContext, type Node, type Param } from './stubContext';
 const idle: CarSound = { rpm: 800, throttle: 0, running: true, speed: 0, slip: 0, gear: 0, belt: true, blinker: null };
 const lastTarget = (p: Param) => [...p.events].reverse().find(e => e.kind === 'target');
 
@@ -250,5 +201,29 @@ describe('CarAudio', () => {
     for (const n of created) expect(n.disconnects ?? 0, n.kind).toBeGreaterThanOrEqual(1);
     for (const n of created.filter(n => n.kind === 'osc' || n.kind === 'buffer')) expect(n.stopCalls ?? 0, n.kind).toBeGreaterThanOrEqual(1);
     expect(master.disconnects ?? 0).toBe(0);
+  });
+});
+
+describe('non-finite inputs', () => {
+  const values = (n: Node) => (['frequency', 'gain', 'detune'] as const).flatMap(k => n[k]?.events ?? []);
+
+  it('never schedules NaN or Infinity when rpm, throttle, slip or speed are not finite', () => {
+    const { car, nodes } = setup();
+    car.update({ ...idle, rpm: NaN, throttle: Infinity, slip: NaN, speed: -Infinity }, 1 / 60);
+    car.update({ ...idle, rpm: Infinity, throttle: NaN, slip: Infinity }, 1 / 60);
+    for (const n of nodes) for (const e of values(n)) {
+      expect(Number.isFinite(e.v)).toBe(true);
+      expect(Number.isFinite(e.t)).toBe(true);
+    }
+  });
+
+  it('ignores a non-finite or negative dt so the clock and timers stay usable', () => {
+    const { car, nodes } = setup();
+    car.update(idle, NaN);
+    car.update(idle, Infinity);
+    car.update(idle, -1);
+    car.update({ ...idle, blinker: 'left' }, 1 / 60);
+    car.update(idle, 1 / 60);
+    for (const n of nodes) for (const e of values(n)) expect(Number.isFinite(e.v)).toBe(true);
   });
 });
