@@ -1,6 +1,6 @@
 # Avtomaktab 3D, M5: road signs
 
-Status: draft for Mukher's approval, 2026-10-25.
+Status: approved by Mukher, 2026-10-25.
 
 ## Intent
 
@@ -86,19 +86,16 @@ New for M5:
 
 ## The how (Claude's calls, open to change)
 
-- **Sign art is drawn from vector files.** Each sign is an SVG drawn to the Uzbek layout, rasterised at build time into compressed texture atlases with mipmaps. Drawing 297 signs by hand in canvas code, as the 10 existing ones are, would be slow and look worse. The source of the SVGs is the one open question for Mukher (see below).
+- **Sign art is drawn from vector files.** Each sign is an SVG drawn to the Uzbek layout, rasterised at build time into compressed texture atlases with mipmaps. Drawing 297 signs by hand in canvas code, as the 10 existing ones are, would be slow and look worse. Where the SVGs come from is set out under Sign art source.
 - **One instanced mesh per part.** Plates, backs and poles are instanced meshes over the atlases, so draw calls stay flat no matter how many signs stand.
 - **Sign data grows a little.** `Sign` gains the catalogue number in place of the 10-value `type`, an optional `value`, `plates` (catalogue numbers of plates under it), `side` (which side of the road) and `origin` (`rule`, `hand` or `coverage`). The existing 41 signs are migrated, not replaced. Hand-placed signs win over rule-derived ones at the same spot.
 - **Placement runs in the city pipeline.** Rule-derived signs are produced in `tools/city` from the OSM data, alongside crossings and furniture, so they ship in `district.json` and need no work at load time.
 - **Several exam routes.** Route-1 stays. New routes are added so that together they pass every sign, each between 4 and 8 km, about the length of a real exam drive. The start screen gets a route choice. The district may grow beyond today's bounding box if the routes need more streets, as long as load time stays under 3 s on the Mac.
 - **Zone of action lives in `src/sim/signs.ts`.** One query answers "what prohibitions and mandatory directions apply to this lane at this point". Both the examiner and the AI traffic use it, so traffic obeys the same signs the learner is judged on.
 
-## Open question for Mukher
+## Sign art source (Mukher's choice, 2026-10-25)
 
-Where the sign art comes from:
-
-- **Wikimedia Commons, then draw the rest.** Commons has public-domain SVG sets of the Russian and other CIS road signs, the same family as Uzbekistan's. They are renumbered to Uzbek numbers and corrected where Uzbek signs differ. Uzbek-only signs and anything missing are drawn to match. This is the faster path, and the signs look like the real ones from the start.
-- **Draw all 297 ourselves.** Nothing is downloaded, and every sign is drawn to the Uzbek layout. This is slower, and getting pictograms right by eye is harder.
+Public-domain SVGs of the Russian and other CIS road signs from Wikimedia Commons, renumbered to Uzbek numbers and corrected where Uzbek signs differ. Uzbek-only signs, and anything Commons lacks, are drawn to match. Only files whose Commons licence is public domain or CC0 are used. Each file's source page and licence are recorded in the data and in `CREDITS.md`. The source SVGs sit in `assets-src/signs/` and are only read by the build, never executed.
 
 ## Order
 
