@@ -79,3 +79,13 @@ Mesh to material table the pipeline found in assets-src/gentra/raw (98 meshes, 2
 | Aerials | dropped | 1 | 25 | 0.003 |
 
 Material___585 has the largest area but is the interior atlas; the paint is Material.006, the largest untextured one.
+
+## Car lamps
+
+| Shot | What |
+|---|---|
+| [lamps-rear-brake-left.jpg](lamps-rear-brake-left.jpg) | evening chase, brake held, left indicator in its lit phase, headlight beams on the road ahead |
+| [lamps-reverse.jpg](lamps-reverse.jpg) | evening chase, R selected, reverse cells lit |
+| [lamps-front-evening.jpg](lamps-front-evening.jpg) | front at evening, headlights on by themselves, two spot light beams |
+
+Five lamp groups, one mesh and material each: head, tail (tail and brake), reverse, indicatorLeft, indicatorRight. The model has no side repeaters and no third brake lamp. Left is +x, the driver's side. Chase view at the spawn, high: 90 main-pass calls at noon and at evening (budget 92). The beams are two spot lights on medium and high, off on low.

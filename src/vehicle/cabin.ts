@@ -1,3 +1,4 @@
+import type { TimeOfDay } from '../render/timeOfDay';
 import { wrapAngle } from '../traffic/turns';
 import type { Controls, Glance } from './drivetrain';
 
@@ -14,6 +15,8 @@ export interface CabinState {
   setHeading: number;
   /** The car has turned far enough the indicated way since the stalk was set. */
   turned: boolean;
+  /** Set by the L switch; null leaves them on automatic, lit in the evening. */
+  headlights: boolean | null;
 }
 
 // Armed by how far the car has turned, not by the steer input: a keyboard tap goes past any steer threshold and back
@@ -29,7 +32,12 @@ export const newCabin = (): CabinState => ({
   lastGlance: { left: -Infinity, rear: -Infinity, right: -Infinity },
   setHeading: 0,
   turned: false,
+  headlights: null,
 });
+
+export const headlightsOn = (s: CabinState, tod: TimeOfDay): boolean => s.headlights ?? tod === 'evening';
+
+export const toggleHeadlights = (s: CabinState, tod: TimeOfDay): CabinState => ({ ...s, headlights: !headlightsOn(s, tod) });
 
 /** `heading` is the car's (atan2(x, z), falling as it turns right). */
 export function stepCabin(s: CabinState, c: Controls, t: number, heading: number): CabinState {
@@ -50,6 +58,7 @@ export function stepCabin(s: CabinState, c: Controls, t: number, heading: number
     lastGlance,
     setHeading,
     turned,
+    headlights: s.headlights,
   };
 }
 

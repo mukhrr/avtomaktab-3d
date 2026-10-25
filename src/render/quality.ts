@@ -11,6 +11,8 @@ export interface QualitySettings {
   groundTextures: boolean;
   /** Image-based ambient light from the sky on every lit material; low stays on M3's Lambert and hemisphere. */
   skyAmbient: boolean;
+  /** Spot lights on the road from the player's headlamps; low lights the lamp lenses only. */
+  headlightBeams: boolean;
 }
 
 export const QUALITY: Record<Quality, QualitySettings> = {
@@ -24,6 +26,7 @@ export const QUALITY: Record<Quality, QualitySettings> = {
     mirrorEvery: 3,
     groundTextures: false,
     skyAmbient: false,
+    headlightBeams: false,
   },
   medium: {
     pixelRatioCap: 1.5,
@@ -35,6 +38,7 @@ export const QUALITY: Record<Quality, QualitySettings> = {
     mirrorEvery: 2,
     groundTextures: true,
     skyAmbient: true,
+    headlightBeams: true,
   },
   high: {
     pixelRatioCap: 2,
@@ -46,6 +50,7 @@ export const QUALITY: Record<Quality, QualitySettings> = {
     mirrorEvery: 2,
     groundTextures: true,
     skyAmbient: true,
+    headlightBeams: true,
   },
 };
 

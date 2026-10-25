@@ -25,6 +25,8 @@ const HUB = 0xa9adb1;
 const TRIM = 0x2c2d30;
 const HEADLAMP = 0xf4f0dc;
 const TAIL_LAMP = 0xb01818;
+const AMBER_LAMP = 0xd08018;
+const REVERSE_LAMP = 0xe8e8e8;
 // Rounded (Gentra) bodies: the shoulder is full width above SILL, and the greenhouse tucks in above ROOF_CAP.
 const SILL = 0.45;
 const ROOF_CAP = 1.25;
@@ -226,15 +228,27 @@ export function carGeometry(c: CarClass, busStripe = BUS_BLUE): { paint: THREE.B
 
 /**
  * A sedan class's body for a car that brings its own wheels, in the same space as `carGeometry`.
- * Dark arches mark where the wheels go; `lamps` holds the head and tail lamps for an unlit material.
+ * Dark arches mark where the wheels go; `lamps` has one geometry per lamp group, indicators on +x (left) and -x.
  */
-export function bodyGeometry(c: Exclude<CarClass, 'bus'>, length: number, width: number): { paint: THREE.BufferGeometry; fixed: THREE.BufferGeometry; lamps: THREE.BufferGeometry } {
+export function bodyGeometry(c: Exclude<CarClass, 'bus'>, length: number, width: number): {
+  paint: THREE.BufferGeometry; fixed: THREE.BufferGeometry;
+  lamps: Record<'head' | 'tail' | 'reverse' | 'indicatorLeft' | 'indicatorRight', THREE.BufferGeometry>;
+} {
   const s = specOf(c);
   const parts = sedanParts(c, length, width);
   const side = (width - 0.06) / 2;
   const arches = s.axles.flatMap(z => [-1, 1].map(x =>
     finish(new THREE.CylinderGeometry(s.wheel + 0.05, s.wheel + 0.05, 0.01, 10, 1, false, 0, Math.PI).rotateZ(Math.PI / 2).translate(x * (side + 0.004), s.wheel, z), TRIM)));
   const back = faceZ(parts.lower, s.tailY, -1);
-  const tails = [-1, 1].map(x => box(0.36, 0.14, 0.04, x * (width / 2 - 0.28), s.tailY, back + 0.015, TAIL_LAMP));
-  return { paint: merged(parts.paint), fixed: merged([...parts.fixed, ...arches]), lamps: merged([...parts.heads, ...tails]) };
+  const tails = [-1, 1].map(x => box(0.24, 0.14, 0.04, x * (width / 2 - 0.22), s.tailY, back + 0.015, TAIL_LAMP));
+  const reverse = [-1, 1].map(x => box(0.1, 0.14, 0.04, x * (width / 2 - 0.4), s.tailY, back + 0.015, REVERSE_LAMP));
+  const front = faceZ(parts.lower, s.headY, 1);
+  const indicators = (x: number) => merged([
+    box(0.07, 0.13, 0.04, x * (width / 2 - 0.06), s.headY, front - 0.04, AMBER_LAMP),
+    box(0.07, 0.06, 0.04, x * (width / 2 - 0.14), s.tailY + 0.1, back + 0.015, AMBER_LAMP),
+  ]);
+  return {
+    paint: merged(parts.paint), fixed: merged([...parts.fixed, ...arches]),
+    lamps: { head: merged(parts.heads), tail: merged(tails), reverse: merged(reverse), indicatorLeft: indicators(1), indicatorRight: indicators(-1) },
+  };
 }

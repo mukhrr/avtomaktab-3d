@@ -23,7 +23,7 @@ npm run dev
 
 Then open http://localhost:5173. Add `?debug` to the URL for frame timing.
 
-Controls: W/S or arrows to drive, A/D to steer, Z/X indicators, V hazard lights, B seat belt, 1/2/3 mirror glances, C camera, R reset, Esc menu, H help.
+Controls: W/S or arrows to drive, A/D to steer, Z/X indicators, V hazard lights, L headlights (on by themselves in the evening), B seat belt, 1/2/3 mirror glances, C camera, R reset, Esc menu, H help.
 
 ## Develop
 

@@ -27,10 +27,11 @@ import { AudioRig } from './audio/audioRig';
 import { setVoiceMuted } from './audio/voice';
 import { MapMatcher } from './exam/mapMatch';
 import { trafficView } from './traffic/trafficView';
-import { BlinkClock, newCabin, stepCabin } from './vehicle/cabin';
+import { BlinkClock, newCabin, stepCabin, toggleHeadlights } from './vehicle/cabin';
 import { createCockpit } from './vehicle/cockpit';
 import { InputReader } from './vehicle/input';
-import { loadCarBody } from './vehicle/carModel';
+import { GROUND_Y, loadCarBody } from './vehicle/carModel';
+import { createHeadlightBeams, lampState, newLampState } from './vehicle/lamps';
 import { Vehicle } from './vehicle/vehicle';
 import { useSkyAmbient } from './render/litMaterials';
 import { afterProbe, createProbe } from './render/probe';
@@ -100,6 +101,10 @@ const car = new Vehicle(world, spawn, 'auto', await carBody);
 scene.add(car.object);
 car.sync();
 car.object.traverse(o => o.layers.set(CAR_LAYER));
+// After the CAR_LAYER pass, so the beams stay on layer 0 and light the road in cockpit view too.
+const beams = quality.headlightBeams ? createHeadlightBeams(car.object, GROUND_Y) : null;
+let beamsAllowed = quality.headlightBeams;
+const lamps = newLampState();
 const cockpit = createCockpit();
 cockpit.root.traverse(o => o.layers.set(COCKPIT_LAYER));
 car.object.add(cockpit.root);
@@ -213,6 +218,7 @@ function applyQuality(q: Quality) {
   renderer.setSize(innerWidth, innerHeight);
   env.setQuality(s);
   mirrors.setQuality(s);
+  beamsAllowed = s.headlightBeams;
 }
 
 // The probe samples the same loop that draws the start screen, so it never blocks it.
@@ -304,6 +310,7 @@ renderer.setAnimationLoop(() => {
     else show('menu');
   }
   if (pressed.has('KeyC')) rig.cycle();
+  if (driving && pressed.has('KeyL')) cabin = toggleHeadlights(cabin, choice.timeOfDay);
   if (driving && !session.active && pressed.has('KeyG') && Math.abs(car.speed) < STOPPED) car.gearbox = car.drivetrain.gearbox === 'auto' ? 'manual' : 'auto';
   pressed.clear();
 
@@ -370,6 +377,9 @@ renderer.setAnimationLoop(() => {
   if (orbit) orbit.update();
   else rig.update(car.object, car.speed, dt);
   const blinkOn = blink.step(cabin.hazard ? 'hazard' : cabin.indicator, dt);
+  lampState(cabin, controls.brake, car.drivetrain.gear, blinkOn, choice.timeOfDay, lamps);
+  car.lamps.set(lamps);
+  beams?.set(lamps.head && beamsAllowed);
   if (rig.mode === 'cockpit') {
     const d = car.drivetrain;
     cockpit.update({ speedKmh: Math.abs(car.speed) * 3.6, rpm: d.rpm, indicator: cabin.indicator, blinkOn, hazard: cabin.hazard, belt: cabin.belt, steer: controls.steer, running: d.running });

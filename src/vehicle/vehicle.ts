@@ -4,6 +4,7 @@ import type { Vec2 } from '../shared/district';
 import { DRIVE_SURFACE_Y } from '../physics/world';
 import { BodyLean } from './bodyLean';
 import { createCarModel, WHEEL_POSITIONS } from './carModel';
+import type { LampControl } from './lamps';
 import { stepDrivetrain, IDLE_RPM, WHEEL_RADIUS, type Controls, type DrivetrainState, type Gearbox } from './drivetrain';
 
 const MASS = 1150;
@@ -61,6 +62,7 @@ export class Vehicle {
   readonly collider: RAPIER.Collider;
   private body: RAPIER.RigidBody;
   private controller: RAPIER.DynamicRayCastVehicleController;
+  readonly lamps: LampControl;
   private wheels: THREE.Object3D[];
   private pivot: THREE.Group;
   private bodyLean = new BodyLean();
@@ -75,6 +77,7 @@ export class Vehicle {
     this.object = model.root;
     this.wheels = model.wheels;
     this.pivot = model.lean;
+    this.lamps = model.lamps;
     this.state = { gearbox, gear: gearbox === 'auto' ? 1 : 0, rpm: IDLE_RPM, running: true };
 
     this.body = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setCanSleep(false).setAdditionalMass(0));

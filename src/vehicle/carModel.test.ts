@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createCarModel, GROUND_Y, loadCarBody, WHEEL_POSITIONS } from './carModel';
+import { LAMP_GROUPS, newLampState } from './lamps';
 
 const meshes = (o: THREE.Object3D) => {
   const out: THREE.Mesh[] = [];
@@ -47,14 +48,21 @@ describe('player car model', () => {
     expect(rim.boundingBox!.max.y).toBeCloseTo(15 * 0.0254 / 2, 2);
   });
 
-  it('keeps headlights and tail lights and draws in at most 11 calls', () => {
+  it('has one mesh per lamp group, front and rear, and draws in at most 15 calls', () => {
     const { root, lean } = createCarModel();
-    const lamps = meshes(lean).filter(m => (m.material as THREE.Material).type === 'MeshBasicMaterial');
-    expect(lamps).toHaveLength(1);
-    const box = new THREE.Box3().setFromObject(lamps[0]);
-    expect(box.max.z).toBeGreaterThan(2.0);
-    expect(box.min.z).toBeLessThan(-2.0);
-    expect(meshes(root).length).toBeLessThanOrEqual(11);
+    root.updateMatrixWorld(true);
+    const lamp = (name: string) => new THREE.Box3().setFromObject(lean.getObjectByName(name)!);
+    expect(lamp('head').min.z).toBeGreaterThan(2.0);
+    expect(lamp('tail').max.z).toBeLessThan(-2.0);
+    expect(lamp('reverse').max.z).toBeLessThan(-2.0);
+    for (const [name, sign] of [['indicatorLeft', 1], ['indicatorRight', -1]] as const) {
+      const b = lamp(name);
+      expect(b.max.z).toBeGreaterThan(2.0);
+      expect(b.min.z).toBeLessThan(-2.0);
+      expect(Math.sign(b.min.x)).toBe(sign);
+      expect(Math.sign(b.max.x)).toBe(sign);
+    }
+    expect(meshes(root).length).toBeLessThanOrEqual(15);
   });
 
   it('pitches about a low point ahead of centre, so 3 degrees of brake dive drops the nose under 9 cm', () => {
@@ -78,7 +86,7 @@ function fakeGlb(): THREE.Group {
   const scene = new THREE.Group();
   const body = new THREE.Group();
   body.name = 'body';
-  for (const name of ['paint', 'chrome', 'shell', 'lights', 'interior', 'glass']) {
+  for (const name of ['paint', 'chrome', 'shell', 'interior', 'glass', ...LAMP_GROUPS]) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(1.74, 1.4, 4.48).translate(0, 0.7, 0), new THREE.MeshStandardMaterial({ name, color: 0xff0000 }));
     m.name = name;
     body.add(m);
@@ -121,14 +129,24 @@ describe('player car from the glb', () => {
     });
   });
 
-  it('paints the body white, casts shadows from the paint only, and draws in at most 10 meshes', () => {
+  it('paints the body white, casts shadows from the paint only, and draws in at most 15 meshes', () => {
     const { root } = createCarModel(fakeGlb());
     const all = meshes(root);
-    expect(all.length).toBeLessThanOrEqual(10);
+    expect(all.length).toBeLessThanOrEqual(15);
     const byName = (n: string) => all.find(m => m.name === n)!;
     expect((byName('paint').material as THREE.MeshStandardMaterial).color.getHex()).toBe(0xf4f4f2);
     expect((byName('glass').material as THREE.Material).depthWrite).toBe(false);
     expect(all.filter(m => m.castShadow).map(m => m.name)).toEqual(['paint']);
+  });
+
+  it('drives the model lamp materials', () => {
+    const { root, lamps } = createCarModel(fakeGlb());
+    const mat = (n: string) => (root.getObjectByName(n) as THREE.Mesh).material as THREE.MeshStandardMaterial;
+    lamps.set({ ...newLampState(), left: true, brake: true });
+    expect(mat('indicatorLeft').emissiveIntensity).toBeGreaterThan(0);
+    expect(mat('indicatorRight').emissiveIntensity).toBe(0);
+    expect(mat('tail').emissiveIntensity).toBeGreaterThan(0);
+    expect(mat('tail').emissive.getHex()).not.toBe(0);
   });
 });
 
@@ -145,7 +163,7 @@ describe('loadCarBody', () => {
     expect(warn).toHaveBeenCalled();
     const { lean, wheels } = createCarModel(model);
     expect(lean.getObjectByName('body')).toBeUndefined();
-    expect(meshes(lean)).toHaveLength(3);
+    expect(meshes(lean)).toHaveLength(2 + LAMP_GROUPS.length);
     expect(wheels[0].position.x).toBe(WHEEL_POSITIONS[0][0]);
     warn.mockRestore();
   });
