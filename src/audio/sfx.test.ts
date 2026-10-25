@@ -112,4 +112,33 @@ describe('Sfx.horn', () => {
     sfx.dispose();
     for (const o of nodes.filter(n => n.kind === 'osc')) expect(o.stopCalls).toBe(2);
   });
+
+  it('uses a given master without creating or disconnecting one', () => {
+    const { ctx, nodes } = stubContext();
+    const bus = ctx.createGain();
+    const sfx = new Sfx(ctx, bus);
+    expect(sfx.master).toBe(bus);
+    expect(nodes.filter(n => n.kind === 'gain')).toHaveLength(1);
+    sfx.dispose();
+    expect((bus as unknown as Node).disconnects ?? 0).toBe(0);
+  });
+});
+
+describe('Sfx.holdHorn', () => {
+  it('sustains until released, then fades out and tears down', () => {
+    const { ctx, nodes } = stubContext(10);
+    const release = new Sfx(ctx).holdHorn(1, 0);
+    const oscs = nodes.filter(n => n.kind === 'osc');
+    expect(oscs).toHaveLength(2);
+    expect(oscs.every(o => o.started === 10 && o.stopped === undefined)).toBe(true);
+    release();
+    for (const o of oscs) {
+      expect(o.stopped).toBeGreaterThan(10);
+      expect(o.stopped).toBeLessThanOrEqual(10.2);
+    }
+    const gain = nodes.filter(n => n.kind === 'gain')[1].params.gain;
+    expect(gain.ramps[gain.ramps.length - 1][1]).toBe(0);
+    for (const o of oscs) o.onended!();
+    expect(nodes.filter(n => n.kind === 'panner').every(n => n.disconnects === 1)).toBe(true);
+  });
 });
