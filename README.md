@@ -7,7 +7,7 @@ Scoring is labelled "practice scoring" until a driving instructor has reviewed t
 ## What's in it
 
 - About 2 × 1.5 km around Amir Temur square, built from OpenStreetMap
-- A Chevrolet Gentra style car with automatic and manual gearbox, cockpit view and working mirrors
+- A Chevrolet Gentra (3D model "Lacetti" by uzb_rx7, CC-BY-4.0) with automatic and manual gearbox, cockpit view and working mirrors
 - AI traffic, traffic lights and pedestrians
 - An exam route of 3.8 km with 25 scored rules, voice directions and a debrief map of your mistakes
 - Free drive with no scoring

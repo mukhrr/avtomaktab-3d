@@ -42,3 +42,40 @@ What it does:
 - Fades out on the menu, suspends when the tab is hidden.
 
 What it does not do: no gear shift sounds, no road or wind noise, no collision sounds, no reverse beeper, no exhaust pops, and no change with the surface. The builder has not heard any of it. It is checked only by parameter tests against a stub AudioContext (frequencies, gains, filter values, node counts, events), so the engine tone and the squeal level still need ears.
+
+## Real Gentra model
+
+`main` dev build, 1280x720, noon, high preset, free drive at the spawn. Same URL params as the Task 3 shots.
+
+| Shot | What |
+|---|---|
+| [gentra-real-side.jpg](gentra-real-side.jpg) | side profile of the glb body, model wheels in the arches |
+| [gentra-real-front.jpg](gentra-real-front.jpg) | front, grille bowtie removed |
+| [gentra-real-chase.jpg](gentra-real-chase.jpg) | chase view at the spawn |
+| [cockpit-real.jpg](cockpit-real.jpg) | cockpit view: the model's interior is on CAR_LAYER and does not show through the dashboard |
+
+Player car draws in 10 meshes (6 body groups, one per wheel), only the paint casts a shadow. Chase view at the spawn, high: 86 main-pass calls with the glb, 89 with the code-built body (the car itself 14 and 17 calls, measured by hiding it). Triangles in the main pass 800k against 753k.
+
+Mesh to material table the pipeline found in assets-src/gentra/raw (98 meshes, 22,685 triangles):
+
+| Material | Group | Meshes | Triangles | Area m² |
+|---|---|---|---|---|
+| Material.006 | paint | 20 | 9228 | 14.9 |
+| Material___585 | interior | 5 | 1969 | 17.6 |
+| Material11 | shell | 6 | 1248 | 16.6 |
+| Material___593 | shell | 16 | 1130 | 10.6 |
+| Material5 (rims) | wheel | 4 | 4480 | 2.9 |
+| Sidewall | wheel | 4 | 1200 | 0.7 |
+| Tread | wheel | 4 | 960 | 1.9 |
+| Material7 (hub discs) | wheel | 4 | 40 | 0.4 |
+| HeadLights | lights | 2 | 594 | 0.6 |
+| Material___586 | lights | 6 | 406 | 0.5 |
+| chrome | chrome | 4 | 517 | 0.2 |
+| Suspension | paint (baked to vertex colour) | 10 | 212 | 1.1 |
+| SideLights | paint | 2 | 50 | 0.07 |
+| Material4 (windows) | glass | 6 | 160 | 2.9 |
+| Material8 (tail lamp lenses) | glass | 2 | 198 | 0.2 |
+| Material14 (headlamp lenses) | glass | 2 | 268 | 0.2 |
+| Aerials | dropped | 1 | 25 | 0.003 |
+
+Material___585 has the largest area but is the interior atlas; the paint is Material.006, the largest untextured one.

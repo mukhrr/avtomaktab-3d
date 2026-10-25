@@ -69,8 +69,9 @@ export class Vehicle {
   private state: DrivetrainState;
   private slipNow = 0;
 
-  constructor(world: RAPIER.World, spawn: Spawn, gearbox: Gearbox = 'auto') {
-    const model = createCarModel();
+  /** `body` is the preloaded glb scene from loadCarBody; null builds the body in code. */
+  constructor(world: RAPIER.World, spawn: Spawn, gearbox: Gearbox = 'auto', body: THREE.Object3D | null = null) {
+    const model = createCarModel(body);
     this.object = model.root;
     this.wheels = model.wheels;
     this.pivot = model.lean;

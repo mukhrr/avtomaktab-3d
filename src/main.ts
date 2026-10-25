@@ -30,6 +30,7 @@ import { trafficView } from './traffic/trafficView';
 import { BlinkClock, newCabin, stepCabin } from './vehicle/cabin';
 import { createCockpit } from './vehicle/cockpit';
 import { InputReader } from './vehicle/input';
+import { loadCarBody } from './vehicle/carModel';
 import { Vehicle } from './vehicle/vehicle';
 import { useSkyAmbient } from './render/litMaterials';
 import { afterProbe, createProbe } from './render/probe';
@@ -60,6 +61,7 @@ const ROUTE = 'route-1';
 const START_CLEAR = 40;
 const NO_KEYS = new Set<string>();
 
+const carBody = loadCarBody();
 const district: DistrictData = await (await fetch(`/districts/${DISTRICT}/district.json`)).json();
 const route: ExamRoute = await (await fetch(`/districts/${DISTRICT}/routes/${ROUTE}.json`)).json();
 
@@ -94,7 +96,7 @@ document.body.append(credit);
 
 const { world, ground } = await createPhysics(district);
 const spawn = nearestLane(district, ...SPAWN_POINT)!;
-const car = new Vehicle(world, spawn);
+const car = new Vehicle(world, spawn, 'auto', await carBody);
 scene.add(car.object);
 car.sync();
 car.object.traverse(o => o.layers.set(CAR_LAYER));
