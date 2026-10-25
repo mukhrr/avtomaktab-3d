@@ -1,6 +1,6 @@
 import type { DistrictData, GraphEdge, Sign } from '../shared/district';
 import { loadCatalogue } from '../shared/signCatalogue';
-import { JUNCTION_CODES, JUNCTION_REACH } from '../sim/signs';
+import { JUNCTION_REACH } from '../sim/signs';
 import { project } from '../traffic/turns';
 import type { ExamRoute } from './route';
 
@@ -10,7 +10,7 @@ const polyLength = (pts: GraphEdge['points']) => {
   return d;
 };
 
-/** The signs the driver passes, in route order: those on its lanes between start and finish, then side-street junction signs facing each junction it crosses. */
+/** The signs the driver passes, in route order: those on its lanes between start and finish, then signs on side edges governing traffic that would enter them from a junction it crosses. */
 export function signsOnRoute(d: DistrictData, route: ExamRoute): Sign[] {
   const edges = new Map(d.graph.edges.map(e => [e.id, e]));
   const nodes = new Map(d.graph.nodes.map(n => [n.id, n]));
@@ -41,14 +41,15 @@ export function signsOnRoute(d: DistrictData, route: ExamRoute): Sign[] {
 
     const node = step.nodeId && nodes.get(step.nodeId);
     if (!node) return;
+    const next = route.steps[i + 1].ref;
     for (const id of node.edges) {
-      const approach = edges.get(id)!;
-      const len = polyLength(approach.points);
-      for (const toward of [1, -1] as const) {
-        if ((toward === 1 ? approach.to : approach.from) !== node.id) continue;
-        for (const s of byLane.get(`${id}|${toward}`) ?? []) {
-          const left = toward === 1 ? len - s.at : s.at;
-          if (JUNCTION_CODES.has(s.code) && left <= JUNCTION_REACH) take(s);
+      const side = edges.get(id)!;
+      const len = polyLength(side.points);
+      for (const away of [1, -1] as const) {
+        if ((away === 1 ? side.from : side.to) !== node.id) continue;
+        if (id === next.edgeId && away === next.dir) continue;
+        for (const s of byLane.get(`${id}|${away}`) ?? []) {
+          if ((away === 1 ? s.at : len - s.at) <= JUNCTION_REACH) take(s);
         }
       }
     }

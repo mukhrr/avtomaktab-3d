@@ -30,11 +30,21 @@ describe('signsOnRoute', () => {
 
   it('counts a no-entry on a side street at a junction the route crosses', () => {
     const { d, route } = setup([
-      sign('near', CODE.noEntry, 'n', -1, 10),
-      sign('far', CODE.noEntry, 'n', -1, 90),
-      sign('away', CODE.noEntry, 'n', 1, 10),
+      sign('near', CODE.noEntry, 'n', 1, 10),
+      sign('far', CODE.noEntry, 'n', 1, 90),
+      sign('approaching', CODE.noEntry, 'n', -1, 10),
     ]);
     expect(ids(d, route)).toEqual(['near']);
+  });
+
+  it('counts the rule 3.1 placement, dir -1 near the edge end that is the crossed node', () => {
+    const { d, route } = setup([sign('rule', CODE.noEntry, 's', -1, 117), sign('far', CODE.noEntry, 's', -1, 60)]);
+    expect(ids(d, route)).toEqual(['rule']);
+  });
+
+  it('counts any code, not only junction signs', () => {
+    const { d, route } = setup([sign('a', CODE.speedLimit, 'n', 1, 10)]);
+    expect(ids(d, route)).toEqual(['a']);
   });
 
   it('does not count a sign before the start or after the finish', () => {
