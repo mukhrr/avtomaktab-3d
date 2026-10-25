@@ -10,6 +10,7 @@ Collected from the build ledger when M5a finished. All 297 official signs are in
 - Ruling: Ukraine (UA) and Moldova (MD) public-domain Commons sets are allowed as art sources for entries refused or unmatched in UZ, RU, BY and KZ. They are the same post-Soviet sign family, and drawing 95+ signs by hand is the costlier and less faithful path; cost if wrong: a few pictograms in a slightly different national style.
 - Ruling: foreign-language inscriptions on mapped art are replaced with Uzbek Latin text in Task 4, and the 1.4.x catalogue names are fixed to match the art position; cost if wrong: rework only.
 - Ruling: a Commons category is not evidence under the checked rule. 5.35 and 7.4.10 (the description covers only part of the Uzbek meaning) are unchecked, with 7.20; a checked sign can be penalised, so doubt resolves to unchecked; cost if wrong: three signs not penalised until a photo check.
+- Note: Task 4 redrew 7.20 ("XAVFLI YUK / sinfi") from the lex.uz sheet and checked it (reference https://lex.uz/uz/files/5958448), so 7.20 is `checked: true` now. 5.35 and 7.4.10 are still `checked: false` in the catalogue.
 - Ruling: Commons art that needs editing is copied to data/signs/drawn/<n>.svg, edited there, and recorded as `{ source: 'drawn', file, basedOn, licence }`. assets-src is gitignored, so edited files must be committed, and the source page keeps its credit; cost if wrong: a schema field.
 - Ruling: Sign.value and plateKey accept number or string. Time and text kinds take a pre-formatted string ('8-19'), the rest take numbers, because 7.5.4 to 7.5.7 need a range in one slot; cost if wrong: a type widening.
 - Ruling: speed variants (5 to 100) are built for every speed-kind entry, including 3.25 and 4.8; cost if wrong: a few more cells.
@@ -34,7 +35,7 @@ None. No catalogue entry has `exempt` set and none has `art: null`, so every sig
 - Group 6: 6.5 to 6.11
 - Group 7: 7.2.3, 7.2.4, 7.3.1, 7.3.2, 7.3.3, 7.4.10, 7.5.1, 7.5.2, 7.6.1, 7.21
 
-Carried open from Task 3: reference photos for 5.16.1 and 5.16.2 (CODE.pedestrianCrossing) and 4.2.1 and 4.2.2 so they can be checked.
+Task 3 carried 5.16.1, 5.16.2 (CODE.pedestrianCrossing), 4.2.1 and 4.2.2 forward for reference photos. Task 4 checked all four against the lex.uz sheets and neither pair was swapped, so they are `checked: true`.
 
 ## Budget
 
