@@ -39,6 +39,8 @@ export function lampMaterials(): Record<LampGroup, THREE.MeshStandardMaterial> {
   for (const g of LAMP_GROUPS) {
     out[g] = new THREE.MeshStandardMaterial({ name: g, color: LOOK[g].lens, roughness: 0.3, emissiveIntensity: 0 });
     glow(out[g]);
+    // No lens texture to dim the glow here, and at full strength tone mapping turns the red brake lamps orange.
+    out[g].emissive.multiplyScalar(0.4);
   }
   return out;
 }
