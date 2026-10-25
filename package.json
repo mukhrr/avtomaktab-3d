@@ -16,7 +16,8 @@
     "exam:route": "tsx tools/exam/route.ts",
     "model:gentra": "tsx tools/model/gentra.ts",
     "signs:fetch": "tsx tools/signs/fetch.ts",
-    "signs:atlas": "tsx tools/signs/atlas.ts"
+    "signs:atlas": "tsx tools/signs/atlas.ts",
+    "signs:credits": "tsx tools/signs/credits.ts"
   },
   "keywords": [],
   "author": "Mukher",
