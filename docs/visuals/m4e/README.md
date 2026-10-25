@@ -84,8 +84,11 @@ Material___585 has the largest area but is the interior atlas; the paint is Mate
 
 | Shot | What |
 |---|---|
-| [lamps-rear-brake-left.jpg](lamps-rear-brake-left.jpg) | evening chase, brake held, left indicator in its lit phase, headlight beams on the road ahead |
-| [lamps-reverse.jpg](lamps-reverse.jpg) | evening chase, R selected, reverse cells lit |
+| [lamps-rear-brake-left.jpg](lamps-rear-brake-left.jpg) | noon chase, brake held, left indicator in its lit phase |
+| [lamps-rear-brake-left-evening.jpg](lamps-rear-brake-left-evening.jpg) | the same at evening, headlight beams on the road ahead |
+| [lamps-reverse.jpg](lamps-reverse.jpg) | noon chase, R selected, reverse lamps lit |
 | [lamps-front-evening.jpg](lamps-front-evening.jpg) | front at evening, headlights on by themselves, two spot light beams |
 
-Five lamp groups, one mesh and material each: head, tail (tail and brake), reverse, indicatorLeft, indicatorRight. The model has no side repeaters and no third brake lamp. Left is +x, the driver's side. Chase view at the spawn, high: 90 main-pass calls at noon and at evening (budget 92). The beams are two spot lights on medium and high, off on low.
+Five lamp groups, one mesh and material each: head, tail (tail and brake), reverse, indicatorLeft, indicatorRight. The model has no side repeaters and no third brake lamp. Left is +x, the driver's side. Chase view at the spawn, high: 90 main-pass calls at noon and at evening (budget 92). The beams are two spot lights on medium and high, off on low; switching up from low adds them then.
+
+The model's red tail lamp lens over the indicator and reverse cells is moved into those lamps' meshes as a clear lens, and lit lamps turn their lens amber or white, so they read at noon through no red glass. The roll cage (190 triangles of tube parts in the interior mesh) and the oversized exhaust tip (its own meshes) are removed. The rest of the tuning kit is part of single body meshes and stays: front splitter and lower lip in the bumper mesh (obj109, one 1,062 triangle part), side skirts and wide wheel arches in the body shell (obj116, one 2,218 triangle part), the bucket seats.

@@ -93,3 +93,18 @@ describe('lamp materials', () => {
     expect(head.r).toBeGreaterThanOrEqual(head.b);
   });
 });
+
+describe('lens colour', () => {
+  it('turns the indicator lens amber and the reverse lens white only while lit', () => {
+    const mats = lampMaterials();
+    const off = mats.indicatorLeft.color.getHex();
+    const lamps = createLampControl(mats);
+    lamps.set({ ...newLampState(), left: true, reverse: true });
+    const hue = mats.indicatorLeft.color.getHSL({ h: 0, s: 0, l: 0 }, THREE.SRGBColorSpace).h * 360;
+    expect(hue).toBeGreaterThan(20);
+    expect(hue).toBeLessThan(45);
+    expect(mats.reverse.color.getHex()).toBe(0xffffff);
+    lamps.set(newLampState());
+    expect(mats.indicatorLeft.color.getHex()).toBe(off);
+  });
+});

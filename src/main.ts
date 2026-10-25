@@ -102,7 +102,7 @@ scene.add(car.object);
 car.sync();
 car.object.traverse(o => o.layers.set(CAR_LAYER));
 // After the CAR_LAYER pass, so the beams stay on layer 0 and light the road in cockpit view too.
-const beams = quality.headlightBeams ? createHeadlightBeams(car.object, GROUND_Y) : null;
+let beams = quality.headlightBeams ? createHeadlightBeams(car.object, GROUND_Y) : null;
 let beamsAllowed = quality.headlightBeams;
 const lamps = newLampState();
 const cockpit = createCockpit();
@@ -219,6 +219,8 @@ function applyQuality(q: Quality) {
   env.setQuality(s);
   mirrors.setQuality(s);
   beamsAllowed = s.headlightBeams;
+  // Added once, on the first switch up from low; that one shader recompile is the cost.
+  if (beamsAllowed && !beams) beams = createHeadlightBeams(car.object, GROUND_Y);
 }
 
 // The probe samples the same loop that draws the start screen, so it never blocks it.

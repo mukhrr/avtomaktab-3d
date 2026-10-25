@@ -31,7 +31,7 @@ const LOOK: Record<LampGroup, { lens: number; glow: number }> = {
   indicatorRight: { lens: 0xb06a10, glow: 0xff8a10 },
 };
 
-const HEAD = 2.5, TAIL = 1, BRAKE = 6, REVERSE = 5, INDICATOR = 6;
+const HEAD = 2.5, TAIL = 1, BRAKE = 6, REVERSE = 3, INDICATOR = 3;
 
 /** Materials for the code-built body's lamps. */
 export function lampMaterials(): Record<LampGroup, THREE.MeshStandardMaterial> {
@@ -56,15 +56,26 @@ export function glow(m: THREE.MeshStandardMaterial): void {
   if (g !== 'head' && g !== 'tail') m.emissiveMap = null;
 }
 
-/** Switches lamps by emissive intensity alone, so no shader recompiles and no allocations. */
+/**
+ * Switches lamps by emissive intensity, and for the indicators and reverse lamps also the lens colour, which is clear
+ * when off. Only uniforms change, so no shader recompiles and no allocations.
+ */
 export function createLampControl(mats: Record<LampGroup, THREE.MeshStandardMaterial>) {
+  const lens = (g: LampGroup) => {
+    const off = mats[g].color.clone(), on = new THREE.Color(LOOK[g].glow);
+    return (lit: boolean, intensity: number) => {
+      mats[g].color.copy(lit ? on : off);
+      mats[g].emissiveIntensity = lit ? intensity : 0;
+    };
+  };
+  const reverse = lens('reverse'), left = lens('indicatorLeft'), right = lens('indicatorRight');
   return {
     set(s: LampState): void {
       mats.head.emissiveIntensity = s.head ? HEAD : 0;
       mats.tail.emissiveIntensity = s.brake ? BRAKE : s.head ? TAIL : 0;
-      mats.reverse.emissiveIntensity = s.reverse ? REVERSE : 0;
-      mats.indicatorLeft.emissiveIntensity = s.left ? INDICATOR : 0;
-      mats.indicatorRight.emissiveIntensity = s.right ? INDICATOR : 0;
+      reverse(s.reverse, REVERSE);
+      left(s.left, INDICATOR);
+      right(s.right, INDICATOR);
     },
   };
 }
