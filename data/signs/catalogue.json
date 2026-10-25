@@ -2189,9 +2189,9 @@
   "clauseQuote": "3.4. “Yuk avtomobillarining harakatlanishi taqiqlangan”. Ruxsat etilgan toʻliq vazni 3,5 tonnadan (agar vazni belgida koʻrsatilmagan boʻlsa) yoki ruxsat etilgan",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/3.4.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.4.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/3.4.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.4.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.4.svg",
@@ -2469,9 +2469,9 @@
   "clauseQuote": "3.11. “Vazn cheklangan”. Haqiqiy umumiy vazni belgida koʻrsatilganidan ortiq boʻlgan transport vositalarining, shuningdek, transport vositalari tarkiblarining harakatlanishi taqiqlanadi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/3.11.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.11.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/3.11.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.11.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.11.svg",
@@ -2504,9 +2504,9 @@
   "clauseQuote": "3.12. “Oʻqqa tushadigan ogʻirlik cheklangan”. Har qanday oʻqiga tushadigan haqiqiy ogʻirlik belgida koʻrsatilganidan ortiq boʻlgan transport vositalarining harakatlanishi taqiqlanadi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/3.12.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:UZ_road_sign_3.12.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/3.12.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:UZ_road_sign_3.12.svg",
    "licence": "CC0"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:UZ_road_sign_3.12.svg",
@@ -2539,9 +2539,9 @@
   "clauseQuote": "3.13. “Cheklangan balandlik”. Gabarit balandligi (yuk bilan yoki yuksiz) belgida koʻrsatilgandan ortiq boʻlgan transport vositalarining harakatlanishi taqiqlanadi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/3.13.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.13.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/3.13.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.13.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.13.svg",
@@ -2574,9 +2574,9 @@
   "clauseQuote": "3.14. “Cheklangan kenglik”. Gabarit kengligi (yuk bilan yoki yuksiz) belgida koʻrsatilganidan ortiq boʻlgan transport vositalarining harakatlanishi taqiqlanadi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/3.14.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.14.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/3.14.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.14.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.14.svg",
@@ -2609,9 +2609,9 @@
   "clauseQuote": "3.15. “Cheklangan uzunlik”. Gabarit uzunligi (yuk bilan yoki yuksiz) belgida koʻrsatilganidan ortiq boʻlgan transport vositalari (transport vositalari tarkiblari)ning harakatlanishi",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/3.15.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.15.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/3.15.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.15.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.15.svg",
@@ -2644,9 +2644,9 @@
   "clauseQuote": "3.16. “Eng kam oraliq”. Belgida koʻrsatilganidan kam boʻylama oraliq masofada harakatlanish taqiqlanadi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/3.16.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:UZ_road_sign_3.16.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/3.16.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:UZ_road_sign_3.16.svg",
    "licence": "CC0"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:UZ_road_sign_3.16.svg",
@@ -2679,9 +2679,9 @@
   "clauseQuote": "3.17.1. “Bojxona”. Bojxona (nazorat punkti) oldida toʻxtamasdan oʻtib ketish taqiqlanadi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/3.17.1.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:UZ_road_sign_3.17.1.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/3.17.1.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:UZ_road_sign_3.17.1.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:UZ_road_sign_3.17.1.svg",
@@ -2749,13 +2749,13 @@
   "clauseQuote": "3.17.3. “Nazorat joyi”. Transport vositalarining tekshirib oʻtkazilishi majburiy boʻlgan vaqtincha yoki doimiy nazorat punktlarida oʻrnatiladi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/3.17.3.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.17.3.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/3.17.3.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.17.3.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.17.3.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/7050646.jpg",
+  "checked": true,
   "exempt": null,
   "size": [
    0.7,
@@ -3029,9 +3029,9 @@
   "clauseQuote": "3.24. “Yuqori tezlik cheklangan”. Belgida koʻrsatilganidan ortiq tezlikda (km/s) harakatlanish taqiqlanishini bildiradi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/3.24.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.24-5.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/3.24.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.24-5.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.24-5.svg",
@@ -3057,16 +3057,16 @@
   },
   "shape": "circle",
   "colours": "white field grey diagonals",
-  "valueKind": null,
+  "valueKind": "speed",
   "meaning": "End of 3.24 zone.",
   "carRelevant": true,
   "checkable": "Limit ends; general limits apply",
   "clauseQuote": "3.25. “Yuqori tezlik cheklangan hududning oxiri”.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/3.25.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:BY_road_sign_3.25.1.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/3.25.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_3.25.1.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:BY_road_sign_3.25.1.svg",
@@ -4110,13 +4110,13 @@
   "clauseQuote": "4.7. “Eng kam tezlik”. Faqat belgida koʻrsatilgan yoki undan yuqori tezlikda (km/soat) harakatlanishga ruxsat etilishini bildiradi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/4.7.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:4.7_Belarus_(Road_sign).svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/4.7.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:4.7_Belarus_(Road_sign).svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:4.7_Belarus_(Road_sign).svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/7253447.jpg",
+  "checked": true,
   "exempt": null,
   "size": [
    0.7,
@@ -4138,20 +4138,20 @@
   },
   "shape": "circle",
   "colours": "blue field red diagonal",
-  "valueKind": null,
+  "valueKind": "speed",
   "meaning": "End of 4.7 zone.",
   "carRelevant": true,
   "checkable": "End of minimum speed",
   "clauseQuote": "4.8. “Eng kam tezlik belgilangan yoʻlning oxiri”.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/4.8.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:4.8_Belarus_(Road_sign).svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/4.8.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:4.8_Belarus_(Road_sign).svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:4.8_Belarus_(Road_sign).svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/7253447.jpg",
+  "checked": true,
   "exempt": null,
   "size": [
    0.7,
@@ -5049,9 +5049,9 @@
   "clauseQuote": "5.11.2. “Qayrilib olish oraligʻi”. Qayrilib olish oraligʻining uzunligini bildiradi. Chapga burilish taqiqlanadi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/5.11.2.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:UA_road_sign_5.27_(1991%E2%80%932021).svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/5.11.2.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:UA_road_sign_5.27_(1991%E2%80%932021).svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:UA_road_sign_5.27_(1991%E2%80%932021).svg",
@@ -5154,13 +5154,13 @@
   "clauseQuote": "5.14. “Yoʻnalishsiz taksilar toʻxtab turish joyi”.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/5.14.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.14.2.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/5.14.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.14.2.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.14.2.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/7050653.jpg",
+  "checked": true,
   "exempt": null,
   "size": [
    0.7,
@@ -5574,13 +5574,13 @@
   "clauseQuote": "5.18. “Tavsiya etilgan tezlik”. Yoʻlning shu qismida tavsiya etilgan harakatlanish tezligini bildiradi. Belgiga eng yaqin chorrahagacha amal qilinadi. 5.18",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/5.18.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.18.1.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/5.18.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.18.1.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.18.1.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/7050653.jpg",
+  "checked": true,
   "exempt": null,
   "size": [
    0.7,
@@ -5743,9 +5743,9 @@
   "clauseQuote": "5.20.1, 5.20.2. “Yoʻnalishlarning dastlabki koʻrsatkichi”. Belgida koʻrsatilgan aholi punkti va boshqa manzillarga harakatlanish yoʻnalishini bildiradi. Belgida 5.29.1 belgisining hamda",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/5.20.1.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:UZ_road_sign_5.20.1_A.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/5.20.1.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:UZ_road_sign_5.20.1_A.svg",
    "licence": "CC0"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:UZ_road_sign_5.20.1_A.svg",
@@ -5778,9 +5778,9 @@
   "clauseQuote": "5.20.1, 5.20.2. “Yoʻnalishlarning dastlabki koʻrsatkichi”. Belgida koʻrsatilgan aholi punkti va boshqa manzillarga harakatlanish yoʻnalishini bildiradi. Belgida 5.29.1 belgisining hamda",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/5.20.2.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:UZ_road_sign_5.20.2_A.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/5.20.2.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:UZ_road_sign_5.20.2_A.svg",
    "licence": "CC0"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:UZ_road_sign_5.20.2_A.svg",
@@ -5988,13 +5988,13 @@
   "clauseQuote": "5.22. “Aholi punktining boshlanishi”. Ushbu Qoidalarning aholi punktlarida harakatlanish tartibini belgilovchi talablariga amal qilinadigan joylarning nomi hamda uning boshlanishini",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/5.22.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.22.1.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/5.22.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.22.1.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.22.1.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/7050656.jpg",
+  "checked": true,
   "exempt": null,
   "size": [
    0.7,
@@ -6023,13 +6023,13 @@
   "clauseQuote": "5.23. “Aholi punktining oxiri”. Ushbu Qoidalarning aholi punktlarida harakatlanish tartib-talablari bekor qilingan joyni bildiradi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/5.23.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.23.1.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/5.23.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.23.1.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.23.1.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/7050656.jpg",
+  "checked": true,
   "exempt": null,
   "size": [
    0.7,
@@ -6058,13 +6058,13 @@
   "clauseQuote": "5.24. “Aholi punktining boshlanishi”. Ushbu Qoidalarning aholi punktlarida harakatlanish tartibini belgilovchi talablariga amal qilinmaydigan joylarning nomi hamda uning boshlanishini",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/5.24.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.24.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/5.24.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.24.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.24.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/7050656.jpg",
+  "checked": true,
   "exempt": null,
   "size": [
    0.7,
@@ -6093,13 +6093,13 @@
   "clauseQuote": "5.25. “Aholi punktining oxiri”. 5.24 yoʻl belgisi bilan koʻrsatilgan aholi punktining oxirini bildiradi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/5.25.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.25.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/5.25.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.25.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.25.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/7050656.jpg",
+  "checked": true,
   "exempt": null,
   "size": [
    0.7,
@@ -6163,9 +6163,9 @@
   "clauseQuote": "5.27. “Masofalar koʻrsatkichi”. Yoʻnalish boʻyicha joylashgan aholi punktlarigacha boʻlgan masofani bildiradi (km).",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/5.27.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:KZ_road_sign_5.27_B.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/5.27.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:KZ_road_sign_5.27_B.svg",
    "licence": "CC0"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:KZ_road_sign_5.27_B.svg",
@@ -6198,9 +6198,9 @@
   "clauseQuote": "5.28. “Kilometr belgisi”. Yoʻlning boshi yoki oxirigacha boʻlgan masofani bildiradi (km).",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/5.28.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.28_A.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/5.28.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.28_A.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.28_A.svg",
@@ -6233,9 +6233,9 @@
   "clauseQuote": "5.29.1, 5.29.2. “Yoʻl raqami”. 5.29.1 — yoʻlga berilgan raqam, 5.29.2 — yoʻlning raqami va yoʻnalishini bildiradi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/5.29.1.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:RU_road_sign_6.14.1_A.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/5.29.1.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_6.14.1_A.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_6.14.1_A.svg",
@@ -6268,9 +6268,9 @@
   "clauseQuote": "5.29.1, 5.29.2. “Yoʻl raqami”. 5.29.1 — yoʻlga berilgan raqam, 5.29.2 — yoʻlning raqami va yoʻnalishini bildiradi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/5.29.2.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:RU_road_sign_6.14.2_A.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/5.29.2.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_6.14.2_A.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_6.14.2_A.svg",
@@ -6443,13 +6443,13 @@
   "clauseQuote": "5.32.1 — 5.32.3. “Chetlab oʻtish yoʻnalishi”. Harakatlanish vaqtincha yopib qoʻyilgan yoʻl qismini chetlab oʻtish yoʻnalishini bildiradi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/5.32.1.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.32.1.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/5.32.1.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.32.1.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.32.1.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/7050656.jpg",
+  "checked": true,
   "exempt": null,
   "size": [
    0.7,
@@ -6478,13 +6478,13 @@
   "clauseQuote": "5.32.1 — 5.32.3. “Chetlab oʻtish yoʻnalishi”. Harakatlanish vaqtincha yopib qoʻyilgan yoʻl qismini chetlab oʻtish yoʻnalishini bildiradi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/5.32.2.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.32.2.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/5.32.2.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.32.2.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.32.2.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/7050656.jpg",
+  "checked": true,
   "exempt": null,
   "size": [
    0.7,
@@ -6513,13 +6513,13 @@
   "clauseQuote": "5.32.1 — 5.32.3. “Chetlab oʻtish yoʻnalishi”. Harakatlanish vaqtincha yopib qoʻyilgan yoʻl qismini chetlab oʻtish yoʻnalishini bildiradi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/5.32.3.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.32.3.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/5.32.3.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.32.3.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.32.3.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/7050656.jpg",
+  "checked": true,
   "exempt": null,
   "size": [
    0.7,
@@ -6548,9 +6548,9 @@
   "clauseQuote": "5.33. “Toʻxtash chizigʻi”. Svetoforning (tartibga soluvchining) taqiqlovchi ishorasida transport vositalari toʻxtaydigan yoʻnalishini bildiradi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/5.33.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:KZ_road_sign_5.33.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/5.33.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:KZ_road_sign_5.33.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:KZ_road_sign_5.33.svg",
@@ -7273,13 +7273,13 @@
   "clauseQuote": "6.3.1. “Avtomobillarga yonilgʻi quyish shoxobchasi”.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/6.3.1.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:BY_road_sign_6.3.1.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/6.3.1.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_6.3.1.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:BY_road_sign_6.3.1.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/7050662.jpg",
+  "checked": true,
   "exempt": null,
   "size": [
    0.7,
@@ -7378,13 +7378,13 @@
   "clauseQuote": "6.4. “Avtomobillarga texnik xizmat koʻrsatish joyi”.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/6.4.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:UA_road_sign_6.5.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/6.4.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:UA_road_sign_6.5.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:UA_road_sign_6.5.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/7050662.jpg",
+  "checked": true,
   "exempt": null,
   "size": [
    0.7,
@@ -8253,9 +8253,9 @@
   "clauseQuote": "7.1.1. “Obyektgacha boʻlgan masofa”. Belgidan yoʻlning xavfli joyi, yoʻl harakatiga tegishli cheklovlar kiritiladigan joyi yoki harakat yoʻnalishi boʻyicha oldindagi",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/7.1.1.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:RU_road_sign_8.1.1.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/7.1.1.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_8.1.1.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_8.1.1.svg",
@@ -8288,9 +8288,9 @@
   "clauseQuote": "7.1.2. “Obyektgacha boʻlgan masofa”. Aholi punktlaridan tashqarida chorraha oldiga 2.5. yoʻl belgisi oʻrnatilgan boʻlsa, 2.4. yoʻl belgisi bilan oʻrnatilib,",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/7.1.2.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:RU_road_sign_8.1.2.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/7.1.2.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_8.1.2.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_8.1.2.svg",
@@ -8323,13 +8323,13 @@
   "clauseQuote": "7.1.3, 7.1.4. “Obyektgacha boʻlgan masofa”. Yoʻldan chetda joylashgan manzilgacha boʻlgan masofani bildiradi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/7.1.3.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:RU_road_sign_8.1.3.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/7.1.3.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_8.1.3.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_8.1.3.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/5958445",
+  "checked": true,
   "exempt": null,
   "size": [
    0.6,
@@ -8358,13 +8358,13 @@
   "clauseQuote": "7.1.3, 7.1.4. “Obyektgacha boʻlgan masofa”. Yoʻldan chetda joylashgan manzilgacha boʻlgan masofani bildiradi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/7.1.4.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.1.3.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/7.1.4.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.1.3.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.1.3.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/5958445",
+  "checked": true,
   "exempt": null,
   "size": [
    0.6,
@@ -8393,13 +8393,13 @@
   "clauseQuote": "7.2.1. “Taʼsir oraligʻi”. Ogohlantiruvchi belgilar bilan belgilangan xavfli joyning uzunligini yoki taqiqlovchi va axborot-koʻrsatkich belgilarining taʼsir oraligʻini koʻrsatadi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/7.2.1.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:7.2.1_(Road_sign).svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/7.2.1.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:7.2.1_(Road_sign).svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:7.2.1_(Road_sign).svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/5958445",
+  "checked": true,
   "exempt": null,
   "size": [
    0.6,
@@ -8428,13 +8428,13 @@
   "clauseQuote": "7.2.2 — 7.2.6. “Taʼsir oraligʻi”.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/7.2.2.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.2.2.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/7.2.2.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.2.2.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.2.2.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/5958445",
+  "checked": true,
   "exempt": null,
   "size": [
    0.6,
@@ -8456,7 +8456,7 @@
   },
   "shape": "plate",
   "colours": "white field, black border and pictogram",
-  "valueKind": "distance",
+  "valueKind": null,
   "meaning": "End of 3.27-3.30 zone.",
   "carRelevant": true,
   "checkable": null,
@@ -8491,7 +8491,7 @@
   },
   "shape": "plate",
   "colours": "white field, black border and pictogram",
-  "valueKind": "distance",
+  "valueKind": null,
   "meaning": "Informs you are inside 3.27-3.30 zone.",
   "carRelevant": true,
   "checkable": null,
@@ -8533,13 +8533,13 @@
   "clauseQuote": "7.2.2 — 7.2.6. “Taʼsir oraligʻi”.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/7.2.5.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.2.5.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/7.2.5.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.2.5.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.2.5.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/5958445",
+  "checked": true,
   "exempt": null,
   "size": [
    0.6,
@@ -8568,13 +8568,13 @@
   "clauseQuote": "7.2.2 — 7.2.6. “Taʼsir oraligʻi”.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/7.2.6.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.2.6.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/7.2.6.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.2.6.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.2.6.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/5958445",
+  "checked": true,
   "exempt": null,
   "size": [
    0.6,
@@ -9051,7 +9051,7 @@
   },
   "shape": "plate",
   "colours": "white field, black border and pictogram",
-  "valueKind": "time",
+  "valueKind": null,
   "meaning": "Sign applies on these days.",
   "carRelevant": true,
   "checkable": null,
@@ -9086,7 +9086,7 @@
   },
   "shape": "plate",
   "colours": "white field, black border and pictogram",
-  "valueKind": "time",
+  "valueKind": null,
   "meaning": "Sign applies on working days.",
   "carRelevant": true,
   "checkable": null,
@@ -9121,16 +9121,16 @@
   },
   "shape": "plate",
   "colours": "white field, black border and pictogram",
-  "valueKind": "time",
+  "valueKind": null,
   "meaning": "Sign applies on shown days.",
   "carRelevant": true,
   "checkable": null,
   "clauseQuote": "7.5.3. “Hafta kunlari”. Belgiga haftaning qaysi kunlari amal qilinishi koʻrsatilgan.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/7.5.3.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:KZ_road_sign_7.5.3.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/7.5.3.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:KZ_road_sign_7.5.3.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:KZ_road_sign_7.5.3.svg",
@@ -9163,9 +9163,9 @@
   "clauseQuote": "7.5.4. “Amal qilish vaqti”. Belgiga kunning qaysi vaqtida amal qilishni koʻrsatadi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/7.5.4.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.4.4.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/7.5.4.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.4.4.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.4.4.svg",
@@ -9198,13 +9198,13 @@
   "clauseQuote": "7.5.5 — 7.5.7. “Amal qilish vaqti”. Belgiga haftaning qaysi kuni va qaysi soatlarida amal qilishni koʻrsatadi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/7.5.5.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:7.5.5_(Road_sign).svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/7.5.5.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:7.5.1_(Road_sign).svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:7.5.5_(Road_sign).svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/5958445",
+  "checked": true,
   "exempt": null,
   "size": [
    0.6,
@@ -9233,13 +9233,13 @@
   "clauseQuote": "7.5.5 — 7.5.7. “Amal qilish vaqti”. Belgiga haftaning qaysi kuni va qaysi soatlarida amal qilishni koʻrsatadi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/7.5.6.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:7.5.6_(Road_sign).svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/7.5.6.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:7.5.2_(Road_sign).svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:7.5.6_(Road_sign).svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/5958445",
+  "checked": true,
   "exempt": null,
   "size": [
    0.6,
@@ -9268,13 +9268,13 @@
   "clauseQuote": "7.5.5 — 7.5.7. “Amal qilish vaqti”. Belgiga haftaning qaysi kuni va qaysi soatlarida amal qilishni koʻrsatadi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/7.5.7.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:BY_road_sign_7.5.7.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/7.5.7.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_7.5.7.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:BY_road_sign_7.5.7.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/5958445",
+  "checked": true,
   "exempt": null,
   "size": [
    0.6,
@@ -9688,9 +9688,9 @@
   "clauseQuote": "7.9. “Toʻxtab turish muddati cheklangan”. 5.15 belgisi oʻrnatilgan toʻxtab turish joyida transport vositalari toʻxtab turishining eng koʻp muddatini koʻrsatadi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/7.9.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.19.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/7.9.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.19.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.19.svg",
@@ -9758,9 +9758,9 @@
   "clauseQuote": "7.11. “Ruxsat etilgan toʻla vazni cheklangan”. Belgining taʼsiri ruxsat etilgan toʻla vazni qoʻshimcha-axborot yoʻl belgisida koʻrsatilgan miqdordan ortiq boʻlgan",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/7.11.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:Moldova_road_sign_6.13.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/7.11.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:Moldova_road_sign_6.13.svg",
    "licence": "Public domain"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:Moldova_road_sign_6.13.svg",
@@ -10071,13 +10071,13 @@
   "clauseQuote": "7.20. “Xavfli yuk toifasi”. Xavfli yuk toifasining (toifalarining) raqamini koʻrsatadi.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/7.20.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:7.19_Belarus_road_sign.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/7.20.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:7.19_Belarus_road_sign.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:7.19_Belarus_road_sign.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/5958448",
+  "checked": true,
   "exempt": null,
   "size": [
    0.6,
@@ -10275,9 +10275,9 @@
   "clauseQuote": "7.24. “Transport vositasining davlat raqami”.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/7.24.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:7.24_Uzbekistan_road_sign.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/7.24.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:7.24_Uzbekistan_road_sign.svg",
    "licence": "CC0"
   },
   "reference": "https://commons.wikimedia.org/wiki/File:7.24_Uzbekistan_road_sign.svg",

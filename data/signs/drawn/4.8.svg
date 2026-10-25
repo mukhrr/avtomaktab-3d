@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="700" height="700" viewBox="0 0 700 700" version="1.1">
+<title>4.8 Eng kam tezlik belgilangan yoʻlning oxiri</title>
+<circle fill="#ffffff" cx="350" cy="350" r="350"/>
+<circle fill="none" stroke="#000000" stroke-width="2" cx="350" cy="350" r="349"/>
+<circle fill="#0d69e1" cx="350" cy="350" r="330"/>
+<text transform="translate(350 480) scale(0.8 1)" x="0" y="0" font-family="Arial, Helvetica, 'Liberation Sans', sans-serif" font-weight="bold" font-size="363.1" text-anchor="middle" fill="#ffffff">{value}</text>
+<clipPath id="c"><circle cx="350" cy="350" r="330"/></clipPath>
+<g clip-path="url(#c)"><rect fill="#ff0000" x="-400" y="-32" width="800" height="64" transform="translate(350 350) rotate(-45)"/></g>
+</svg>

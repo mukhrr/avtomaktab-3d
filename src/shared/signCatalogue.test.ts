@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { CODE, entry, loadCatalogue, validateCatalogue } from './signCatalogue';
 
 function countBy<T>(items: T[], key: (item: T) => number): Record<number, number> {
@@ -60,6 +60,19 @@ test('keeps every drawn file in the repo', () => {
     .filter((e) => e.art?.source === 'drawn' && !existsSync(repoFile(e.art.file)))
     .map((e) => e.number);
   expect(absent).toEqual([]);
+});
+
+test('marks every value sign drawing with a {value} slot', () => {
+  const noSlot = loadCatalogue()
+    .filter((e) => e.valueKind && e.art?.source === 'drawn')
+    .filter((e) => !readFileSync(repoFile(e.art!.file), 'utf8').includes('{value}'))
+    .map((e) => e.number);
+  expect(noSlot).toEqual([]);
+});
+
+test('draws every value sign with a {value} slot rather than a baked number', () => {
+  const baked = loadCatalogue().filter((e) => e.valueKind && e.art?.source !== 'drawn').map((e) => e.number);
+  expect(baked).toEqual([]);
 });
 
 test('accepts drawn art based on public-domain Commons art and rejects other licences', () => {
