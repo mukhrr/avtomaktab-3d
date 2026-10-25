@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { CODE, entry, loadCatalogue, validateCatalogue } from './signCatalogue';
 
 function countBy<T>(items: T[], key: (item: T) => number): Record<number, number> {
@@ -45,6 +46,20 @@ test('rejects checked: true without a reference', () => {
 
 test('throws on an unknown code', () => {
   expect(() => entry('9.99')).toThrow('9.99');
+});
+
+const repoFile = (p: string) => new URL(`../../${p}`, import.meta.url);
+
+test('gives every entry art or a written exemption', () => {
+  const missing = loadCatalogue().filter((e) => !e.art && !e.exempt).map((e) => e.number);
+  expect(missing).toEqual([]);
+});
+
+test('keeps every drawn file in the repo', () => {
+  const absent = loadCatalogue()
+    .filter((e) => e.art?.source === 'drawn' && !existsSync(repoFile(e.art.file)))
+    .map((e) => e.number);
+  expect(absent).toEqual([]);
 });
 
 test('accepts drawn art based on public-domain Commons art and rejects other licences', () => {
