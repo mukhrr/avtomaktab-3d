@@ -61,6 +61,8 @@ export class ExamSession {
   onSubtitle?: (text: string) => void;
   /** Scored drives only. */
   onEnd?: (r: ExamResult) => void;
+  /** Unscored drives only: the route line after the examiner re-planned it. */
+  onRouteLine?: (line: Vec2[]) => void;
   /** Unscored drives only: reached the finish, or left the route (R, Esc, flip, out of bounds). */
   onFreeEnd?: (how: 'finished' | 'left') => void;
   private readonly engine: RuleEngine;
@@ -180,6 +182,10 @@ export class ExamSession {
   private emit(prompts: Prompt[]): void {
     for (const p of prompts) {
       if (!this._scored && VERDICT_KEYS.has(p.key)) continue;
+      if (!this._scored && p.key === 'exam.reroute' && this.examiner) {
+        this._routeLine = routeLine(this.deps.net, this.examiner.plan);
+        this.onRouteLine?.(this._routeLine);
+      }
       this._prompts.push(p);
       if (p.key === 'exam.violation') this.violationLines.push(subtitle(this._lang, p));
       this.voice?.say(p);

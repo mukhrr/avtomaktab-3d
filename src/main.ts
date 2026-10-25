@@ -201,6 +201,7 @@ session.onPrompt = p => {
   const e = session.penalties[id as keyof typeof session.penalties];
   hud.set({ toast: { seq: ++seq, id, vars: p.vars, points: e.points, tier: e.tier } });
 };
+session.onRouteLine = line => minimap.setRoute(line);
 session.onSubtitle = text => hud.set({ subtitle: { seq: ++seq, text } });
 session.onFreeEnd = how => {
   minimap.setRoute(null);

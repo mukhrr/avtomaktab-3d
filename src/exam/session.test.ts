@@ -187,6 +187,30 @@ describe('unscored drive', () => {
     expect(session.scored).toBe(true);
   });
 
+  it('redraws the route line after a re-plan, for unscored drives only', () => {
+    for (const scored of [false, true]) {
+      const { session, route, net, frameOn } = setup([]);
+      const lines: Vec2[][] = [];
+      session.onRouteLine = line => lines.push(line);
+      session.start('uz', 'auto', route, scored);
+      const before = session.routeLine;
+      // The route turns into n at the cross; this drive goes straight on along e instead.
+      const w = route.steps[0].ref, e = { edgeId: 'e', dir: 1 as const, lane: 0 };
+      for (let s = 10; s < net.path(w).length; s += 1) session.step(frameOn(w, s, 6));
+      for (const p of net.connector(w, e)) session.step({ ...frameOn(w, 0, 6), position: p });
+      for (let s = 0; s < 60; s += 0.1) session.step(frameOn(e, s, 6));
+      expect(session.prompts.map(p => p.key), String(scored)).toContain('exam.reroute');
+      if (scored) {
+        expect(lines).toEqual([]);
+        expect(session.routeLine).toBe(before);
+      } else {
+        expect(lines).toHaveLength(1);
+        expect(session.routeLine).toBe(lines[0]);
+        expect(session.routeLine).not.toEqual(before);
+      }
+    }
+  });
+
   it('routeLine follows the route given to start', () => {
     const { session, route } = setup([]);
     expect(session.routeLine).toEqual([]);

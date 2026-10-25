@@ -47,6 +47,7 @@ export class Examiner {
   private waypoints: Vec2[];
   private finish: Pose;
   private finishS = 0;
+  private _plan: ExamRoute;
   private cur = 0;
   private distance: number;
   private directions = new DirectionTracker();
@@ -75,6 +76,7 @@ export class Examiner {
     private readonly planner: typeof planRoute = planRoute,
   ) {
     this.edges = new Map(d.graph.edges.map(e => [e.id, e]));
+    this._plan = route;
     this.steps = route.steps;
     this.waypoints = route.waypoints;
     this.finish = route.finish;
@@ -106,6 +108,11 @@ export class Examiner {
       distanceM: this.driven, routeId: this.route.id,
       passed: this._phase === 'finished' && !this.failing(violations, total),
     };
+  }
+
+  /** The route being followed: the one given, or the latest re-plan from where the car left it. */
+  get plan(): ExamRoute {
+    return this._plan;
   }
 
   /** Replans that threw, for diagnostics and the headless runs. */
@@ -237,6 +244,7 @@ export class Examiner {
     try {
       const next = this.planner(this.net, this.d, [here, ...this.waypoints.slice(this.steps[this.cur].waypointIndex)], this.route.id, this.route.district);
       if (!sameLane(next.steps[0].ref, ref)) throw new Error('replanned from another lane');
+      this._plan = next;
       this.steps = next.steps;
       this.waypoints = next.waypoints;
       this.finish = next.finish;
