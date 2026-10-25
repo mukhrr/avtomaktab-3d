@@ -10,8 +10,9 @@ Scoring is labelled "practice scoring" until a driving instructor has reviewed t
 - A Chevrolet Gentra (3D model "Lacetti" by uzb_rx7, CC-BY-4.0) with automatic and manual gearbox, cockpit view and working mirrors
 - AI traffic, traffic lights and pedestrians
 - All 297 official Uzbek road signs, drawn from public-domain art (see `CREDITS.md`)
-- An exam route of 3.8 km with 25 scored rules, voice directions and a debrief map of your mistakes
-- Free drive with no scoring
+- Six exam routes of 3.8 to 6.2 km with 25 scored rules, voice directions and a debrief map of your mistakes. The exam draws one at random
+- Road signs placed by rule from the map, and every one of the 297 signs is met on at least one route
+- Free drive with no scoring. Pick a route to be guided along on the minimap, or drive without one
 
 ## Run it
 
