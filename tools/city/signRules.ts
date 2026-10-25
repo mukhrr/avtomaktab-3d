@@ -232,8 +232,11 @@ const RULES: [string, (d: RuleInput) => Sign[]][] = [
   ['priority', prioritySigns], ['crossing', crossingSigns], ['children, parking, hospital', poiSigns],
 ];
 
-/** Hand signs first, then each rule's signs where they do not clash; see the M5b plan for the merge rules. */
-export function placeRuleSigns(d: RuleInput, hand: Sign[], log: (m: string) => void = () => {}): Sign[] {
+/**
+ * Hand signs first, then each rule's signs where they do not clash, then coverage signs under the same rules;
+ * see the M5b plan for the merge rules.
+ */
+export function placeRuleSigns(d: RuleInput, hand: Sign[], log: (m: string) => void = () => {}, coverage: Sign[] = []): Sign[] {
   const g = new Graph(d);
   const curbKey = (s: Sign) => `${s.edgeId}|${s.dir}|${s.side ?? 'right'}`;
   const byCurb = new Map<string, Sign[]>();
@@ -248,28 +251,29 @@ export function placeRuleSigns(d: RuleInput, hand: Sign[], log: (m: string) => v
   }
 
   const merged = [...hand];
-  for (const [name, rule] of RULES) {
+  const mergeAll = (name: string, candidates: Sign[], shift: (s: Sign, e: GraphEdge, at: number) => Sign) => {
     let placed = 0, absorbed = 0, moved = 0, dropped = 0, deferred = 0;
-    for (const candidate of rule(d)) {
+    for (const candidate of candidates) {
       const e = g.edges.get(candidate.edgeId)!;
-      if ((candidate.code === CODE.priorityRoad || candidate.code === CODE.giveWay) && handPriorityNodes.has(endNode(e, candidate.dir))) {
+      if (candidate.origin === 'rule' && (candidate.code === CODE.priorityRoad || candidate.code === CODE.giveWay) && handPriorityNodes.has(endNode(e, candidate.dir))) {
         deferred++;
         continue;
       }
       const curb = byCurb.get(curbKey(candidate)) ?? [];
-      if (curb.some(s => s.code === candidate.code && Math.abs(s.at - candidate.at) <= MERGE_SPAN)) {
+      const same = curb.find(s => s.code === candidate.code && Math.abs(s.at - candidate.at) <= MERGE_SPAN);
+      if (same) {
         absorbed++;
+        if (candidate.origin === 'coverage') log(`coverage sign ${candidate.id} absorbed by ${same.id}, the same code within ${MERGE_SPAN} m`);
         continue;
       }
       const overfull = (s: Sign) => signSpots([...curb, s]).some(spot => spot.signs.length > POLE_CAPACITY);
       let s = candidate;
       if (overfull(s)) {
         const at = s.at + s.dir * MOVE_STEP;
-        const carry = { ...(s.value !== undefined && { value: s.value }), ...(s.side && { side: s.side }) };
-        const shifted = sign(s.id.slice(0, s.id.indexOf('-')), s.code, e, s.dir, at, carry);
+        const shifted = shift(s, e, at);
         if (at < 0 || at > g.length(e) || overfull(shifted)) {
           dropped++;
-          log(`rule sign ${candidate.id} dropped: its pole is full and ${MOVE_STEP} m on is ${at < 0 || at > g.length(e) ? 'off the edge' : 'full too'}`);
+          log(`${candidate.origin} sign ${candidate.id} dropped: its pole is full and ${MOVE_STEP} m on is ${at < 0 || at > g.length(e) ? 'off the edge' : 'full too'}`);
           continue;
         }
         s = shifted;
@@ -280,6 +284,13 @@ export function placeRuleSigns(d: RuleInput, hand: Sign[], log: (m: string) => v
       placed++;
     }
     log(`${name} signs: ${placed} placed (${moved} moved), ${absorbed} already signed, ${dropped} dropped${deferred ? `, ${deferred} left to hand signs` : ''}`);
-  }
+  };
+
+  const shiftRule = (s: Sign, e: GraphEdge, at: number) => {
+    const carry = { ...(s.value !== undefined && { value: s.value }), ...(s.side && { side: s.side }) };
+    return sign(s.id.slice(0, s.id.indexOf('-')), s.code, e, s.dir, at, carry);
+  };
+  for (const [name, rule] of RULES) mergeAll(name, rule(d), shiftRule);
+  if (coverage.length) mergeAll('coverage', coverage, (s, _e, at) => ({ ...s, at: round(at) }));
   return merged;
 }

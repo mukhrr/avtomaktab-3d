@@ -52,6 +52,15 @@ describe('signs', () => {
     expect(build(sign({}), sign({ id: 's2', at: len })).signs.filter(s => s.origin === 'hand').map(s => s.id)).toEqual(['s1', 's2']);
   });
 
+  it('merges coverage signs after the rule signs and validates them with the hand signs', () => {
+    const withCoverage = (...coverage: Sign[]) =>
+      buildDistrict(xml, config, { removeWays: [], roads: {}, buildingHeights: {}, buildingStyles: {} }, [sign({})], () => {}, coverage);
+    const cov = sign({ id: 'c1', code: '3.26', at: 20, origin: 'coverage' });
+    expect(withCoverage(cov).signs.map(s => s.id)).toEqual(['s1', ...d.signs.map(s => s.id), 'c1']);
+    expect(() => withCoverage({ ...cov, id: 's1' })).toThrow(/duplicate/);
+    expect(() => withCoverage({ ...cov, edgeId: 'nope:0' })).toThrow(/c1.*nope:0/);
+  });
+
   it('rejects a sign on a missing edge', () => {
     expect(() => build(sign({ edgeId: 'nope:0' }))).toThrow(/s1.*nope:0/);
   });

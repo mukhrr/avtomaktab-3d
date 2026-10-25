@@ -46,7 +46,9 @@ export function validateSigns(signs: Sign[], edges: DistrictData['graph']['edges
   }
 }
 
-export function buildDistrict(xml: string, config: DistrictConfig, overrides: Overrides, hand: Sign[] = [], log: (message: string) => void = () => {}): DistrictData {
+export function buildDistrict(
+  xml: string, config: DistrictConfig, overrides: Overrides, hand: Sign[] = [], log: (message: string) => void = () => {}, coverage: Sign[] = [],
+): DistrictData {
   const osm = parseOsm(xml);
   const project = makeProjection(config.origin);
   const { roadNodeIds, crossingNodes, furniture: rawFurniture, ...features } = extractFeatures(osm, project, overrides);
@@ -61,9 +63,9 @@ export function buildDistrict(xml: string, config: DistrictConfig, overrides: Ov
     const edge = graph.edges.find(e => e.id === hit.edgeId)!;
     crossings.push({ id: c.id, position: edge.points[hit.index], kind: c.kind, edgeId: hit.edgeId, at: hit.at, width: edge.width });
   }
-  validateSigns(hand, graph.edges);
+  validateSigns([...hand, ...coverage], graph.edges);
   const built = buildControllers(features.signals, graph.edges, graph.nodes, crossingsOffJunctions(crossings, graph.edges, graph.nodes));
-  const signs = placeRuleSigns({ graph, crossings: built.crossings, controllers: built.controllers, pois: features.pois }, hand, log);
+  const signs = placeRuleSigns({ graph, crossings: built.crossings, controllers: built.controllers, pois: features.pois }, hand, log, coverage);
   validateSigns(signs, graph.edges);
   const furniture = placeFurniture(rawFurniture, graph.edges, graph.nodes, built.crossings, new Map(features.roads.map(r => [r.id, r.kind])), features.buildings.map(b => b.footprint));
   for (const kind of ['busStop', 'bench', 'bin'] as const) {
@@ -90,6 +92,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     JSON.parse(readFileSync(`${dir}/overrides.json`, 'utf8')),
     existsSync(`${dir}/signs.json`) ? JSON.parse(readFileSync(`${dir}/signs.json`, 'utf8')) : [],
     console.info,
+    existsSync(`${dir}/coverage.json`) ? JSON.parse(readFileSync(`${dir}/coverage.json`, 'utf8')) : [],
   );
   checkAtlasCovers(d.signs, JSON.parse(readFileSync('public/signs/atlas.json', 'utf8')) as Atlas);
   const outDir = `public/districts/${district}`;

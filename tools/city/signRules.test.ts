@@ -209,6 +209,19 @@ describe('rule signs', () => {
     expect(out.filter(s => s.origin === 'rule' && ['2.1', '2.4'].includes(s.code))).toEqual([]);
   });
 
+  it('merges coverage signs after rule signs, keeping their id when a full pole moves them on', () => {
+    const d = input([edge('e', 'A', 'B', { maxspeed: 40 })]);
+    const log: string[] = [];
+    const coverage: Sign[] = [
+      { id: 'cov-speed', code: '3.24', value: 40, edgeId: 'e', dir: 1, at: 15, origin: 'coverage' },
+      { id: 'cov-horn', code: '3.26', edgeId: 'e', dir: 1, at: 30, origin: 'coverage' },
+    ];
+    const out = placeRuleSigns(d, [hand('1.21', 30), hand('3.19', 30), hand('3.18.2', 30)], m => log.push(m), coverage);
+    expect(out.find(s => s.id === 'cov-speed')).toBeUndefined();
+    expect(log.some(m => m.includes('cov-speed') && m.includes('speed-e-1-10.0'))).toBe(true);
+    expect(out.find(s => s.id === 'cov-horn')).toMatchObject({ at: 45, origin: 'coverage' });
+  });
+
   it('gives rule signs stable ids', () => {
     const crossings = [{ id: 'z', position: [50, 0] as Vec2, kind: 'zebra' as const, edgeId: 'p1', at: 50, width: 7 }];
     const d = input(tee().map(e => ({ ...e, maxspeed: 50, kind: e.kind === 'primary' ? 'primary' : 'residential' })), { crossings });
