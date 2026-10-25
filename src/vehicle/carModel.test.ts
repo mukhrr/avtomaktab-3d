@@ -56,4 +56,19 @@ describe('player car model', () => {
     expect(box.min.z).toBeLessThan(-2.0);
     expect(meshes(root).length).toBeLessThanOrEqual(11);
   });
+
+  it('pitches about a low point ahead of centre, so 3 degrees of brake dive drops the nose under 9 cm', () => {
+    const { root, lean } = createCarModel();
+    const nose = () => {
+      root.updateMatrixWorld(true);
+      const b = new THREE.Box3().setFromObject(lean);
+      return b.min.y;
+    };
+    const level = nose();
+    lean.rotation.x = 3 * Math.PI / 180;
+    const drop = level - nose();
+    expect(drop).toBeGreaterThan(0.05);
+    expect(drop).toBeLessThan(0.09);
+  });
 });
+

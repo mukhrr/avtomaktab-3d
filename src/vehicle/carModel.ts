@@ -9,6 +9,9 @@ export const WHEEL_POSITIONS: [number, number, number][] = [
 /** The road under the chassis centre once the car has settled on its springs. */
 export const GROUND_Y = -0.787;
 
+// Brake dive pivots near the front axle at wheel-centre height, as a real car's nose dips on its front springs.
+const LEAN_PIVOT = new THREE.Vector3(0, -0.477, 0.7);
+
 const LENGTH = 4.48;
 const WIDTH = 1.74;
 const TYRE_RADIUS = 0.31;
@@ -43,6 +46,10 @@ export function createCarModel(): { root: THREE.Group; lean: THREE.Group; wheels
   const root = new THREE.Group();
   const lean = new THREE.Group();
   lean.name = 'lean';
+  lean.position.copy(LEAN_PIVOT);
+  const body = new THREE.Group();
+  body.position.copy(LEAN_PIVOT).negate();
+  lean.add(body);
   root.add(lean);
 
   const geo = bodyGeometry('lacetti', LENGTH, WIDTH);
@@ -51,7 +58,7 @@ export function createCarModel(): { root: THREE.Group; lean: THREE.Group; wheels
   const fixed = new THREE.Mesh(geo.fixed, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.4 }));
   const lamps = new THREE.Mesh(geo.lamps, new THREE.MeshBasicMaterial({ vertexColors: true }));
   paint.castShadow = fixed.castShadow = true;
-  lean.add(paint, fixed, lamps);
+  body.add(paint, fixed, lamps);
 
   const tyre = new THREE.CylinderGeometry(TYRE_RADIUS, TYRE_RADIUS, TYRE_WIDTH, 18).rotateZ(Math.PI / 2);
   const rubber = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });

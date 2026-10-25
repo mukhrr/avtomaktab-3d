@@ -25,6 +25,9 @@ const HUB = 0xa9adb1;
 const TRIM = 0x2c2d30;
 const HEADLAMP = 0xf4f0dc;
 const TAIL_LAMP = 0xb01818;
+// Rounded (Gentra) bodies: the shoulder is full width above SILL, and the greenhouse tucks in above ROOF_CAP.
+const SILL = 0.45;
+const ROOF_CAP = 1.25;
 const CHROME = 0xc9ccd0;
 const BUS_BLUE = 0x1f5fb0;
 export const BUS_GREEN = 0x2e8b57;
@@ -47,8 +50,8 @@ const SPECS: Record<Exclude<CarClass, 'taxi' | 'bus'>, Spec> = {
   },
   // Gentra: rounded nose, long sloping rear window, short high boot.
   lacetti: {
-    lower: [[-2.2, 0.24], [2.18, 0.24], [2.24, 0.46], [2.22, 0.64], [2.06, 0.77], [0.98, 0.9], [-1.34, 0.97], [-2.08, 1.01], [-2.22, 0.92], [-2.24, 0.6]],
-    cabin: [[1.0, 0.86], [0.1, 1.43], [-0.48, 1.46], [-1.42, 0.94]],
+    lower: [[-2.2, 0.24], [2.18, 0.24], [2.24, 0.46], [2.22, 0.64], [2.06, 0.77], [0.98, 0.9], [-1.38, 1.0], [-2.08, 1.01], [-2.22, 0.95], [-2.24, 0.6]],
+    cabin: [[0.95, 0.9], [0.34, 1.44], [-0.9, 1.45], [-1.38, 1.0]],
     round: true, grille: true, wheel: 0.31, axles: [-1.31, 1.31], headY: 0.68, tailY: 0.86,
   },
   damas: {
@@ -84,12 +87,13 @@ function chaikin(poly: P[], rounds: number): P[] {
   return pts;
 }
 
-/** The part of a closed polygon at or above y. */
-function clipAbove(poly: P[], y: number): P[] {
+/** The part of a closed polygon at or above y, or at or below it. */
+function clipAbove(poly: P[], y: number, below = false): P[] {
   const out: P[] = [];
+  const keep = (p: P) => (below ? p[1] <= y : p[1] >= y);
   for (let i = 0; i < poly.length; i++) {
     const a = poly[i], b = poly[(i + 1) % poly.length];
-    const ain = a[1] >= y, bin = b[1] >= y;
+    const ain = keep(a), bin = keep(b);
     if (ain) out.push(a);
     if (ain !== bin) {
       const t = (y - a[1]) / (b[1] - a[1]);
@@ -165,15 +169,24 @@ function sedanParts(c: Exclude<CarClass, 'bus'>, length: number, width: number):
   const s = specOf(c);
   const h = length / 2;
   const lower = s.round ? chaikin(s.lower, 2) : s.lower;
-  const cabin = s.round ? chaikin(s.cabin!, 2) : s.cabin!;
+  const cabin = s.round ? chaikin(s.cabin!, 1) : s.cabin!;
   const top = Math.max(...cabin.map(p => p[1]));
   const cabinW = width * 0.84;
   const front = (y: number) => (s.round ? faceZ(lower, y, 1) : h);
   const parts = {
     lower,
-    paint: [extrude(lower, width - 0.06, 0xffffff), extrude(clipAbove(cabin, top - 0.05), cabinW + 0.02, 0xffffff)],
+    paint: s.round
+      ? [
+        extrude(clipAbove(lower, SILL), width - 0.06, 0xffffff),
+        extrude(clipAbove(lower, SILL, true), width - 0.16, 0xffffff),
+        extrude(clipAbove(cabin, top - 0.05), width * 0.74 + 0.02, 0xffffff),
+        box(cabinW + 0.01, ROOF_CAP - 0.9, 0.08, 0, (ROOF_CAP + 0.9) / 2, -0.12, 0xffffff),
+      ]
+      : [extrude(lower, width - 0.06, 0xffffff), extrude(clipAbove(cabin, top - 0.05), cabinW + 0.02, 0xffffff)],
     fixed: [
-      extrude(cabin, cabinW, GLASS),
+      ...(s.round
+        ? [extrude(clipAbove(cabin, ROOF_CAP, true), cabinW, GLASS), extrude(clipAbove(cabin, ROOF_CAP), width * 0.74, GLASS)]
+        : [extrude(cabin, cabinW, GLASS)]),
       box(width - 0.02, 0.2, 0.1, 0, 0.36, front(0.36) - 0.05, TRIM),
       box(width - 0.02, 0.2, 0.1, 0, 0.36, (s.round ? faceZ(lower, 0.36, -1) : -h) + 0.05, TRIM),
     ],
