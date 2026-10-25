@@ -39,6 +39,7 @@ test('rejects art from a licence other than public domain or CC0', () => {
 test('rejects checked: true without a reference', () => {
   const rows = clone();
   rows[0].checked = true;
+  rows[0].reference = null;
   expect(() => validateCatalogue(rows)).toThrow('reference');
 });
 

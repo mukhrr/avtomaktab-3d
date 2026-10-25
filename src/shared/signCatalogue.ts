@@ -42,7 +42,7 @@ export const CODE = {
   children: '1.21',
 } as const;
 
-function licenceAccepted(licence: string): boolean {
+export function isAcceptedLicence(licence: string): boolean {
   const l = licence.trim().toLowerCase();
   return l.startsWith('public domain') || l.startsWith('pd') || l === 'cc0' || l === 'cc0 1.0';
 }
@@ -75,7 +75,7 @@ export function validateCatalogue(input: unknown): CatalogueEntry[] {
     if (art) {
       if (art.source === 'commons') {
         if (!art.file || !art.page) fail('commons art needs file and page');
-        if (!licenceAccepted(art.licence ?? '')) fail(`art licence "${art.licence}" is not public domain or CC0`);
+        if (!isAcceptedLicence(art.licence ?? '')) fail(`art licence "${art.licence}" is not public domain or CC0`);
       } else if (art.source !== 'drawn' || !art.file) {
         fail('has malformed art');
       }
