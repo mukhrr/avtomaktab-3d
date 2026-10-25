@@ -2,6 +2,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import type { Vec2 } from '../shared/district';
 import { DRIVE_SURFACE_Y } from '../physics/world';
+import { BodyLean } from './bodyLean';
 import { createCarModel, WHEEL_POSITIONS } from './carModel';
 import { stepDrivetrain, IDLE_RPM, WHEEL_RADIUS, type Controls, type DrivetrainState, type Gearbox } from './drivetrain';
 
@@ -30,12 +31,17 @@ export class Vehicle {
   private body: RAPIER.RigidBody;
   private controller: RAPIER.DynamicRayCastVehicleController;
   private wheels: THREE.Object3D[];
+  private pivot: THREE.Group;
+  private bodyLean = new BodyLean();
+  private tilt = { pitch: 0, roll: 0 };
+  private lastVel = new THREE.Vector3();
   private state: DrivetrainState;
 
   constructor(world: RAPIER.World, spawn: Spawn, gearbox: Gearbox = 'auto') {
     const model = createCarModel();
     this.object = model.root;
     this.wheels = model.wheels;
+    this.pivot = model.lean;
     this.state = { gearbox, gear: gearbox === 'auto' ? 1 : 0, rpm: IDLE_RPM, running: true };
 
     this.body = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setCanSleep(false).setAdditionalMass(0));
@@ -77,6 +83,11 @@ export class Vehicle {
     this.state = { gearbox: g, gear: g === 'auto' ? 1 : 0, rpm: IDLE_RPM, running: true };
   }
 
+  /** Visual body pitch and roll in radians; the physics pose never sees it. */
+  get lean(): { pitch: number; roll: number } {
+    return { ...this.tilt };
+  }
+
   get upright(): number {
     const q = this.body.rotation();
     return new THREE.Vector3(0, 1, 0).applyQuaternion(new THREE.Quaternion(q.x, q.y, q.z, q.w)).y;
@@ -89,10 +100,14 @@ export class Vehicle {
     this.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     this.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
     this.state = { ...this.state, gear: this.state.gearbox === 'auto' ? 1 : 0, rpm: IDLE_RPM, running: true };
+    this.lastVel.set(0, 0, 0);
+    this.bodyLean.reset();
+    this.tilt = { pitch: 0, roll: 0 };
   }
 
   /** One fixed physics step; call before world.step(). */
   update(c: Controls, dt: number): void {
+    this.updateLean(dt);
     const speed = this.speed;
     const step = stepDrivetrain(this.state, c, speed, dt);
     this.state = step.state;
@@ -119,11 +134,20 @@ export class Vehicle {
     this.body.addForce({ x: (-v.x / speed) * f, y: 0, z: (-v.z / speed) * f }, true);
   }
 
+  private updateLean(dt: number): void {
+    const v = this.body.linvel(), q = this.body.rotation();
+    const accel = new THREE.Vector3(v.x, v.y, v.z).sub(this.lastVel).divideScalar(dt)
+      .applyQuaternion(new THREE.Quaternion(q.x, q.y, q.z, q.w).invert());
+    this.lastVel.set(v.x, v.y, v.z);
+    this.tilt = this.bodyLean.update(accel.z, accel.x, dt);
+  }
+
   /** Copies physics pose to the visual model. */
   sync(): void {
     const t = this.body.translation(), q = this.body.rotation();
     this.object.position.set(t.x, t.y, t.z);
     this.object.quaternion.set(q.x, q.y, q.z, q.w);
+    this.pivot.rotation.set(this.tilt.pitch, 0, this.tilt.roll);
     this.wheels.forEach((w, i) => {
       w.position.y = WHEEL_POSITIONS[i][1] - (this.controller.wheelSuspensionLength(i) ?? REST_LENGTH);
       w.rotation.y = this.controller.wheelSteering(i) ?? 0;

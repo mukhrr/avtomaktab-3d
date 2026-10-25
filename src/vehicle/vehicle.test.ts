@@ -95,3 +95,37 @@ test('full brake stops hard but a light brake is gentle', async () => {
   const lightDecel = (v0 - light.car.speed) / 0.5;
   expect(lightDecel).toBeLessThan(fullDecel / 2);
 });
+
+test('hard braking dips the body nose-down while the physics pose and upright stay untouched', async () => {
+  const THREE = await import('three');
+  const world = await flatWorld();
+  const car = new Vehicle(world, { position: [0, 0], heading: 0 });
+  drive(world, car, idle, 1);
+  while (car.speed * 3.6 < 50) drive(world, car, { ...idle, throttle: 1 }, 0.1);
+  drive(world, car, { ...idle, brake: 1 }, 0.4);
+  expect(car.lean.pitch).toBeGreaterThan(1 * Math.PI / 180);
+  expect(car.lean.pitch).toBeLessThanOrEqual(3 * Math.PI / 180 + 1e-9);
+
+  const body = (car as unknown as { body: RAPIER.RigidBody }).body;
+  const q = body.rotation();
+  expect(car.object.quaternion.toArray()).toEqual([q.x, q.y, q.z, q.w]);
+  expect(car.upright).toBeCloseTo(new THREE.Vector3(0, 1, 0).applyQuaternion(car.object.quaternion).y, 6);
+
+  car.object.updateMatrixWorld(true);
+  const pivot = car.object.getObjectByName('lean')!;
+  expect(pivot.rotation.x).toBeCloseTo(car.lean.pitch, 9);
+  expect(new THREE.Box3().setFromObject(pivot).min.y).toBeGreaterThan(DRIVE_SURFACE_Y + 0.02);
+});
+
+test('reset zeroes the lean at once, so R and the exam start show a level car', async () => {
+  const world = await flatWorld();
+  const car = new Vehicle(world, { position: [0, 0], heading: 0 });
+  drive(world, car, idle, 1);
+  drive(world, car, { ...idle, throttle: 1, steer: 1 }, 2);
+  expect(Math.abs(car.lean.roll) + Math.abs(car.lean.pitch)).toBeGreaterThan(0.2 * Math.PI / 180);
+  car.reset({ position: [10, 10], heading: 1 });
+  car.sync();
+  expect(car.lean).toEqual({ pitch: 0, roll: 0 });
+  drive(world, car, idle, STEP);
+  expect(Math.abs(car.lean.pitch)).toBeLessThan(0.05 * Math.PI / 180);
+});
