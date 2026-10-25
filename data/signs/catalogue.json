@@ -7622,13 +7622,13 @@
   "clauseQuote": "6.12. “YPX maskani”.",
   "translated": true,
   "art": {
-   "source": "commons",
-   "file": "assets-src/signs/commons/6.12.svg",
-   "page": "https://commons.wikimedia.org/wiki/File:KZ_road_sign_6.12.svg",
+   "source": "drawn",
+   "file": "data/signs/drawn/6.12.svg",
+   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_7.2.svg",
    "licence": "Public domain"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:KZ_road_sign_6.12.svg",
-  "checked": false,
+  "reference": "https://lex.uz/uz/files/7050662.jpg",
+  "checked": true,
   "exempt": null,
   "size": [
    0.47,

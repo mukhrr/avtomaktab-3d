@@ -46,12 +46,7 @@
        sodipodi:ry="93.338097"
        d="m -199.11241,803.42432 c 0,51.5492 -54.83407,93.33809 -122.47533,93.33809 -67.64125,0 -122.47532,-41.78889 -122.47532,-93.33809 0,-51.54921 54.83407,-93.3381 122.47532,-93.3381 67.64126,0 122.47533,41.78889 122.47533,93.3381 z"
        transform="matrix(2.8495535,0,0,3.7390949,1266.3815,-2301.7176)" />
-    <path
-       id="path8029"
-       style="opacity:1;color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
-       d="m 137.17738,730.02349 c -15.2769,0 -27.6613,-12.38438 -27.6613,-27.66129 0,-15.27691 12.3844,-27.66129 27.6613,-27.66129 l 0,0 425.64511,0 c 15.277,0 27.6613,12.38438 27.6613,27.66129 0,15.2769 -12.3843,27.66129 -27.6613,27.66129 z"
-       inkscape:connector-curvature="0"
-       sodipodi:nodetypes="cscccscc" />
+    
     <path
        inkscape:connector-curvature="0"
        style="opacity:1;color:#000000;fill:#ff0000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1px;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"

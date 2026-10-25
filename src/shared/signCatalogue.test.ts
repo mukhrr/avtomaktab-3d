@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { CODE, entry, loadCatalogue, validateCatalogue } from './signCatalogue';
 
 function countBy<T>(items: T[], key: (item: T) => number): Record<number, number> {
@@ -86,4 +86,13 @@ test('accepts drawn art based on public-domain Commons art and rejects other lic
   expect(() => validateCatalogue(rows)).toThrow('licence');
   rows[0].art = { source: 'drawn', file: 'assets-src/signs/x.svg' };
   expect(() => validateCatalogue(rows)).toThrow('data/signs/drawn');
+});
+
+test('keeps every drawn SVG free of scripts, embedded images and external references', () => {
+  const unsafe = [/<script/i, /javascript:/i, /foreignObject/i, /<image/i, /\son\w+\s*=/i, /href\s*=\s*["']https?:/i, /<!ENTITY/i, /@import/i];
+  const dir = repoFile('data/signs/drawn/');
+  const bad = readdirSync(dir)
+    .filter((f) => f.endsWith('.svg'))
+    .filter((f) => unsafe.some((re) => re.test(readFileSync(new URL(f, dir), 'utf8'))));
+  expect(bad).toEqual([]);
 });
