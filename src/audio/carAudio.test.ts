@@ -46,7 +46,10 @@ describe('tyreGain', () => {
   it('is zero below the slip threshold, grows above it and is capped', () => {
     expect(tyreGain(0.1)).toBe(0);
     expect(tyreGain(0.15)).toBe(0);
-    expect(tyreGain(0.6)).toBeGreaterThan(0);
+    expect(tyreGain(0.85)).toBe(0);
+    expect(tyreGain(0.95)).toBeGreaterThan(0);
+    expect(tyreGain(0.95)).toBeLessThan(TYRE_MAX);
+    expect(tyreGain(1)).toBeCloseTo(TYRE_MAX, 5);
     expect(tyreGain(5)).toBe(TYRE_MAX);
   });
 });
@@ -97,14 +100,14 @@ describe('CarAudio', () => {
     expect(oscs.map(o => o.frequency.events.length)).toEqual(before);
   });
 
-  it('gives the tyres no gain at slip 0.1 and some at 0.6', () => {
+  it('gives the tyres no gain at slip 0.85 and some at 0.95', () => {
     const { car, nodes } = setup();
     const band = nodes.find(n => n.kind === 'filter' && n.type === 'bandpass' && n.frequency.value === 900)!;
     expect(band).toBeDefined();
     const tyre = band.connected[0] as Node;
-    car.update({ ...idle, slip: 0.1 }, 1 / 60);
+    car.update({ ...idle, slip: 0.85 }, 1 / 60);
     expect(lastTarget(tyre.gain)!.v).toBe(0);
-    car.update({ ...idle, slip: 0.6 }, 1 / 60);
+    car.update({ ...idle, slip: 0.95 }, 1 / 60);
     expect(lastTarget(tyre.gain)!.v).toBeGreaterThan(0);
   });
 

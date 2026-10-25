@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AudioRig } from './audioRig';
+import * as voice from './voice';
 import type { CarSound } from './carAudio';
 import { stubContext, type Node } from './stubContext';
 
@@ -13,6 +14,15 @@ function rig(settings = { sound: true, volume: 0.7 }, onVoice?: (audible: boolea
 }
 
 describe('AudioRig', () => {
+  it('passes the volume to the examiner voice at construction and on apply', () => {
+    const spy = vi.spyOn(voice, 'setVoiceVolume');
+    const { r } = rig({ sound: true, volume: 0.4 });
+    expect(spy).toHaveBeenLastCalledWith(0.4);
+    r.apply({ sound: true, volume: 0.9 });
+    expect(spy).toHaveBeenLastCalledWith(0.9);
+    spy.mockRestore();
+  });
+
   it('routes the car through the Sfx master and sets the master gain from the volume', () => {
     const { r, master } = rig({ sound: true, volume: 0.4 });
     expect(r.car.master).toBe(r.sfx.master);

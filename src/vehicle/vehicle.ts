@@ -25,7 +25,7 @@ const REAR = [2, 3];
 
 const WHEEL_FRICTION = 2.2;
 const HARD_BRAKE = 0.8;
-const HARD_BRAKE_MIN_SPEED = 3;
+const HARD_BRAKE_MIN_SPEED = 5;
 
 interface SlipSource {
   numWheels(): number;
@@ -35,7 +35,7 @@ interface SlipSource {
 }
 
 /**
- * Worst wheel as a 0 to 1 share of the grip it has: the impulse Rapier applied against friction slip times
+ * Worst wheel as a 0 to 1 share of the grip it has: the combined side and forward impulse Rapier applied against friction slip times
  * suspension force times dt. The forward impulse only counts when `braking`, as it also carries the engine's drive.
  */
 export function wheelSlip(c: SlipSource, frictionSlip: number, dt: number, braking: boolean): number {
@@ -45,7 +45,7 @@ export function wheelSlip(c: SlipSource, frictionSlip: number, dt: number, braki
     if (!(grip > 0)) continue;
     const side = Math.abs(c.wheelSideImpulse(i) ?? 0);
     const forward = braking ? Math.abs(c.wheelForwardImpulse(i) ?? 0) : 0;
-    const ratio = Math.max(side, forward) / grip;
+    const ratio = Math.hypot(side, forward) / grip;
     if (ratio > worst) worst = ratio;
   }
   return Math.min(1, worst);

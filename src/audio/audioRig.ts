@@ -1,5 +1,6 @@
 import { CarAudio, type CarSound } from './carAudio';
 import { Sfx } from './sfx';
+import { setVoiceVolume } from './voice';
 
 export interface AudioSettings { sound: boolean; volume: number }
 
@@ -19,12 +20,14 @@ export class AudioRig {
     this.car = new CarAudio(ctx, this.sfx.master);
     this.sfx.master.gain.value = this.level(settings);
     this.onVoice?.(settings.sound);
+    setVoiceVolume(this.level({ sound: true, volume: settings.volume }));
     this.car.fade(0, 0.01);
   }
 
   apply(settings: AudioSettings): void {
     this.sfx.master.gain.setTargetAtTime(this.level(settings), this.ctx.currentTime, 0.02);
     this.onVoice?.(settings.sound);
+    setVoiceVolume(this.level({ sound: true, volume: settings.volume }));
   }
 
   /** Entering the drive: fade in, and the next frame only records the engine state so a reset never plays a starter. */

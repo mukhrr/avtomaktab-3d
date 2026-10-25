@@ -221,8 +221,8 @@ const camDir = new THREE.Vector3();
 /** Called from click handlers only: browsers keep an AudioContext suspended until a user gesture. */
 function unlockAudio() {
   const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!Ctor) return;
   setVoiceMuted(!choice.sound);
+  if (!Ctor) return;
   try {
     if (audio) audio.apply(choice);
     else audio = new AudioRig(new Ctor(), choice, audible => setVoiceMuted(!audible));
@@ -438,7 +438,7 @@ renderer.setAnimationLoop(() => {
   }
 });
 
-Object.assign(window, { __game: { car, env, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, audio: () => audio, cabin: () => cabin, lastFrame, session, hud, route, start: (c: Partial<StartChoice>) => {
+Object.assign(window, { __game: { car, env, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, audio: () => audio && Object.assign(audio, { ctxState: audio.ctx.state, ctxTime: audio.ctx.currentTime }), cabin: () => cabin, lastFrame, session, hud, route, start: (c: Partial<StartChoice>) => {
   choice = { ...choice, ...c };
   if (choice.mode === 'exam') startExam();
   else show('drive');

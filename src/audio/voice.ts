@@ -22,12 +22,18 @@ export function subtitle(lang: Lang, p: Prompt): string {
 }
 
 let voiceMuted = false;
+let voiceVolume = 1;
 let playing: HTMLAudioElement | null = null;
 
 /** The examiner's clips are HTML audio outside the Web Audio graph, so the sound setting has to reach them here. */
 export function setVoiceMuted(muted: boolean): void {
   voiceMuted = muted;
   if (playing) playing.muted = muted;
+}
+
+export function setVoiceVolume(volume: number): void {
+  voiceVolume = Math.max(0, Math.min(1, volume));
+  if (playing) playing.volume = voiceVolume;
 }
 
 const MIN_CLIP_WAIT_MS = 8000;
@@ -41,6 +47,7 @@ export class HtmlAudioBackend implements AudioBackend {
     return new Promise<void>((resolve, reject) => {
       const el = new Audio(url);
       el.muted = voiceMuted;
+      el.volume = voiceVolume;
       playing = el;
       let timer: ReturnType<typeof setTimeout> | undefined;
       const release = () => {

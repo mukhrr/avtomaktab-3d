@@ -42,8 +42,9 @@ const CHIME_EVERY_S = 2;
 const CHIME_MIN_SPEED = 10 / 3.6;
 // hud.css runs `hud-blink` at 0.667 s with the lamp lit for the first half.
 const BLINK_HALF_S = 0.667 / 2;
-const TYRE_SLIP_MIN = 0.15;
-const TYRE_PER_SLIP = 0.6;
+// Slip is grip utilisation, so heavy braking or a firm corner sits at 0.8 to 0.9 without skidding.
+const TYRE_SLIP_MIN = 0.9;
+const TYRE_PER_SLIP = 2.5;
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 

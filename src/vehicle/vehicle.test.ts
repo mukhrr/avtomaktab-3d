@@ -156,6 +156,12 @@ describe('wheelSlip', () => {
     expect(wheelSlip(c, 2.2, dt, true)).toBeCloseTo(0.8, 5);
   });
 
+  it('combines side and forward grip use per wheel while braking', () => {
+    const c = stub([{ side: full * 0.6, forward: full * 0.8, force: 3000 }]);
+    expect(wheelSlip(c, 2.2, dt, true)).toBeCloseTo(1, 5);
+    expect(wheelSlip(c, 2.2, dt, false)).toBeCloseTo(0.6, 5);
+  });
+
   it('treats null and NaN readings as no slip', () => {
     const c = { numWheels: () => 2, wheelSideImpulse: () => null, wheelForwardImpulse: () => NaN, wheelSuspensionForce: () => 3000 };
     expect(wheelSlip(c, 2.2, dt, true)).toBe(0);
