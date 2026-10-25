@@ -2,7 +2,8 @@ import { readFileSync, statSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Sign } from '../../src/shared/district';
 import { loadCatalogue, plateKey } from '../../src/shared/signCatalogue';
-import { assertTextRenders, checkAtlasCovers, exemptSvg, packAtlas, SPEEDS, type Atlas } from './atlas';
+import sharp from 'sharp';
+import { assertTextRenders, bleedTransparent, checkAtlasCovers, exemptSvg, packAtlas, SPEEDS, type Atlas } from './atlas';
 
 const readAtlasJson = (): Atlas => JSON.parse(readFileSync('public/signs/atlas.json', 'utf8'));
 
@@ -83,6 +84,27 @@ describe('sheet helpers', () => {
   });
 });
 
+describe('bleedTransparent', () => {
+  it('gives a transparent texel the colour of the opaque one beside it and keeps alpha 0', () => {
+    const px = Buffer.from([214, 35, 30, 255, 0, 0, 0, 0, 0, 0, 0, 0]);
+    bleedTransparent(px, 3, 1, 2);
+    expect([...px.subarray(4, 8)]).toEqual([214, 35, 30, 0]);
+    expect([...px.subarray(8, 12)]).toEqual([214, 35, 30, 0]);
+  });
+});
+
+describe('a red ring on a transparent ground', () => {
+  it('leaves no black texels beside the ring once bled', async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><circle cx="30" cy="30" r="24" fill="none" stroke="#d6231e" stroke-width="8"/></svg>';
+    const { data } = await sharp(Buffer.from(svg)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    bleedTransparent(data, 60, 60);
+    const o = (10 * 60 + 2) * 4;
+    expect(data[o + 3]).toBe(0);
+    expect(data[o]).toBeGreaterThan(150);
+    expect(data[o + 1] + data[o + 2]).toBeLessThan(150);
+  });
+});
+
 describe('the built atlas', () => {
   it('fits the budgets', () => {
     const a = readAtlasJson();
@@ -101,12 +123,36 @@ describe('the built atlas', () => {
       for (const k of keys) {
         const c = a.cells[k];
         expect(c, k).toBeDefined();
-        expect(c.size[0], k).toBeLessThanOrEqual(e.size[0] + 1e-9);
-        expect(c.size[1], k).toBeLessThanOrEqual(e.size[1] + 1e-9);
+        expect(Math.abs(c.size[0] - e.size[0]), k).toBeLessThan(0.01);
+        expect(Math.abs(c.size[1] - e.size[1]), k).toBeLessThan(0.01);
         expect((c.w * a.width) / (c.h * a.height) / (c.size[0] / c.size[1]), k).toBeCloseTo(1, 1);
         expect(c.u >= 0 && c.v >= 0 && c.u + c.w <= 1 && c.v + c.h <= 1, k).toBe(true);
       }
     }
+  });
+
+  it('leaves no black texels beside the ring edge of 3.1', async () => {
+    const a = readAtlasJson();
+    const c = a.cells['3.1'];
+    const { data, info } = await sharp('public/signs/atlas.png').raw().toBuffer({ resolveWithObject: true });
+    const x0 = Math.round(c.u * a.width), y0 = Math.round((1 - c.v - c.h) * a.height);
+    const w = Math.round(c.w * a.width), h = Math.round(c.h * a.height);
+    const px = (x: number, y: number) => (y * info.width + x) * 4;
+    let checked = 0;
+    for (let y = y0 + 1; y < y0 + h - 1; y++) {
+      for (let x = x0 + 1; x < x0 + w - 1; x++) {
+        const o = px(x, y);
+        if (data[o + 3] !== 0) continue;
+        const nearRed = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
+          const n = px(x + dx, y + dy);
+          return data[n + 3] > 200 && data[n] + data[n + 1] + data[n + 2] > 150;
+        });
+        if (!nearRed) continue;
+        checked++;
+        expect(data[o] + data[o + 1] + data[o + 2], `texel ${x},${y}`).toBeGreaterThan(0);
+      }
+    }
+    expect(checked).toBeGreaterThan(20);
   });
 
   it('covers every sign in every district', () => {

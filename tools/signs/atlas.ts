@@ -83,25 +83,16 @@ const xmlEscape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').
 
 interface Raster { data: Buffer; w: number; h: number }
 
-const sizes = new Map<string, [number, number]>();
-
-/** The catalogue size, or when the art's own proportions disagree with it by more than 5%, the largest size of the art's proportions that fits inside it. */
-export async function sizeOf(e: CatalogueEntry): Promise<[number, number]> {
-  const known = sizes.get(e.number);
-  if (known) return known;
+/** The catalogue size is the one source of sign size; art whose proportions disagree with it by more than 5% is an error. */
+async function sizeOf(e: CatalogueEntry): Promise<[number, number]> {
   const meta = await sharp(readFileSync(e.art!.file), { limitInputPixels: 1e8 }).metadata().catch((err: Error) => {
     throw new Error(`atlas: ${e.number} (${e.art!.file}): ${err.message}`);
   });
   if (!meta.width || !meta.height) throw new Error(`atlas: ${e.number} (${e.art!.file}): has no intrinsic size`);
-  const [cw, ch] = e.size;
-  let size = e.size;
-  if (Math.abs(meta.width / meta.height / (cw / ch) - 1) > 0.05) {
-    const k = Math.min(cw / meta.width, ch / meta.height);
-    size = [Math.round(meta.width * k * 1000) / 1000, Math.round(meta.height * k * 1000) / 1000];
-    console.warn(`atlas: ${e.number} art is ${meta.width}x${meta.height} but the catalogue size is ${cw}x${ch} m; using ${size.join('x')} m`);
+  if (Math.abs(meta.width / meta.height / (e.size[0] / e.size[1]) - 1) > 0.05) {
+    throw new Error(`atlas: ${e.number} art is ${meta.width}x${meta.height} but the catalogue size is ${e.size.join('x')} m`);
   }
-  sizes.set(e.number, size);
-  return size;
+  return e.size;
 }
 
 async function rasterise(e: CatalogueEntry, value: number | string | undefined, pxPerM: number): Promise<Raster> {
@@ -119,9 +110,38 @@ async function rasterise(e: CatalogueEntry, value: number | string | undefined, 
     if (!meta.width || !meta.height) throw new Error('has no intrinsic size');
     const density = Math.min(2400, Math.max(72, 72 * 2 * Math.max(w / meta.width, h / meta.height)));
     const data = await sharp(input, { density, limitInputPixels: 1e8 }).resize(w, h, { fit: 'fill' }).ensureAlpha().raw().toBuffer();
+    if (pxPerM === PX_PER_M) bleedTransparent(data, w, h);
     return { data, w, h };
   } catch (err) {
     throw new Error(`atlas: ${e.number} (${file}): ${(err as Error).message}`);
+  }
+}
+
+/** Gives fully transparent texels the colour of their nearest opaque neighbours, so filtering and mips do not pull in black. Alpha stays 0. */
+export function bleedTransparent(data: Buffer, w: number, h: number, passes = 8): void {
+  const filled = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) filled[i] = data[i * 4 + 3] > 0 ? 1 : 0;
+  for (let pass = 0; pass < passes; pass++) {
+    const next = filled.slice();
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (filled[y * w + x]) continue;
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h || !filled[ny * w + nx]) continue;
+            const o = (ny * w + nx) * 4;
+            r += data[o]; g += data[o + 1]; b += data[o + 2]; n++;
+          }
+        }
+        if (!n) continue;
+        const o = (y * w + x) * 4;
+        data[o] = Math.round(r / n); data[o + 1] = Math.round(g / n); data[o + 2] = Math.round(b / n);
+        next[y * w + x] = 1;
+      }
+    }
+    filled.set(next);
   }
 }
 
@@ -219,13 +239,11 @@ export async function buildAtlas(): Promise<void> {
   const catalogue = loadCatalogue();
   const used = valuesUsedBy(districtSigns());
   const cells: { key: string; e: CatalogueEntry; value: number | string | undefined }[] = [];
-  const sizeOfCell = new Map<string, [number, number]>();
   for (const e of catalogue.filter(x => x.art)) for (const v of variantsOf(e, used)) cells.push({ key: v.key, e, value: v.value });
 
   const rasters = new Map<string, Raster>();
   for (const c of cells) {
     rasters.set(c.key, await rasterise(c.e, c.value, PX_PER_M));
-    sizeOfCell.set(c.key, await sizeOf(c.e));
   }
   const items = cells.map(c => ({ key: c.key, px: [rasters.get(c.key)!.w, rasters.get(c.key)!.h] as [number, number] }));
   const { width, height, at } = chooseSheet(items);
@@ -240,7 +258,7 @@ export async function buildAtlas(): Promise<void> {
     for (let row = 0; row < p.h; row++) {
       p.data.copy(sheet, ((y - PAD + row) * width + (x - PAD)) * 4, row * p.w * 4, (row + 1) * p.w * 4);
     }
-    atlas.cells[c.key] = { u: round(x / width), v: round(1 - (y + r.h) / height), w: round(r.w / width), h: round(r.h / height), size: sizeOfCell.get(c.key)! };
+    atlas.cells[c.key] = { u: round(x / width), v: round(1 - (y + r.h) / height), w: round(r.w / width), h: round(r.h / height), size: c.e.size };
   }
   mkdirSync('public/signs', { recursive: true });
   await sharp(sheet, { raw: { width, height, channels: 4 } }).png({ compressionLevel: 9, palette: false }).toFile('public/signs/atlas.png');
