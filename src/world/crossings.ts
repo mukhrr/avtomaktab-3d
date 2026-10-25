@@ -6,7 +6,7 @@ import { pointAlong } from './roadGeometry';
 const MARKING_Y = 0.11;
 const BAR = 0.5;
 const GAP = 0.5;
-const ZEBRA_LENGTH = 3;
+export const ZEBRA_LENGTH = 3;
 const STOP_LINE = 0.4;
 
 /** Flat rectangle `across` wide and `along` long, centred on `c`, with `along` pointing the way of `heading`. */

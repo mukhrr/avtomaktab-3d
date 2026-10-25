@@ -39,12 +39,17 @@ describe('signs', () => {
   const build = (...signs: Sign[]) => buildDistrict(xml, config, { removeWays: [], roads: {}, buildingHeights: {}, buildingStyles: {} }, signs);
   const sign = (extra: Partial<Sign>): Sign => ({ id: 's1', code: CODE.giveWay, edgeId: edge.id, dir: 1, at: 5, origin: 'hand', ...extra });
 
-  it('defaults to no signs', () => {
-    expect(d.signs).toEqual([]);
+  it('defaults to no hand signs, only rule signs', () => {
+    expect(d.signs.filter(s => s.origin !== 'rule')).toEqual([]);
+  });
+
+  it('adds rule signs after the hand signs', () => {
+    expect(d.signs.map(s => s.id)).toEqual(['crossing-100:0-1-40.3', 'crossing-100:0--1-43.3']);
+    expect(build(sign({})).signs.map(s => s.id)).toEqual(['s1', ...d.signs.map(s => s.id)]);
   });
 
   it('keeps valid signs in the district', () => {
-    expect(build(sign({}), sign({ id: 's2', at: len })).signs.map(s => s.id)).toEqual(['s1', 's2']);
+    expect(build(sign({}), sign({ id: 's2', at: len })).signs.filter(s => s.origin === 'hand').map(s => s.id)).toEqual(['s1', 's2']);
   });
 
   it('rejects a sign on a missing edge', () => {
@@ -58,6 +63,10 @@ describe('signs', () => {
 
   it('rejects a sign for a direction without lanes', () => {
     expect(() => build(sign({ dir: -1 }))).toThrow(/s1.*direction/);
+  });
+
+  it('lets only a no entry sign face a direction without lanes', () => {
+    expect(() => build(sign({ dir: -1, code: CODE.noEntry }))).not.toThrow();
   });
 
   it('rejects duplicate ids and a speed limit without a value', () => {

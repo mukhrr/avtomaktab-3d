@@ -6,12 +6,13 @@ import { buildControllers } from './controllers';
 import { crossingsOffJunctions } from './crossings';
 import { placeFurniture } from './furniture';
 import { extractFeatures, type Overrides } from './extract';
-import { entry } from '../../src/shared/signCatalogue';
+import { CODE, entry } from '../../src/shared/signCatalogue';
 import { signSpots } from '../../src/world/signMount';
 import { checkAtlasCovers, type Atlas } from '../signs/atlas';
 import { buildRoadGraph } from './graph';
 import { extractLandmarks } from './landmarks';
 import { parseOsm } from './osm';
+import { placeRuleSigns } from './signRules';
 import { makeProjection } from './projection';
 
 export function validateSigns(signs: Sign[], edges: DistrictData['graph']['edges']): void {
@@ -23,7 +24,8 @@ export function validateSigns(signs: Sign[], edges: DistrictData['graph']['edges
     const e = byId.get(s.edgeId);
     if (!e) throw new Error(`sign ${s.id} refers to missing edge ${s.edgeId}`);
     if (!(s.at >= 0 && s.at <= edgeLength(e))) throw new Error(`sign ${s.id} is ${s.at} m along ${e.id}, outside its length`);
-    if ((s.dir === 1 ? e.lanesForward : e.lanesBackward) === 0) throw new Error(`sign ${s.id} faces a direction ${e.id} has no lanes in`);
+    // 3.1 at a one-way's end faces the direction nobody may drive.
+    if ((s.dir === 1 ? e.lanesForward : e.lanesBackward) === 0 && s.code !== CODE.noEntry) throw new Error(`sign ${s.id} faces a direction ${e.id} has no lanes in`);
     const checkValue = (code: string, value: number | string | undefined, what: string) => {
       const kind = entry(code).valueKind;
       if (!kind) return;
@@ -44,7 +46,7 @@ export function validateSigns(signs: Sign[], edges: DistrictData['graph']['edges
   }
 }
 
-export function buildDistrict(xml: string, config: DistrictConfig, overrides: Overrides, signs: Sign[] = [], log: (message: string) => void = () => {}): DistrictData {
+export function buildDistrict(xml: string, config: DistrictConfig, overrides: Overrides, hand: Sign[] = [], log: (message: string) => void = () => {}): DistrictData {
   const osm = parseOsm(xml);
   const project = makeProjection(config.origin);
   const { roadNodeIds, crossingNodes, furniture: rawFurniture, ...features } = extractFeatures(osm, project, overrides);
@@ -59,8 +61,10 @@ export function buildDistrict(xml: string, config: DistrictConfig, overrides: Ov
     const edge = graph.edges.find(e => e.id === hit.edgeId)!;
     crossings.push({ id: c.id, position: edge.points[hit.index], kind: c.kind, edgeId: hit.edgeId, at: hit.at, width: edge.width });
   }
-  validateSigns(signs, graph.edges);
+  validateSigns(hand, graph.edges);
   const built = buildControllers(features.signals, graph.edges, graph.nodes, crossingsOffJunctions(crossings, graph.edges, graph.nodes));
+  const signs = placeRuleSigns({ graph, crossings: built.crossings, controllers: built.controllers, pois: features.pois }, hand, log);
+  validateSigns(signs, graph.edges);
   const furniture = placeFurniture(rawFurniture, graph.edges, graph.nodes, built.crossings, new Map(features.roads.map(r => [r.id, r.kind])), features.buildings.map(b => b.footprint));
   for (const kind of ['busStop', 'bench', 'bin'] as const) {
     const n = furniture.items.filter(i => i.kind === kind).length;
