@@ -1,6 +1,7 @@
 import type { DistrictData, GraphEdge, GraphNode, Sign } from '../../src/shared/district';
 import { CODE } from '../../src/shared/signCatalogue';
 import { ZEBRA_LENGTH } from '../../src/world/crossings';
+import { JUNCTION_REACH } from '../../src/sim/signs';
 import { signSpots } from '../../src/world/signMount';
 import { edgeLength } from './attach';
 import { distanceToPolyline } from './controllers';
@@ -26,8 +27,6 @@ const SCHOOL_REACH = 60;
 const SCHOOL_AHEAD = 75;
 const PARKING_REACH = 40;
 const HOSPITAL_REACH = 80;
-/** Matches JUNCTION_REACH in src/sim/signs.ts: a signal or sign this close to a node governs it. */
-const JUNCTION_REACH = 40;
 const DIVIDED_GAP = 40;
 const DIVIDED_KINDS = new Set(['primary', 'secondary', 'tertiary']);
 const MERGE_SPAN = 15;

@@ -92,7 +92,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     JSON.parse(readFileSync(`${dir}/overrides.json`, 'utf8')),
     existsSync(`${dir}/signs.json`) ? JSON.parse(readFileSync(`${dir}/signs.json`, 'utf8')) : [],
     console.info,
-    existsSync(`${dir}/coverage.json`) ? JSON.parse(readFileSync(`${dir}/coverage.json`, 'utf8')) : [],
+    existsSync(`${dir}/coverage.json`) ? (JSON.parse(readFileSync(`${dir}/coverage.json`, 'utf8')) as Sign[]).map(s => ({ ...s, origin: 'coverage' as const })) : [],
   );
   checkAtlasCovers(d.signs, JSON.parse(readFileSync('public/signs/atlas.json', 'utf8')) as Atlas);
   const outDir = `public/districts/${district}`;
