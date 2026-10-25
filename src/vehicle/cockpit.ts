@@ -104,8 +104,12 @@ export function createCockpit(now = () => performance.now() / 1000) {
   column.add(wheel);
 
   const gauges = createGaugeCanvas();
+  const panelGeometry = new THREE.PlaneGeometry(GAUGE_WIDTH, GAUGE_WIDTH / GAUGE_ASPECT);
+  // The gauge texture is uploaded unflipped, which is much cheaper, so the plane's v axis runs down instead.
+  const uv = panelGeometry.getAttribute('uv');
+  for (let k = 0; k < uv.count; k++) uv.setY(k, 1 - uv.getY(k));
   const panel = new THREE.Mesh(
-    new THREE.PlaneGeometry(GAUGE_WIDTH, GAUGE_WIDTH / GAUGE_ASPECT),
+    panelGeometry,
     new THREE.MeshBasicMaterial(gauges ? { map: gauges.texture } : { color: 0x121316 }),
   );
   panel.name = 'gauges';

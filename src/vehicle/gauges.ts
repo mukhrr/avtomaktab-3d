@@ -121,8 +121,8 @@ function engine(g: CanvasRenderingContext2D, x: number, y: number, lit: boolean)
   g.fillRect(x - 18, y - 3, 5, 6);
 }
 
-/** Both dials and the lamp strip on one canvas, so the whole instrument panel is a single draw call. */
-export function drawGauges(g: CanvasRenderingContext2D, s: CockpitState): void {
+/** Dial faces, ticks and captions: everything that never changes, drawn once and copied in on each redraw. */
+function drawFace(g: CanvasRenderingContext2D): void {
   g.fillStyle = '#121316';
   g.fillRect(0, 0, W, H);
   dial(g, TACHO, RPM_MAX, 1000, 500, v => String(v / 1000), RPM_RED);
@@ -131,8 +131,13 @@ export function drawGauges(g: CanvasRenderingContext2D, s: CockpitState): void {
   g.font = '12px system-ui, sans-serif';
   g.fillText('x1000 rpm', TACHO[0], TACHO[1] + 44);
   g.fillText('km/h', SPEEDO[0], SPEEDO[1] + 44);
+}
+
+function drawLive(g: CanvasRenderingContext2D, s: CockpitState): void {
   g.fillStyle = '#e8ecef';
   g.font = 'bold 20px system-ui, sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
   g.fillText(String(Math.round(s.speedKmh)), SPEEDO[0], SPEEDO[1] + 66);
   needle(g, TACHO, needleAngle(s.running ? s.rpm : 0, RPM_MAX));
   needle(g, SPEEDO, needleAngle(s.speedKmh, SPEED_MAX));
@@ -146,23 +151,32 @@ export function drawGauges(g: CanvasRenderingContext2D, s: CockpitState): void {
   engine(g, mid, 138, !s.running);
 }
 
-export function createGaugeCanvas(): { texture: THREE.CanvasTexture; draw(s: CockpitState): void } | null {
+export function createGaugeCanvas(): { texture: THREE.DataTexture; draw(s: CockpitState): void } | null {
   if (typeof document === 'undefined') return null;
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
-  const g = canvas.getContext('2d');
-  if (!g) return null;
-  const texture = new THREE.CanvasTexture(canvas);
+  // Software canvas: uploading a GPU-backed canvas cost about 6 ms of gpu time per redraw on the reference Mac.
+  const g = canvas.getContext('2d', { willReadFrequently: true });
+  const face = document.createElement('canvas');
+  face.width = W;
+  face.height = H;
+  const fg = face.getContext('2d');
+  if (!g || !fg) return null;
+  drawFace(fg);
+  const pixels = new Uint8Array(W * H * 4);
+  const texture = new THREE.DataTexture(pixels, W, H, THREE.RGBAFormat);
   texture.colorSpace = THREE.SRGBColorSpace;
-  // Redrawn up to 15 times a second; a mip chain would be rebuilt on every upload.
   texture.generateMipmaps = false;
   texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
   texture.anisotropy = 4;
   return {
     texture,
     draw(s) {
-      drawGauges(g, s);
+      g.drawImage(face, 0, 0);
+      drawLive(g, s);
+      pixels.set(g.getImageData(0, 0, W, H).data);
       texture.needsUpdate = true;
     },
   };

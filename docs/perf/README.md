@@ -362,3 +362,46 @@ Car shadows on against off (avenue, two interleaved pairs per side):
 | after | 5.9 / 7.2, 5.8 / 7.9 | 6.1 / 11.1, 6.3 / 7.2 |
 
 Before, car shadows cost about 1.7 ms p50; after, on and off are equal within noise, so the shadow proxy (one box per car casting instead of the batch) was not built. The after build improves avenue p50 by about 2 ms and chase by about 3 ms against the before build in the same rounds. Avenue p95 after is 6.9 to 8.7, so the 8 ms budget is met in most rounds but not proven; chase cannot be judged on this GPU. High gpu has to be re-checked on a quiet machine.
+
+## Milestone 4e (car feel)
+
+### Budget check (Task 5, 2026-10-25)
+
+Budgets: cockpit view on high within 8 ms gpu p95 and 120 main-pass calls; chase view at most +3 calls; audio at most 0.3 ms per frame on the main thread.
+
+Method as in M4a to M4d: production builds side by side (`vite preview` for before, a static server on the branch build), Playwright Chromium (Chrome for Testing, build 1243) on Apple M5 in a visible window, 1280x720 CSS at pixel ratio 2, preset from `avtomaktab.quality`, `?debug`, noon, free drive at the spawn after pressing Start, `window.__game.lastFrame` sampled every frame for 4.5 s after a 1.5 s warm-up. "Before" is e26e655 (end of M4d), built from a scratch worktree (removed afterwards). Views: chase and cockpit (`rig.cycle()`). Runs interleaved (before, after, after, before); cells give the range over the two runs. Times in ms.
+
+High:
+
+| View | gpu p50 / p95 before | gpu p50 / p95 after | calls before / after | triangles before / after |
+|---|---|---|---|---|
+| chase | 7.3 to 7.4 / 8.1 to 8.4 | 7.3 to 7.4 / 8.1 to 9.0 | 96 / 89 | 751k / 754k |
+| cockpit | 5.8 to 6.9 / 7.0 | 6.8 / 7.5 to 7.9 | 74 / 78 | 749k / 751k |
+
+Low:
+
+| View | gpu p50 / p95 before | gpu p50 / p95 after | calls before / after | triangles before / after |
+|---|---|---|---|---|
+| chase | 1.9 to 2.4 / 5.4 to 6.1 | 2.2 to 2.5 / 5.7 to 5.9 | 70 / 65 | 436k / 438k |
+| cockpit | 2.0 to 2.6 / 4.6 to 6.0 | 2.6 to 2.7 / 6.1 | 54 / 58 | 436k / 437k |
+
+Render cpu p95 is 0.8 to 1.6 on both sides.
+
+Result:
+
+- Calls pass. The Gentra body is 11 meshes instead of 15, so chase drops 7 calls on high and 5 on low (limit was +3). Cockpit adds 4 calls (dashboard, body edges, wheel, gauges), 78 on high against 120.
+- Cockpit gpu p95 on high is 7.5 to 7.9 against 8, and about 0.5 to 0.9 over before. The GPU was lightly loaded this time (high chase p50 7.3 on both sides, run-to-run spread about 0.8 at p95), so the cockpit figure is inside the budget but close to it, not far under. Low cockpit p95 reads 6.1 against a before range of 4.6 to 6.0; low has no gpu budget and sits near the timer floor (see M4a).
+- Chase p95 on high reads 8.1 to 9.0 after against 8.1 to 8.4 before, inside the spread.
+
+### Tuning (Task 5)
+
+The first cockpit run was over budget: high cockpit gpu p95 12.3 against 7.3 before, with p50 unchanged. The cause was the gauge texture, not the redraw rate or triangles. Uploading the 512x256 canvas costs about 6 ms of gpu time on every redraw (cpu side the redraw is 0.1 ms): same build, gpu p95 13.0 with uploads, 7.6 with the canvas drawn but the upload skipped, 7.4 with no redraw at all. Lowering the rate did not fix it (8 Hz still read 10 to 11 in the noisier rounds, and any rate above about 3 Hz puts more than 5% of frames on the spike). Changes:
+
+- The gauge canvas is a software canvas (`willReadFrequently`) and its pixels go to a `DataTexture` through `getImageData`, instead of a `CanvasTexture`. That alone took p95 from 13 to 7.5 to 8.2. The panel's v axis is flipped to match the unflipped upload.
+- Dial faces and captions are drawn once into a second canvas and copied in on each redraw; only needles, the speed number and the lamps are drawn live. Redraw stays at 15 Hz.
+
+### Audio main-thread cost
+
+`AudioRig.frame` (engine, tyres, clicks, chime, horn, start and stall events) timed with `performance.now()` around the call in the real game loop over 600 frames per run, after Start with the AudioContext running and W held. High mean 0.008 to 0.011 ms, low mean 0.011 to 0.017 ms (low frames are shorter, so the sample sits at a different part of the engine state), p95 0.1 (the timer resolution is 0.1), worst single frame 0.4. Budget 0.3 per frame: met with a factor of about 20 on the mean.
+
+The browser's audio thread runs separately and was not measured.
