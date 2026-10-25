@@ -47,6 +47,10 @@
    -298
   ],
   [
+   9,
+   -195.3
+  ],
+  [
    -65.8,
    392.5
   ],
@@ -896,39 +900,29 @@
     "dir": 1,
     "lane": 0
    },
-   "maneuver": "straight",
+   "maneuver": "right",
    "nodeId": "13341188968",
    "waypointIndex": 11
   },
   {
    "ref": {
-    "edgeId": "633846651:1",
+    "edgeId": "1018402145:0",
     "dir": 1,
     "lane": 0
    },
    "maneuver": "straight",
-   "nodeId": "13326621402",
-   "waypointIndex": 11
+   "nodeId": "1928632185",
+   "waypointIndex": 12
   },
   {
    "ref": {
-    "edgeId": "183829635:1",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "332441397",
-   "waypointIndex": 11
-  },
-  {
-   "ref": {
-    "edgeId": "714757188:0",
+    "edgeId": "714757187:0",
     "dir": 1,
     "lane": 0
    },
    "maneuver": "straight",
    "nodeId": "332441398",
-   "waypointIndex": 11
+   "waypointIndex": 12
   },
   {
    "ref": {
@@ -938,7 +932,7 @@
    },
    "maneuver": "straight",
    "nodeId": "13891550763",
-   "waypointIndex": 11
+   "waypointIndex": 12
   },
   {
    "ref": {
@@ -948,7 +942,7 @@
    },
    "maneuver": "straight",
    "nodeId": "12451816478",
-   "waypointIndex": 11
+   "waypointIndex": 12
   },
   {
    "ref": {
@@ -958,7 +952,7 @@
    },
    "maneuver": "straight",
    "nodeId": "332441339",
-   "waypointIndex": 11
+   "waypointIndex": 12
   },
   {
    "ref": {
@@ -968,7 +962,7 @@
    },
    "maneuver": "straight",
    "nodeId": "356274666",
-   "waypointIndex": 11
+   "waypointIndex": 12
   },
   {
    "ref": {
@@ -978,7 +972,7 @@
    },
    "maneuver": "straight",
    "nodeId": "9655915559",
-   "waypointIndex": 11
+   "waypointIndex": 12
   },
   {
    "ref": {
@@ -988,7 +982,7 @@
    },
    "maneuver": "straight",
    "nodeId": "356278499",
-   "waypointIndex": 11
+   "waypointIndex": 12
   },
   {
    "ref": {
@@ -998,7 +992,7 @@
    },
    "maneuver": "straight",
    "nodeId": "4759147248",
-   "waypointIndex": 11
+   "waypointIndex": 12
   },
   {
    "ref": {
@@ -1008,7 +1002,7 @@
    },
    "maneuver": "straight",
    "nodeId": "356633489",
-   "waypointIndex": 11
+   "waypointIndex": 12
   },
   {
    "ref": {
@@ -1018,7 +1012,7 @@
    },
    "maneuver": "straight",
    "nodeId": "13891587168",
-   "waypointIndex": 11
+   "waypointIndex": 12
   },
   {
    "ref": {
@@ -1028,7 +1022,7 @@
    },
    "maneuver": "straight",
    "nodeId": "5244612350",
-   "waypointIndex": 12
+   "waypointIndex": 13
   },
   {
    "ref": {
@@ -1038,7 +1032,7 @@
    },
    "maneuver": "left",
    "nodeId": "356633495",
-   "waypointIndex": 12
+   "waypointIndex": 13
   },
   {
    "ref": {
@@ -1048,7 +1042,7 @@
    },
    "maneuver": "straight",
    "nodeId": "11166411192",
-   "waypointIndex": 12
+   "waypointIndex": 13
   },
   {
    "ref": {
@@ -1058,7 +1052,7 @@
    },
    "maneuver": "straight",
    "nodeId": "1935204918",
-   "waypointIndex": 12
+   "waypointIndex": 13
   },
   {
    "ref": {
@@ -1068,7 +1062,7 @@
    },
    "maneuver": "straight",
    "nodeId": "11935997685",
-   "waypointIndex": 12
+   "waypointIndex": 13
   },
   {
    "ref": {
@@ -1078,7 +1072,7 @@
    },
    "maneuver": "straight",
    "nodeId": "14121431570",
-   "waypointIndex": 12
+   "waypointIndex": 13
   },
   {
    "ref": {
@@ -1088,7 +1082,7 @@
    },
    "maneuver": "straight",
    "nodeId": "13003923216",
-   "waypointIndex": 12
+   "waypointIndex": 13
   },
   {
    "ref": {
@@ -1098,7 +1092,7 @@
    },
    "maneuver": "straight",
    "nodeId": "569651541",
-   "waypointIndex": 12
+   "waypointIndex": 13
   },
   {
    "ref": {
@@ -1108,20 +1102,20 @@
    },
    "maneuver": "finish",
    "nodeId": null,
-   "waypointIndex": 12
+   "waypointIndex": 13
   }
  ],
- "lengthM": 6749.237754127189,
+ "lengthM": 6762.697003231834,
  "features": {
   "signalledLeft": 0,
-  "signalledRight": 4,
-  "signalledStraight": 12,
-  "unsignalledPriorityRight": 6,
+  "signalledRight": 5,
+  "signalledStraight": 11,
+  "unsignalledPriorityRight": 7,
   "zebras": 8,
   "signalCrossings": 16,
-  "multiLaneTurns": 7,
+  "multiLaneTurns": 8,
   "speedZones": 5,
   "stopSigns": 0,
-  "giveWaySigns": 1
+  "giveWaySigns": 2
  }
 }
