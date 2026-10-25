@@ -2470,11 +2470,9 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/3.11.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.11.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/3.11.svg"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.11.svg",
+  "reference": "https://lex.uz/uz/files/7050641.jpg",
   "checked": true,
   "exempt": null,
   "size": [
@@ -3030,11 +3028,9 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/3.24.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.24-5.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/3.24.svg"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_3.24-5.svg",
+  "reference": "https://lex.uz/uz/files/7050646.jpg",
   "checked": true,
   "exempt": null,
   "size": [
@@ -3065,11 +3061,9 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/3.25.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_3.25.1.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/3.25.svg"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:BY_road_sign_3.25.1.svg",
+  "reference": "https://lex.uz/uz/files/7050646.jpg",
   "checked": true,
   "exempt": null,
   "size": [
@@ -4111,9 +4105,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/4.7.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:4.7_Belarus_(Road_sign).svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/4.7.svg"
   },
   "reference": "https://lex.uz/uz/files/7253447.jpg",
   "checked": true,
@@ -4146,9 +4138,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/4.8.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:4.8_Belarus_(Road_sign).svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/4.8.svg"
   },
   "reference": "https://lex.uz/uz/files/7253447.jpg",
   "checked": true,
@@ -5575,9 +5565,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/5.18.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.18.1.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/5.18.svg"
   },
   "reference": "https://lex.uz/uz/files/7050653.jpg",
   "checked": true,
@@ -5989,9 +5977,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/5.22.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.22.1.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/5.22.svg"
   },
   "reference": "https://lex.uz/uz/files/7050656.jpg",
   "checked": true,
@@ -6024,9 +6010,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/5.23.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.23.1.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/5.23.svg"
   },
   "reference": "https://lex.uz/uz/files/7050656.jpg",
   "checked": true,
@@ -6059,9 +6043,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/5.24.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.24.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/5.24.svg"
   },
   "reference": "https://lex.uz/uz/files/7050656.jpg",
   "checked": true,
@@ -6094,9 +6076,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/5.25.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.25.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/5.25.svg"
   },
   "reference": "https://lex.uz/uz/files/7050656.jpg",
   "checked": true,
@@ -6164,11 +6144,9 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/5.27.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:KZ_road_sign_5.27_B.svg",
-   "licence": "CC0"
+   "file": "data/signs/drawn/5.27.svg"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:KZ_road_sign_5.27_B.svg",
+  "reference": "https://lex.uz/uz/files/7050656.jpg",
   "checked": true,
   "exempt": null,
   "size": [
@@ -6199,11 +6177,9 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/5.28.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.28_A.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/5.28.svg"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.28_A.svg",
+  "reference": "https://lex.uz/uz/files/7050656.jpg",
   "checked": true,
   "exempt": null,
   "size": [
@@ -6234,11 +6210,9 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/5.29.1.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_6.14.1_A.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/5.29.1.svg"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_6.14.1_A.svg",
+  "reference": "https://lex.uz/uz/files/7050656.jpg",
   "checked": true,
   "exempt": null,
   "size": [
@@ -6269,11 +6243,9 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/5.29.2.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_6.14.2_A.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/5.29.2.svg"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_6.14.2_A.svg",
+  "reference": "https://lex.uz/uz/files/7050656.jpg",
   "checked": true,
   "exempt": null,
   "size": [
@@ -6444,9 +6416,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/5.32.1.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.32.1.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/5.32.1.svg"
   },
   "reference": "https://lex.uz/uz/files/7050656.jpg",
   "checked": true,
@@ -6479,9 +6449,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/5.32.2.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.32.2.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/5.32.2.svg"
   },
   "reference": "https://lex.uz/uz/files/7050656.jpg",
   "checked": true,
@@ -6514,9 +6482,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/5.32.3.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_5.32.3.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/5.32.3.svg"
   },
   "reference": "https://lex.uz/uz/files/7050656.jpg",
   "checked": true,
@@ -6549,11 +6515,9 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/5.33.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:KZ_road_sign_5.33.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/5.33.svg"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:KZ_road_sign_5.33.svg",
+  "reference": "https://lex.uz/uz/files/7050656.jpg",
   "checked": true,
   "exempt": null,
   "size": [
@@ -8254,11 +8218,9 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/7.1.1.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_8.1.1.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/7.1.1.svg"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_8.1.1.svg",
+  "reference": "https://lex.uz/uz/files/5958445",
   "checked": true,
   "exempt": null,
   "size": [
@@ -8289,11 +8251,9 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/7.1.2.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_8.1.2.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/7.1.2.svg"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:RU_road_sign_8.1.2.svg",
+  "reference": "https://lex.uz/uz/files/5958445",
   "checked": true,
   "exempt": null,
   "size": [
@@ -8324,9 +8284,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/7.1.3.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:RU_road_sign_8.1.3.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/7.1.3.svg"
   },
   "reference": "https://lex.uz/uz/files/5958445",
   "checked": true,
@@ -8359,9 +8317,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/7.1.4.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.1.3.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/7.1.4.svg"
   },
   "reference": "https://lex.uz/uz/files/5958445",
   "checked": true,
@@ -8394,9 +8350,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/7.2.1.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:7.2.1_(Road_sign).svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/7.2.1.svg"
   },
   "reference": "https://lex.uz/uz/files/5958445",
   "checked": true,
@@ -8429,9 +8383,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/7.2.2.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.2.2.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/7.2.2.svg"
   },
   "reference": "https://lex.uz/uz/files/5958445",
   "checked": true,
@@ -8534,9 +8486,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/7.2.5.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.2.5.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/7.2.5.svg"
   },
   "reference": "https://lex.uz/uz/files/5958445",
   "checked": true,
@@ -8569,9 +8519,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/7.2.6.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.2.6.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/7.2.6.svg"
   },
   "reference": "https://lex.uz/uz/files/5958445",
   "checked": true,
@@ -9129,11 +9077,9 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/7.5.3.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:KZ_road_sign_7.5.3.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/7.5.3.svg"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:KZ_road_sign_7.5.3.svg",
+  "reference": "https://lex.uz/uz/files/5958445",
   "checked": true,
   "exempt": null,
   "size": [
@@ -9164,11 +9110,9 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/7.5.4.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.4.4.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/7.5.4.svg"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.4.4.svg",
+  "reference": "https://lex.uz/uz/files/5958445",
   "checked": true,
   "exempt": null,
   "size": [
@@ -9269,9 +9213,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/7.5.7.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:BY_road_sign_7.5.7.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/7.5.7.svg"
   },
   "reference": "https://lex.uz/uz/files/5958445",
   "checked": true,
@@ -9689,11 +9631,9 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/7.9.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.19.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/7.9.svg"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:UA_road_sign_7.19.svg",
+  "reference": "https://lex.uz/uz/files/5958445",
   "checked": true,
   "exempt": null,
   "size": [
@@ -9759,11 +9699,9 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/7.11.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:Moldova_road_sign_6.13.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/7.11.svg"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:Moldova_road_sign_6.13.svg",
+  "reference": "https://lex.uz/uz/files/5958445",
   "checked": true,
   "exempt": null,
   "size": [
@@ -10072,9 +10010,7 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/7.20.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:7.19_Belarus_road_sign.svg",
-   "licence": "Public domain"
+   "file": "data/signs/drawn/7.20.svg"
   },
   "reference": "https://lex.uz/uz/files/5958448",
   "checked": true,
@@ -10276,11 +10212,9 @@
   "translated": true,
   "art": {
    "source": "drawn",
-   "file": "data/signs/drawn/7.24.svg",
-   "basedOn": "https://commons.wikimedia.org/wiki/File:7.24_Uzbekistan_road_sign.svg",
-   "licence": "CC0"
+   "file": "data/signs/drawn/7.24.svg"
   },
-  "reference": "https://commons.wikimedia.org/wiki/File:7.24_Uzbekistan_road_sign.svg",
+  "reference": "https://lex.uz/uz/files/5958448",
   "checked": true,
   "exempt": null,
   "size": [
