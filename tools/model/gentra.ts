@@ -12,13 +12,23 @@ const OUT = 'public/models/gentra.glb';
 export const HALF_WIDTH = 0.87;
 const MIRRORS = ['obj96_Material6_0', 'obj97_Material6_0'];
 const STEERING_WHEEL = 'obj180_Material   585_0';
-// A boot-lid racing wing, not on any stock Lacetti or Gentra, and out of place on a driving school car.
-const WING = 'obj85_Material6_0';
+// Tuning parts that are meshes of their own: a boot-lid racing wing and an oversized exhaust tip with its pipe, not on
+// any stock Lacetti or Gentra and out of place on a driving school car.
+const TUNING = ['obj85_Material6_0', 'obj150_chrome_0', 'obj151_Material   593_0', 'obj114_chrome_0'];
 /** Badge geometry, found as small loose parts at the grille and boot centre: node, Y-up box (min, max), triangles. */
 export const BADGE_PARTS: { node: string; what: string; box: [number[], number[]]; tris: number }[] = [
   { node: 'obj109_Material6_0', what: 'front bowtie, 13 x 4.5 cm on the grille bar', box: [[-0.07, 0.585, 2.115], [0.07, 0.64, 2.14]], tris: 44 },
   { node: 'obj165_Material6_0', what: 'boot lid centre emblem plate, 7 x 2 cm', box: [[-0.04, 0.8, -2.08], [0.04, 0.825, -2.06]], tris: 6 },
 ];
+
+// Roll cage tubes all map onto the strip of chrome tube photos in the interior atlas and are longer than any trim there.
+const CAGE_UV: [number[], number[]] = [[0.5, 0.5], [0.66, 0.8]];
+const CAGE_TRIS = 190;
+const isCageTube = (p: Part) => inside(p.uvMin, CAGE_UV) && inside(p.uvMax, CAGE_UV) && Math.max(...p.max.map((x, k) => x - p.min[k])) > 0.5;
+
+const TAIL_LENS = [0.55, 0.02, 0.02, 0.45];
+const CLEAR_LENS = [0.8, 0.8, 0.8, 0.25];
+const texelUv = (img: { w: number; h: number }, [x, y]: number[]): [number, number] => [(x + 0.5) / img.w, (y + 0.5) / img.h];
 
 export type Group = 'paint' | 'chrome' | 'shell' | 'lamp' | 'interior' | 'glass' | 'wheel' | 'drop' | LampGroup;
 export const BODY_GROUPS = ['paint', 'chrome', 'shell', 'interior', 'glass', ...LAMP_GROUPS] as const;
@@ -224,10 +234,14 @@ export async function buildGentra(raw = RAW, out = OUT): Promise<Stats> {
   }
   const badges: string[] = [];
   for (const b of BADGE_PARTS) {
-    const removed = removeParts(named.find(n => n.name === b.node)!.prim, b.box);
+    const removed = removeParts(named.find(n => n.name === b.node)!.prim, p => inside(p.min, b.box) && inside(p.max, b.box));
     if (removed !== b.tris) throw new Error(`${b.node}: removed ${removed} badge triangles, expected ${b.tris}`);
     badges.push(`${b.node}: ${b.what}, ${removed} triangles removed`);
   }
+  let cage = 0;
+  for (const n of named.filter(n => n.material === 'Material___585')) cage += removeParts(n.prim, isCageTube);
+  if (cage !== CAGE_TRIS) throw new Error(`removed ${cage} roll cage triangles, expected ${CAGE_TRIS}`);
+  badges.push(`roll cage: ${cage} triangles removed`);
   for (const m of new Set(named.map(n => n.material))) if (!(m in MATERIAL_GROUPS)) throw new Error(`unmapped material ${m}`);
 
   const table = new Map<string, Stats['materials'][number]>();
@@ -239,7 +253,7 @@ export async function buildGentra(raw = RAW, out = OUT): Promise<Stats> {
     table.set(n.material, row);
   }
 
-  let kept = named.filter(n => n.group !== 'drop' && n.name !== WING);
+  let kept = named.filter(n => n.group !== 'drop' && !TUNING.includes(n.name));
   const body = kept.filter(n => !MIRRORS.includes(n.name)).map(n => n.prim);
   const all = bounds(kept.map(n => n.prim)), shell = bounds(body);
   const cx = (shell.min[0] + shell.max[0]) / 2, cz = (all.min[2] + all.max[2]) / 2;
@@ -273,6 +287,32 @@ export async function buildGentra(raw = RAW, out = OUT): Promise<Stats> {
     return [...split].map(([group, prim]) => ({ ...n, prim, group: group as Group }));
   });
   for (const g of LAMP_GROUPS) if (!kept.some(n => n.group === g)) throw new Error(`no triangles for lamp group ${g}`);
+  // Tail lamp triangle centres by group, so the red lens can turn clear over the indicator and reverse cells.
+  const tailCells = kept.filter(n => n.material === 'Material___586').flatMap(n => {
+    const pos = n.prim.getAttribute('POSITION')!, idx = n.prim.getIndices()!;
+    return Array.from({ length: idx.getCount() / 3 }, (_, t) => ({
+      group: n.group,
+      at: [0, 1, 2].map(k => pos.getElement(idx.getScalar(t * 3 + k), [0, 0, 0])).reduce((a, q) => a.map((x, d) => x + q[d] / 3), [0, 0, 0]),
+    }));
+  });
+  const cellUnder = (q: number[]) => tailCells.reduce((best, c) => {
+    const d = Math.hypot(c.at[0] - q[0], c.at[1] - q[1], c.at[2] - q[2]);
+    return d < best.d ? { d, group: c.group } : best;
+  }, { d: Infinity, group: 'tail' as Group }).group;
+  // The tail lamp lens over the indicator and reverse cells moves into those lamps' own meshes as an opaque clear lens,
+  // so they read amber and white through nothing red.
+  kept = kept.flatMap(n => {
+    if (n.material !== 'Material8') return [n];
+    const pos = n.prim.getAttribute('POSITION')!, idx = n.prim.getIndices()!;
+    const split = splitTriangles(doc, n.prim, t => {
+      const c = [0, 1, 2].map(k => pos.getElement(idx.getScalar(t * 3 + k), [0, 0, 0])).reduce((a, q) => a.map((x, d) => x + q[d] / 3), [0, 0, 0]);
+      const g = cellUnder(c);
+      return g === 'tail' ? 'glass' : g;
+    });
+    return [...split].map(([group, prim]) => ({ ...n, prim, group: group as Group }));
+  });
+  const WHITE_TEXEL = [554, 46];
+  if (lensColour(rawTexel(lamps, ...texelUv(lamps, WHITE_TEXEL))) !== 'white') throw new Error('lamp lens texel moved');
   const suspension = await decode(tex('Suspension'));
   badges.push(`Material___593 bowtie at px 887-1002 x 1284-1343: ${eraseGold(atlas, [887, 1284, 1002, 1343])} px repainted`);
   eraseRect(atlas, [760, 1840, 845, 1885]);
@@ -306,8 +346,10 @@ export async function buildGentra(raw = RAW, out = OUT): Promise<Stats> {
         setColours(doc, p, () => c, 3);
       }
     } else if (group === 'glass') {
-      const rgba = n.material === 'Material4' ? [0.04, 0.05, 0.06, 0.7] : n.material === 'Material8' ? [0.55, 0.02, 0.02, 0.45] : [0.8, 0.8, 0.8, 0.25];
+      const rgba = n.material === 'Material4' ? [0.04, 0.05, 0.06, 0.7] : n.material === 'Material8' ? TAIL_LENS : CLEAR_LENS;
       setColours(doc, p, () => rgba, 4);
+    } else if (n.material === 'Material8') {
+      pointUvAt(doc, p, texelUv(lamps, WHITE_TEXEL));
     } else if (group === 'wheel') {
       if (n.material === 'Sidewall') setColours(doc, p, () => [1, 1, 1], 3);
       else if (n.material === 'Tread') {
@@ -398,27 +440,38 @@ export async function buildGentra(raw = RAW, out = OUT): Promise<Stats> {
   return { ...stats, tris: total, bytes: statSync(out).size };
 }
 
-/** Drops the connected parts of `prim` whose bounds fit inside `box`; returns the triangles removed. */
-function removeParts(prim: Primitive, [lo, hi]: [number[], number[]]): number {
-  const pos = prim.getAttribute('POSITION')!, idx = prim.getIndices()!;
+interface Part { min: number[]; max: number[]; uvMin: number[]; uvMax: number[] }
+
+const inside = (p: number[], [lo, hi]: [number[], number[]]) => p.every((x, k) => x >= lo[k] && x <= hi[k]);
+
+/** Drops the connected parts of `prim` that `drop` picks by their position and UV bounds; returns the triangles removed. */
+function removeParts(prim: Primitive, drop: (part: Part) => boolean): number {
+  const pos = prim.getAttribute('POSITION')!, idx = prim.getIndices()!, uv = prim.getAttribute('TEXCOORD_0');
   const n = pos.getCount(), parent = Array.from({ length: n }, (_, i) => i);
   const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
   const join = (a: number, b: number) => { parent[find(a)] = find(b); };
-  const seen = new Map<string, number>(), v = [0, 0, 0];
+  const seen = new Map<string, number>(), v = [0, 0, 0], t2 = [0, 0];
   for (let i = 0; i < n; i++) {
     const key = pos.getElement(i, v).map(x => Math.round(x * 1e4)).join();
     if (seen.has(key)) join(i, seen.get(key)!);
     else seen.set(key, i);
   }
   for (let t = 0; t < idx.getCount(); t += 3) { join(idx.getScalar(t), idx.getScalar(t + 1)); join(idx.getScalar(t), idx.getScalar(t + 2)); }
-  const outside = new Set<number>();
-  for (let i = 0; i < n; i++) {
+  const parts = new Map<number, Part>();
+  for (let t = 0; t < idx.getCount(); t++) {
+    const i = idx.getScalar(t), r = find(i);
+    const part = parts.get(r) ?? { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity], uvMin: [Infinity, Infinity], uvMax: [-Infinity, -Infinity] };
     pos.getElement(i, v);
-    if (v.some((x, k) => x < lo[k] || x > hi[k])) outside.add(find(i));
+    for (let k = 0; k < 3; k++) { part.min[k] = Math.min(part.min[k], v[k]); part.max[k] = Math.max(part.max[k], v[k]); }
+    if (uv) {
+      uv.getElement(i, t2);
+      for (let k = 0; k < 2; k++) { part.uvMin[k] = Math.min(part.uvMin[k], t2[k]); part.uvMax[k] = Math.max(part.uvMax[k], t2[k]); }
+    }
+    parts.set(r, part);
   }
   const kept: number[] = [];
   for (let t = 0; t < idx.getCount(); t += 3) {
-    if (outside.has(find(idx.getScalar(t)))) kept.push(idx.getScalar(t), idx.getScalar(t + 1), idx.getScalar(t + 2));
+    if (!drop(parts.get(find(idx.getScalar(t)))!)) kept.push(idx.getScalar(t), idx.getScalar(t + 1), idx.getScalar(t + 2));
   }
   const removed = idx.getCount() / 3 - kept.length / 3;
   idx.setArray(new Uint32Array(kept));

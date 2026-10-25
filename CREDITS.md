@@ -16,4 +16,4 @@ Player car credit, as the model licence asks:
 
 This work is based on "Lacetti" (https://sketchfab.com/3d-models/lacetti-d3c32dfa9aea435b838a907394e4f0d2) by uzb_rx7 (https://sketchfab.com/uzbek_supra) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
 
-Changes made for public/models/gentra.glb by `npm run model:gentra` (tools/model/gentra.ts): badges removed (grille bowtie and boot emblem geometry, bowties and CHEVROLET lettering painted out of the textures), textures resized to at most 1024 px and converted to JPEG, roof aerial and boot wing removed, meshes merged by material, body scaled to 96.4% width.
+Changes made for public/models/gentra.glb by `npm run model:gentra` (tools/model/gentra.ts): badges removed (grille bowtie and boot emblem geometry, bowties and CHEVROLET lettering painted out of the textures), textures resized to at most 1024 px and converted to JPEG, roof aerial, boot wing, roll cage and exhaust tip removed, meshes merged by material, body scaled to 96.4% width.
