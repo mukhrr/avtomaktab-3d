@@ -4,7 +4,7 @@ import { testNetwork } from '../traffic/testNetwork';
 import type { DistrictData, Sign } from '../shared/district';
 import { CODE, loadCatalogue } from '../shared/signCatalogue';
 import { entriesOnRoute, missingEntries, signsOnRoute } from './coverage';
-import { planRoute } from './route';
+import { planRoute, type ExamRoute } from './route';
 
 const sign = (id: string, code: string, edgeId: string, dir: 1 | -1, at: number, extra: Partial<Sign> = {}): Sign =>
   ({ id, code, edgeId, dir, at, origin: 'hand', ...extra });
@@ -40,6 +40,34 @@ describe('signsOnRoute', () => {
   it('counts the rule 3.1 placement, dir -1 near the edge end that is the crossed node', () => {
     const { d, route } = setup([sign('rule', CODE.noEntry, 's', -1, 117), sign('far', CODE.noEntry, 's', -1, 60)]);
     expect(ids(d, route)).toEqual(['rule']);
+  });
+
+  it('does not count a sign on the reverse lane of the edge the route arrived on', () => {
+    const { d, route } = setup([sign('back', CODE.noEntry, 'w', 1, 10)]);
+    expect(ids(d, route)).toEqual([]);
+  });
+
+  it('counts each sign once on a route that revisits a node and an edge', () => {
+    const { d, route } = setup([
+      sign('a', CODE.speedLimit, 'w', -1, 50),
+      sign('side', CODE.noEntry, 'n', 1, 10),
+      sign('b', CODE.speedLimit, 'e', 1, 100),
+      sign('c', CODE.speedLimit, 'w', 1, 50),
+      sign('past', CODE.speedLimit, 'w', 1, 150),
+    ]);
+    const lane = (edgeId: string, dir: 1 | -1) => ({ edgeId, dir, lane: 0 });
+    const loop = {
+      ...route,
+      start: { position: [-100, 3] as [number, number], heading: 0 },
+      finish: { position: [-100, -3] as [number, number], heading: 0 },
+      steps: [
+        { ref: lane('w', -1), maneuver: 'start', nodeId: 'cross', waypointIndex: 1 },
+        { ref: lane('e', 1), maneuver: 'uturn', nodeId: 't', waypointIndex: 1 },
+        { ref: lane('e', -1), maneuver: 'uturn', nodeId: 'cross', waypointIndex: 1 },
+        { ref: lane('w', 1), maneuver: 'finish', nodeId: null, waypointIndex: 1 },
+      ],
+    } as ExamRoute;
+    expect(ids(d, loop)).toEqual(['a', 'side', 'b', 'c']);
   });
 
   it('counts any code, not only junction signs', () => {

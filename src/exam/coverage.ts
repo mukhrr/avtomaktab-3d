@@ -48,6 +48,7 @@ export function signsOnRoute(d: DistrictData, route: ExamRoute): Sign[] {
       for (const away of [1, -1] as const) {
         if ((away === 1 ? side.from : side.to) !== node.id) continue;
         if (id === next.edgeId && away === next.dir) continue;
+        if (id === step.ref.edgeId && away === -dir) continue;
         for (const s of byLane.get(`${id}|${away}`) ?? []) {
           if ((away === 1 ? s.at : len - s.at) <= JUNCTION_REACH) take(s);
         }
