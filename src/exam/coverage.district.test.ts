@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { DistrictData } from '../shared/district';
+import type { DistrictData, Vec2 } from '../shared/district';
 import { CODE } from '../shared/signCatalogue';
 import { LaneNetwork } from '../traffic/lanes';
+import { pointAlong } from '../world/roadGeometry';
 import { signSpots } from '../world/signMount';
 import { routeConflicts } from '../../tools/signs/coverageSpots';
 import { missingEntries, signsOnRoute } from './coverage';
@@ -30,6 +31,23 @@ describe('tashkent-center coverage', () => {
       expect(r.lengthM, r.id).toBeGreaterThanOrEqual(4000);
       expect(r.lengthM, r.id).toBeLessThanOrEqual(8000);
     }
+  });
+
+  // The examiner abandons a drive that leaves the district bounds.
+  it('keeps every route and coverage sign inside the district bounds', () => {
+    const b = d.bounds;
+    const outside = ([x, z]: Vec2) => x < b.minX || x > b.maxX || z < b.minZ || z > b.maxZ;
+    for (const r of routes) {
+      const pts = r.steps.slice(1, -1).flatMap(s => net.path(s.ref).points);
+      for (let i = 0; i < r.steps.length - 1; i++) pts.push(...net.connector(r.steps[i].ref, r.steps[i + 1].ref));
+      expect(pts.filter(outside), r.id).toEqual([]);
+    }
+    const edges = new Map(d.graph.edges.map(e => [e.id, e]));
+    const signsOutside = d.signs.filter(s => s.origin === 'coverage').filter(s => {
+      const p = pointAlong(edges.get(s.edgeId)!.points, s.at);
+      return outside([p.x, p.z]);
+    });
+    expect(signsOutside.map(s => s.id)).toEqual([]);
   });
 
   it('spreads coverage signs so no route carries more than 60', () => {

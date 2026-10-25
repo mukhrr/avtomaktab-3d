@@ -7,8 +7,8 @@
    105.2
   ],
   [
-   -327,
-   449.9
+   -460.2,
+   363.1
   ],
   [
    -385.3,
@@ -162,141 +162,11 @@
    },
    "maneuver": "straight",
    "nodeId": "3147076930",
-   "waypointIndex": 1
-  },
-  {
-   "ref": {
-    "edgeId": "542466796:0",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "997740228",
-   "waypointIndex": 1
-  },
-  {
-   "ref": {
-    "edgeId": "182159766:0",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "355220383",
-   "waypointIndex": 1
-  },
-  {
-   "ref": {
-    "edgeId": "182159766:1",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "13003929922",
    "waypointIndex": 2
   },
   {
    "ref": {
-    "edgeId": "182159766:2",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "13789894683",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "1508201092:0",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "2018385499",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "542469099:0",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "left",
-   "nodeId": "356633495",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "542464407:0",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "5244612346",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "542464405:0",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "13003947903",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "542464405:1",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "13540453490",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "542464405:2",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "5244612341",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "542464406:0",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "355220684",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "144314981:0",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "7436379439",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "483222839:0",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "997740228",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "483222839:1",
+    "edgeId": "542464404:0",
     "dir": 1,
     "lane": 0
    },
@@ -1105,15 +975,15 @@
    "waypointIndex": 13
   }
  ],
- "lengthM": 6762.697003231834,
+ "lengthM": 5927.060420059642,
  "features": {
   "signalledLeft": 0,
   "signalledRight": 5,
-  "signalledStraight": 11,
-  "unsignalledPriorityRight": 7,
-  "zebras": 8,
-  "signalCrossings": 16,
-  "multiLaneTurns": 8,
+  "signalledStraight": 9,
+  "unsignalledPriorityRight": 5,
+  "zebras": 6,
+  "signalCrossings": 12,
+  "multiLaneTurns": 7,
   "speedZones": 5,
   "stopSigns": 0,
   "giveWaySigns": 2
