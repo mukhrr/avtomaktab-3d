@@ -96,6 +96,14 @@ describe('routeConflicts', () => {
     expect(routeConflicts(sign('4.1.4', 'e', 1, 220), [route], net, d)).toEqual([]);
   });
 
+  it('lets a roundabout sign stand where the route turns right or goes straight on, not where it turns left', () => {
+    const { d, net, route } = setup();
+    expect(routeConflicts(sign('4.3', 'e', 1, 220), [route], net, d)).toEqual([]);
+    expect(routeConflicts(sign('4.3', 'w', -1, 10), [route], net, d)).toEqual([]);
+    const left = setup([[300, -3], [237, 30]]);
+    expect(routeConflicts(sign('4.3', 'tE', -1, 20), [left.route], left.net, left.d)[0]).toMatch(/left/);
+  });
+
   it('does not flag a truck-only ban for the Gentra', () => {
     const { d, net, route } = setup();
     expect(routeConflicts(sign('3.4', 'e', 1, 100, { value: 3.5 }), [route], net, d)).toEqual([]);

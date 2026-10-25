@@ -40,8 +40,9 @@ const ALLOWED: Record<string, Turn[]> = {
   '4.1.4': ['straight', 'right'],
   '4.1.5': ['straight', 'left', 'uturn'],
   '4.1.6': ['left', 'right', 'uturn'],
-  // The graph has no roundabouts; following the counter-clockwise arrows from an approach is a right turn onto the ring.
-  '4.3': ['right'],
+  // The graph has no roundabouts; following the counter-clockwise arrows is a right turn onto the ring, or straight on
+  // where the approach merges into it, as most approaches to the Amir Temur ring do.
+  '4.3': ['right', 'straight'],
 };
 const MIN_SPEED_LIMIT = 20;
 const MAX_MIN_SPEED = 40;
