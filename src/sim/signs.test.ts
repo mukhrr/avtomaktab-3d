@@ -1,20 +1,21 @@
 import { testNetwork } from '../traffic/testNetwork';
 import type { DistrictData, Sign } from '../shared/district';
 import { SignSystem } from './signs';
+import { CODE } from '../shared/signCatalogue';
 
 // Edge e runs from the cross (0,0) to the T (240,0), 240 m, 60 km/h, two-way.
 function withSigns(signs: Sign[]): DistrictData {
   return { ...testNetwork(), signs };
 }
-const sign = (id: string, type: Sign['type'], at: number, dir: 1 | -1 = 1, extra: Partial<Sign> = {}): Sign =>
-  ({ id, type, edgeId: 'e', dir, at, ...extra });
+const sign = (id: string, code: string, at: number, dir: 1 | -1 = 1, extra: Partial<Sign> = {}): Sign =>
+  ({ id, code, edgeId: 'e', dir, at, origin: 'hand', ...extra });
 
 describe('ahead', () => {
   const sys = new SignSystem(withSigns([
-    sign('far', 'pedestrianCrossing', 180),
-    sign('near', 'giveWay', 100),
-    sign('back', 'stop', 20),
-    sign('opposite', 'noEntry', 120, -1),
+    sign('far', CODE.pedestrianCrossing, 180),
+    sign('near', CODE.giveWay, 100),
+    sign('back', CODE.stop, 20),
+    sign('opposite', CODE.noEntry, 120, -1),
   ]));
 
   it('lists signs in travel order within range and ignores the other direction', () => {
@@ -39,12 +40,12 @@ describe('ahead', () => {
 
 describe('atJunction', () => {
   const sys = new SignSystem(withSigns([
-    sign('give', 'giveWay', 228),
-    sign('left', 'noLeftTurn', 226),
-    sign('speed', 'speedLimit', 230, 1, { value: 40 }),
-    sign('crossing', 'pedestrianCrossing', 200),
-    sign('early', 'stop', 100),
-    sign('other', 'stop', 228, -1),
+    sign('give', CODE.giveWay, 228),
+    sign('left', CODE.noLeftTurn, 226),
+    sign('speed', CODE.speedLimit, 230, 1, { value: 40 }),
+    sign('crossing', CODE.pedestrianCrossing, 200),
+    sign('early', CODE.stop, 100),
+    sign('other', CODE.stop, 228, -1),
   ]));
 
   it('returns the junction signs near the end of the lane in its travel direction', () => {
@@ -52,16 +53,16 @@ describe('atJunction', () => {
   });
 
   it('measures from the edge start when travelling backward', () => {
-    const near = new SignSystem(withSigns([sign('b', 'stop', 12, -1), sign('f', 'stop', 12, 1)]));
+    const near = new SignSystem(withSigns([sign('b', CODE.stop, 12, -1), sign('f', CODE.stop, 12, 1)]));
     expect(near.atJunction({ edgeId: 'e', dir: -1, lane: 0 }).map(s => s.id)).toEqual(['b']);
   });
 });
 
 describe('speedLimitAt', () => {
   const sys = new SignSystem(withSigns([
-    sign('fifty', 'speedLimit', 40, 1, { value: 50 }),
-    sign('forty', 'speedLimit', 120, 1, { value: 40 }),
-    sign('oppositeTen', 'speedLimit', 10, -1, { value: 10 }),
+    sign('fifty', CODE.speedLimit, 40, 1, { value: 50 }),
+    sign('forty', CODE.speedLimit, 120, 1, { value: 40 }),
+    sign('oppositeTen', CODE.speedLimit, 10, -1, { value: 10 }),
   ]));
 
   it('is the edge maxspeed before any sign', () => {
@@ -80,7 +81,7 @@ describe('speedLimitAt', () => {
   });
 
   it('applies a school zone of 30 for 150 m after the sign', () => {
-    const school = new SignSystem(withSigns([sign('sch', 'school', 20)]));
+    const school = new SignSystem(withSigns([sign('sch', CODE.children, 20)]));
     expect(school.speedLimitAt('e', 1, 19)).toBe(60);
     expect(school.speedLimitAt('e', 1, 20)).toBe(30);
     expect(school.speedLimitAt('e', 1, 170)).toBe(30);
@@ -88,7 +89,7 @@ describe('speedLimitAt', () => {
   });
 
   it('lets an explicit speed limit sign win over a school zone', () => {
-    const both = new SignSystem(withSigns([sign('sch', 'school', 20), sign('lim', 'speedLimit', 60, 1, { value: 50 })]));
+    const both = new SignSystem(withSigns([sign('sch', CODE.children, 20), sign('lim', CODE.speedLimit, 60, 1, { value: 50 })]));
     expect(both.speedLimitAt('e', 1, 100)).toBe(50);
   });
 });

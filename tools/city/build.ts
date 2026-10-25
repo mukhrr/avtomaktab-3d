@@ -6,6 +6,7 @@ import { buildControllers } from './controllers';
 import { crossingsOffJunctions } from './crossings';
 import { placeFurniture } from './furniture';
 import { extractFeatures, type Overrides } from './extract';
+import { entry } from '../../src/shared/signCatalogue';
 import { buildRoadGraph } from './graph';
 import { extractLandmarks } from './landmarks';
 import { parseOsm } from './osm';
@@ -21,7 +22,14 @@ export function validateSigns(signs: Sign[], edges: DistrictData['graph']['edges
     if (!e) throw new Error(`sign ${s.id} refers to missing edge ${s.edgeId}`);
     if (!(s.at >= 0 && s.at <= edgeLength(e))) throw new Error(`sign ${s.id} is ${s.at} m along ${e.id}, outside its length`);
     if ((s.dir === 1 ? e.lanesForward : e.lanesBackward) === 0) throw new Error(`sign ${s.id} faces a direction ${e.id} has no lanes in`);
-    if (s.type === 'speedLimit' && !(s.value && s.value > 0)) throw new Error(`speed limit sign ${s.id} needs a value`);
+    const needsValue = (code: string, value: number | undefined, what: string) => {
+      if (entry(code).valueKind && !(value && value > 0)) throw new Error(`${what} ${s.id} (${code}) needs a value`);
+    };
+    needsValue(s.code, s.value, 'sign');
+    for (const p of s.plates ?? []) {
+      if (entry(p.code).group !== 7) throw new Error(`sign ${s.id}: ${p.code} is not a group 7 plate`);
+      needsValue(p.code, p.value, 'plate on sign');
+    }
   }
 }
 

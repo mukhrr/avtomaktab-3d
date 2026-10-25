@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
-import type { Sign } from '../../src/shared/district';
+import type { DistrictData, Sign } from '../../src/shared/district';
+import { CODE } from '../../src/shared/signCatalogue';
 import { edgeLength } from './attach';
-import { buildDistrict } from './build';
+import { buildDistrict, validateSigns } from './build';
 
 const xml = readFileSync(new URL('./fixtures/mini.osm.xml', import.meta.url), 'utf8');
 const config = { name: 'mini', bbox: [69.278, 41.31, 69.281, 41.312] as [number, number, number, number], origin: { lat: 41.3111, lon: 69.2797 } };
@@ -36,7 +37,7 @@ describe('signs', () => {
   const edge = d.graph.edges.find(e => e.lanesBackward === 0)!;
   const len = edgeLength(edge);
   const build = (...signs: Sign[]) => buildDistrict(xml, config, { removeWays: [], roads: {}, buildingHeights: {}, buildingStyles: {} }, signs);
-  const sign = (extra: Partial<Sign>): Sign => ({ id: 's1', type: 'giveWay', edgeId: edge.id, dir: 1, at: 5, ...extra });
+  const sign = (extra: Partial<Sign>): Sign => ({ id: 's1', code: CODE.giveWay, edgeId: edge.id, dir: 1, at: 5, origin: 'hand', ...extra });
 
   it('defaults to no signs', () => {
     expect(d.signs).toEqual([]);
@@ -61,6 +62,25 @@ describe('signs', () => {
 
   it('rejects duplicate ids and a speed limit without a value', () => {
     expect(() => build(sign({}), sign({ at: 6 }))).toThrow(/duplicate/);
-    expect(() => build(sign({ type: 'speedLimit' }))).toThrow(/s1.*value/);
+    expect(() => build(sign({ code: CODE.speedLimit }))).toThrow(/s1.*value/);
+  });
+
+  it('rejects a sign whose code is not in the catalogue', () => {
+    expect(() => build(sign({ code: '9.99' }))).toThrow('9.99');
+  });
+
+  it('rejects a value sign without a value', () => {
+    expect(() => build(sign({ code: '3.24' }))).toThrow('value');
+  });
+
+  it('rejects a plate that is not in group 7', () => {
+    expect(() => build(sign({ plates: [{ code: '2.5' }] }))).toThrow('plate');
+  });
+
+  it('accepts the migrated tashkent-center signs', () => {
+    const dir = 'data/districts/tashkent-center';
+    const real = JSON.parse(readFileSync(`${dir}/signs.json`, 'utf8')) as Sign[];
+    const district = JSON.parse(readFileSync('public/districts/tashkent-center/district.json', 'utf8')) as DistrictData;
+    expect(() => validateSigns(real, district.graph.edges)).not.toThrow();
   });
 });

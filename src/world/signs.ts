@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import type { DistrictData, GraphEdge, Sign, SignType } from '../shared/district';
+import type { DistrictData, GraphEdge, Sign } from '../shared/district';
+import { CODE } from '../shared/signCatalogue';
 import { pointAlong } from './roadGeometry';
 
 const CURB_GAP = 1;
@@ -10,6 +11,9 @@ const COLS = 4;
 
 type Shape = 'circle' | 'triangle' | 'octagon' | 'square';
 
+type SignType = Exclude<keyof typeof CODE, 'children'> | 'school';
+const GLYPH_OF_CODE = new Map<string, SignType>(Object.entries(CODE).map(([k, v]) => [v, k === 'children' ? 'school' : k as SignType]));
+
 const SHAPE_OF: Record<SignType, Shape> = {
   stop: 'octagon', giveWay: 'triangle', school: 'triangle',
   priorityRoad: 'square', pedestrianCrossing: 'square',
@@ -18,7 +22,7 @@ const SHAPE_OF: Record<SignType, Shape> = {
 const SHAPES: Shape[] = ['circle', 'triangle', 'octagon', 'square'];
 
 /** Atlas cell identity: speed limits get one cell per value. */
-export const plateKey = (s: Sign): string => (s.type === 'speedLimit' ? `speedLimit:${s.value}` : s.type);
+export const plateKey = (s: Sign): string => (s.code === CODE.speedLimit ? `speedLimit:${s.value}` : GLYPH_OF_CODE.get(s.code) ?? s.code);
 
 /** Where a sign's pole stands and which way its face points (toward oncoming traffic). */
 export function signPose(edge: GraphEdge, s: Sign): { x: number; z: number; heading: number } {
@@ -253,7 +257,7 @@ export function addSigns(scene: THREE.Scene, d: DistrictData): void {
   );
   const material = plateMaterial(texture, cellSize);
   const plates = SHAPES.map(shape => {
-    const own = placed.filter(s => SHAPE_OF[s.type] === shape);
+    const own = placed.filter(s => SHAPE_OF[GLYPH_OF_CODE.get(s.code)!] === shape);
     const geo = plateGeometry(shape);
     const cells = new Float32Array(own.length * 2);
     own.forEach((s, i) => cells.set(cellOf(plateKey(s)), i * 2));
@@ -274,7 +278,7 @@ export function addSigns(scene: THREE.Scene, d: DistrictData): void {
       const pose = signPose(edges.get(s.edgeId)!, s);
       q.setFromAxisAngle(up, pose.heading);
       // Give way is the plain triangle turned point-down; its glyph has no orientation.
-      if (s.type === 'giveWay') q.multiply(flip);
+      if (s.code === CODE.giveWay) q.multiply(flip);
       // Offset along the facing direction so the plate sits in front of the pole.
       p.set(pose.x + Math.sin(pose.heading) * 0.06, PLATE_BOTTOM + PLATE_SIZE / 2, pose.z + Math.cos(pose.heading) * 0.06);
       mesh.setMatrixAt(i, m.compose(p, q, one));

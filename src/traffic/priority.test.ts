@@ -3,6 +3,7 @@ import { SignalSystem } from '../sim/signals';
 import { LaneNetwork, pointAt, type LaneRef } from './lanes';
 import { testNetwork } from './testNetwork';
 import { CAR_CLASSES, TrafficSim, type CrossingOccupancy, type PlayerState } from './trafficSim';
+import { CODE } from '../shared/signCatalogue';
 
 const DT = 1 / 60;
 const HALF = CAR_CLASSES.nexia.length / 2;
@@ -23,7 +24,7 @@ const N_OUT: LaneRef = { edgeId: 'n', dir: 1, lane: 0 };
 const S_OUT: LaneRef = { edgeId: 's', dir: -1, lane: 0 };
 const W_OUT: LaneRef = { edgeId: 'w', dir: 1, lane: 0 };
 
-const sign = (id: string, type: Sign['type'], edgeId: string, dir: 1 | -1, at: number): Sign => ({ id, type, edgeId, dir, at });
+const sign = (id: string, code: string, edgeId: string, dir: 1 | -1, at: number): Sign => ({ id, code, edgeId, dir, at, origin: 'hand' });
 
 function setup(edit: (d: DistrictData) => void = () => {}, seed = 1) {
   const d = testNetwork();
@@ -54,7 +55,7 @@ function entryTimes(c: ReturnType<typeof setup>, node: string, ids: number[], se
   return entered;
 }
 
-const giveWayOnStub = (d: DistrictData) => { d.signs = [sign('gw', 'giveWay', 'tStub', -1, 8)]; };
+const giveWayOnStub = (d: DistrictData) => { d.signs = [sign('gw', CODE.giveWay, 'tStub', -1, 8)]; };
 
 test('give way: the side arm waits for a main-road car 2 s out even though it reaches the line first', () => {
   const c = setup(giveWayOnStub);
@@ -83,7 +84,7 @@ test('equal approaches: the car from the right goes first even when it arrives s
 });
 
 test('a priority road beats an unsigned arm that has it on its right', () => {
-  const c = setup(d => { d.signs = [sign('pr', 'priorityRoad', 'e', 1, 230)]; });
+  const c = setup(d => { d.signs = [sign('pr', CODE.priorityRoad, 'e', 1, 230)]; });
   const main = c.at(E, 4, 4, [TE_OUT]);
   const side = c.at(STUB_IN, 20, 8, [E_BACK]);
   const [mainIn, sideIn] = entryTimes(c, 't', [main, side], 20);
@@ -141,7 +142,7 @@ test('left turn on green waits for the oncoming player going straight', () => {
 });
 
 test('an AI car comes to a full stop at a stop sign before entering', () => {
-  const c = setup(d => { d.signs = [sign('st', 'stop', 'e', 1, 230)]; });
+  const c = setup(d => { d.signs = [sign('st', CODE.stop, 'e', 1, 230)]; });
   const id = c.at(E, 40, 10, [TE_OUT]);
   let rest = 0, longest = 0, entered = Infinity;
   for (let t = 0; t < 20 && entered === Infinity; t += DT) {
@@ -211,7 +212,7 @@ describe('route choice obeys signs', () => {
   });
 
   it('never turns left past a no-left-turn sign or into a no-entry street', () => {
-    expect([...destinations([sign('nl', 'noLeftTurn', 'w', -1, 10), sign('ne', 'noEntry', 'e', 1, 5)])]).toEqual(['s']);
+    expect([...destinations([sign('nl', CODE.noLeftTurn, 'w', -1, 10), sign('ne', CODE.noEntry, 'e', 1, 5)])]).toEqual(['s']);
   });
 });
 
@@ -250,7 +251,7 @@ test('a higher-ranked car that cannot clear the next junction does not hold up a
       if (e.id === 'o1') e.points = [x, [360, -80]];
       if (e.id === 'o2') e.points = [[372, -80], [372, -10], x];
     }
-    d.signs = [sign('pr', 'priorityRoad', 'e', 1, 230)];
+    d.signs = [sign('pr', CODE.priorityRoad, 'e', 1, 230)];
   });
   const O1: LaneRef = { edgeId: 'o1', dir: 1, lane: 0 }, O2: LaneRef = { edgeId: 'o2', dir: 1, lane: 0 };
   expect(c.len(TE_OUT)).toBeLessThan(CAR_CLASSES.nexia.length + 2.5);

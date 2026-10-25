@@ -2,6 +2,7 @@ import type { DriveSnapshot } from '../snapshot';
 import { E_OUT, N_OUT, S_OUT, W_IN, testRoad, transit } from './testRoad';
 import { DT, drive, ids, repeat, type SnapOver } from './testSnap';
 import { PedestrianYieldRule, VehicleYieldRule } from './yielding';
+import { CODE } from '../../shared/signCatalogue';
 
 type Crossing = DriveSnapshot['crossingsAhead'][number];
 type Conflict = DriveSnapshot['junctionConflicts'][number];
@@ -123,13 +124,13 @@ describe('vehicleNotYielded', () => {
   });
 
   test('on a priority road the car from the right gives none', () => {
-    expect(through(testRoad([{ type: 'priorityRoad', edgeId: 'w', dir: -1, at: 10 }]), [car()])).toEqual([]);
+    expect(through(testRoad([{ code: CODE.priorityRoad, edgeId: 'w', dir: -1, at: 10 }]), [car()])).toEqual([]);
   });
 
   test('a car from the left has no priority, unless the player has a giveWay or stop sign', () => {
     expect(through(testRoad(), [car({ fromRight: false })])).toEqual([]);
-    expect(ids(through(testRoad([{ type: 'giveWay', edgeId: 'w', dir: -1, at: 10 }]), [car({ fromRight: false })]))).toEqual(['vehicleNotYielded']);
-    expect(ids(through(testRoad([{ type: 'stop', edgeId: 'w', dir: -1, at: 10 }]), [car({ fromRight: false, oncoming: true })]))).toEqual(['vehicleNotYielded']);
+    expect(ids(through(testRoad([{ code: CODE.giveWay, edgeId: 'w', dir: -1, at: 10 }]), [car({ fromRight: false })]))).toEqual(['vehicleNotYielded']);
+    expect(ids(through(testRoad([{ code: CODE.stop, edgeId: 'w', dir: -1, at: 10 }]), [car({ fromRight: false, oncoming: true })]))).toEqual(['vehicleNotYielded']);
   });
 
   test('a car from the right with a giveWay sign has no priority; one on a priority road from the left has', () => {

@@ -1,4 +1,5 @@
 import type { DistrictData, GraphEdge, Vec2 } from '../shared/district';
+import { CODE } from '../shared/signCatalogue';
 import { pointAt, type LaneNetwork, type LaneRef } from '../traffic/lanes';
 import { classifyTurn, endHeading, project, turnBetween } from '../traffic/turns';
 import { nearestLane } from '../world/spawn';
@@ -225,8 +226,8 @@ export function countFeatures(net: LaneNetwork, d: DistrictData, steps: RouteSte
     }
     for (const g of d.signs) {
       if (g.edgeId !== step.ref.edgeId || g.dir !== step.ref.dir || g.at < lo || g.at > hi) continue;
-      if (g.type === 'stop') f.stopSigns++;
-      else if (g.type === 'giveWay') f.giveWaySigns++;
+      if (g.code === CODE.stop) f.stopSigns++;
+      else if (g.code === CODE.giveWay) f.giveWaySigns++;
     }
   });
   return f;

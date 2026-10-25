@@ -2,9 +2,10 @@ import { NoEntryRule, StopSignRule, TurnRestrictionRule, WrongWayOnewayRule } fr
 import { E_OUT, N_OUT, S_OUT, W_BACK, W_IN, testRoad, transit } from './testRoad';
 import { drive, fresh, ids, repeat, type SnapOver } from './testSnap';
 import { FRONT_OFFSET } from './thresholds';
+import { CODE } from '../../shared/signCatalogue';
 
 describe('noFullStopAtStopSign', () => {
-  const road = testRoad([{ type: 'stop', edgeId: 'w', dir: -1, at: 8 }]);
+  const road = testRoad([{ code: CODE.stop, edgeId: 'w', dir: -1, at: 8 }]);
   const line = road.laneEnd(W_IN);
   /** Frame with the front `toLine` metres short of the approach's lane end (negative once over it). */
   const front = (toLine: number, speed: number): SnapOver => ({ ref: W_IN, speed, match: { edgeS: line + toLine + FRONT_OFFSET } });
@@ -33,7 +34,7 @@ describe('noFullStopAtStopSign', () => {
 });
 
 describe('noEntry', () => {
-  const road = testRoad([{ type: 'noEntry', edgeId: 'n', dir: 1, at: 10 }]);
+  const road = testRoad([{ code: CODE.noEntry, edgeId: 'n', dir: 1, at: 10 }]);
 
   test('entering the edge against the sign, once held for 0.5 s', () => {
     const vs = drive(new NoEntryRule(road), transit(W_IN, N_OUT));
@@ -54,26 +55,26 @@ describe('noEntry', () => {
 
   test('other exits, a sign beyond 40 m, and reversing in are fine', () => {
     expect(drive(new NoEntryRule(road), transit(W_IN, E_OUT))).toEqual([]);
-    expect(drive(new NoEntryRule(testRoad([{ type: 'noEntry', edgeId: 'n', dir: 1, at: 60 }])), transit(W_IN, N_OUT))).toEqual([]);
+    expect(drive(new NoEntryRule(testRoad([{ code: CODE.noEntry, edgeId: 'n', dir: 1, at: 60 }])), transit(W_IN, N_OUT))).toEqual([]);
     expect(drive(new NoEntryRule(road), transit(W_IN, N_OUT, { speed: -2 }))).toEqual([]);
   });
 });
 
 describe('turnRestriction', () => {
   test('a left turn under noLeftTurn', () => {
-    const road = testRoad([{ type: 'noLeftTurn', edgeId: 'w', dir: -1, at: 10 }]);
+    const road = testRoad([{ code: CODE.noLeftTurn, edgeId: 'w', dir: -1, at: 10 }]);
     expect(ids(drive(new TurnRestrictionRule(road), transit(W_IN, N_OUT)))).toEqual(['turnRestriction']);
     expect(drive(new TurnRestrictionRule(road), transit(W_IN, E_OUT))).toEqual([]);
     expect(drive(new TurnRestrictionRule(road), transit(W_IN, S_OUT))).toEqual([]);
   });
 
   test('a right turn under noRightTurn and a U-turn under noUTurn', () => {
-    expect(ids(drive(new TurnRestrictionRule(testRoad([{ type: 'noRightTurn', edgeId: 'w', dir: -1, at: 10 }])), transit(W_IN, S_OUT)))).toEqual(['turnRestriction']);
-    expect(ids(drive(new TurnRestrictionRule(testRoad([{ type: 'noUTurn', edgeId: 'w', dir: -1, at: 10 }])), transit(W_IN, W_BACK)))).toEqual(['turnRestriction']);
+    expect(ids(drive(new TurnRestrictionRule(testRoad([{ code: CODE.noRightTurn, edgeId: 'w', dir: -1, at: 10 }])), transit(W_IN, S_OUT)))).toEqual(['turnRestriction']);
+    expect(ids(drive(new TurnRestrictionRule(testRoad([{ code: CODE.noUTurn, edgeId: 'w', dir: -1, at: 10 }])), transit(W_IN, W_BACK)))).toEqual(['turnRestriction']);
   });
 
   test('a sign on another approach does not apply', () => {
-    const road = testRoad([{ type: 'noLeftTurn', edgeId: 'e', dir: -1, at: 10 }]);
+    const road = testRoad([{ code: CODE.noLeftTurn, edgeId: 'e', dir: -1, at: 10 }]);
     expect(drive(new TurnRestrictionRule(road), transit(W_IN, N_OUT))).toEqual([]);
   });
 });

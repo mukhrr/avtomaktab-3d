@@ -6,9 +6,9 @@ import { RoadInfo } from './road';
 import { repeat, type SnapOver } from './testSnap';
 
 /** testNetwork with extra signs; `edit` may change lane counts before the network is built. */
-export function testRoad(signs: Omit<Sign, 'id'>[] = [], edit?: (d: DistrictData) => void): RoadInfo {
+export function testRoad(signs: Omit<Sign, 'id' | 'origin'>[] = [], edit?: (d: DistrictData) => void): RoadInfo {
   const d = testNetwork();
-  d.signs.push(...signs.map((g, i) => ({ id: `t${i}`, ...g })));
+  d.signs.push(...signs.map((g, i) => ({ id: `t${i}`, origin: 'hand' as const, ...g })));
   edit?.(d);
   return new RoadInfo(d, new LaneNetwork(d), new SignSystem(d));
 }
