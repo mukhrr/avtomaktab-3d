@@ -24,6 +24,9 @@ const FRONT = [0, 1];
 const REAR = [2, 3];
 
 const WHEEL_FRICTION = 2.2;
+const leanAccel = new THREE.Vector3();
+const leanRot = new THREE.Quaternion();
+
 const HARD_BRAKE = 0.8;
 const HARD_BRAKE_MIN_SPEED = 5;
 
@@ -172,8 +175,8 @@ export class Vehicle {
 
   private updateLean(dt: number): void {
     const v = this.body.linvel(), q = this.body.rotation();
-    const accel = new THREE.Vector3(v.x, v.y, v.z).sub(this.lastVel).divideScalar(dt)
-      .applyQuaternion(new THREE.Quaternion(q.x, q.y, q.z, q.w).invert());
+    const accel = leanAccel.set(v.x, v.y, v.z).sub(this.lastVel).divideScalar(dt)
+      .applyQuaternion(leanRot.set(q.x, q.y, q.z, q.w).invert());
     this.lastVel.set(v.x, v.y, v.z);
     this.tilt = this.bodyLean.update(accel.z, accel.x, dt);
   }

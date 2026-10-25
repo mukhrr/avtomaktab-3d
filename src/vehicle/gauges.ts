@@ -164,8 +164,7 @@ export function createGaugeCanvas(): { texture: THREE.DataTexture; draw(s: Cockp
   const fg = face.getContext('2d');
   if (!g || !fg) return null;
   drawFace(fg);
-  const pixels = new Uint8Array(W * H * 4);
-  const texture = new THREE.DataTexture(pixels, W, H, THREE.RGBAFormat);
+  const texture = new THREE.DataTexture(new Uint8Array(W * H * 4), W, H, THREE.RGBAFormat);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.generateMipmaps = false;
   texture.minFilter = THREE.LinearFilter;
@@ -176,7 +175,8 @@ export function createGaugeCanvas(): { texture: THREE.DataTexture; draw(s: Cockp
     draw(s) {
       g.drawImage(face, 0, 0);
       drawLive(g, s);
-      pixels.set(g.getImageData(0, 0, W, H).data);
+      // The readback is allocated by the canvas anyway, so the texture takes it instead of copying it.
+      texture.image.data = g.getImageData(0, 0, W, H).data as unknown as Uint8Array;
       texture.needsUpdate = true;
     },
   };

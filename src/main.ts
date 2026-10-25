@@ -247,6 +247,15 @@ function startExam() {
   examStep(0);
 }
 
+/** Everything a start applies to the world; shared by the start screen and the `__game.start` debug hook. */
+function applyChoice(c: StartChoice) {
+  env.setTimeOfDay(c.timeOfDay);
+  if (c.mode === 'exam') return startExam();
+  if (Math.abs(car.speed) < STOPPED) car.gearbox = c.gearbox;
+  hud.set({ exam: null, toast: null, subtitle: null });
+  show('drive');
+}
+
 const roads = district.graph.edges.map(e => e.points);
 mountHud(hud, minimap.canvas, params.has('debug'), {
   roads,
@@ -261,11 +270,7 @@ mountHud(hud, minimap.canvas, params.has('debug'), {
     }
     hud.set({ quality: q });
     applyQuality(q);
-    env.setTimeOfDay(c.timeOfDay);
-    if (c.mode === 'exam') return startExam();
-    if (Math.abs(car.speed) < STOPPED) car.gearbox = c.gearbox;
-    hud.set({ exam: null, toast: null, subtitle: null });
-    show('drive');
+    applyChoice(c);
   },
   onRetry: () => {
     unlockAudio();
@@ -448,8 +453,7 @@ renderer.setAnimationLoop(() => {
   }
 });
 
-Object.assign(window, { __game: { car, cockpit, env, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, audio: () => audio && Object.assign(audio, { ctxState: audio.ctx.state, ctxTime: audio.ctx.currentTime }), cabin: () => cabin, lastFrame, session, hud, route, start: (c: Partial<StartChoice>) => {
+Object.assign(window, { __game: { car, cockpit, env, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, audio: () => audio && { ...audio, ctxState: audio.ctx.state, ctxTime: audio.ctx.currentTime }, cabin: () => cabin, lastFrame, session, hud, route, start: (c: Partial<StartChoice>) => {
   choice = { ...choice, ...c };
-  if (choice.mode === 'exam') startExam();
-  else show('drive');
+  applyChoice(choice);
 } } });
