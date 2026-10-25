@@ -18,6 +18,13 @@ function setup(signs: Sign[]) {
 const ids = (d: DistrictData, route: ReturnType<typeof setup>['route']) => signsOnRoute(d, route).map(s => s.id);
 
 describe('signsOnRoute', () => {
+  it('names a junction that lists a missing edge', () => {
+    const { d, route } = setup([]);
+    const node = route.steps.find(s => s.nodeId)!.nodeId!;
+    d.graph.nodes = d.graph.nodes.map(n => (n.id === node ? { ...n, edges: [...n.edges, 'ghost'] } : n));
+    expect(() => signsOnRoute(d, route)).toThrow(`node ${node} lists missing edge ghost`);
+  });
+
   it('counts a sign on a lane the route drives', () => {
     const { d, route } = setup([sign('a', CODE.speedLimit, 'e', 1, 100)]);
     expect(ids(d, route)).toEqual(['a']);

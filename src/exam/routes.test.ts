@@ -38,6 +38,20 @@ describe('loadRoutes', () => {
     warn.mockRestore();
   });
 
+  it.each([
+    ['fails to load', async () => { throw new Error('404'); }],
+    ['is not an object with a routes list', async () => ['route-1']],
+    ['lists a non-string id', async () => ({ routes: ['route-1', 2] })],
+    ['lists no routes', async () => ({ routes: [] })],
+  ])('falls back to route-1 and logs one error when the index %s', async (_, index) => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const fetchJson = async (url: string) => (url.endsWith('/index.json') ? index() : fake(url.split('/').pop()!.replace('.json', '')));
+    const got = await loadRoutes('tashkent-center', fetchJson);
+    expect(got.map(r => r.id)).toEqual(['route-1']);
+    expect(error).toHaveBeenCalledTimes(1);
+    error.mockRestore();
+  });
+
   it('route-1 failing is fatal', async () => {
     await expect(loadRoutes('tashkent-center', files(['route-1']))).rejects.toThrow();
   });

@@ -9,10 +9,19 @@ const defaultFetch: FetchJson = async url => {
   return res.json();
 };
 
-/** Every route listed in the district's index; one that fails to load is skipped, except route-1. */
+function indexIds(index: unknown): string[] {
+  const ids = (index as { routes?: unknown } | null)?.routes;
+  if (!Array.isArray(ids) || !ids.length || !ids.every(id => typeof id === 'string')) throw new Error('expected { routes: string[] } with at least one id');
+  return ids;
+}
+
+/** Every route listed in the district's index; one that fails to load is skipped, except route-1, and a bad index means route-1 alone. */
 export async function loadRoutes(district: string, fetchJson: FetchJson = defaultFetch): Promise<ExamRoute[]> {
   const base = `/districts/${district}/routes`;
-  const { routes: ids } = (await fetchJson(`${base}/index.json`)) as { routes: string[] };
+  const ids = await fetchJson(`${base}/index.json`).then(indexIds).catch((e: unknown) => {
+    console.error(`route index for ${district} unusable, using ${FATAL_ROUTE} only`, e);
+    return [FATAL_ROUTE];
+  });
   const settled = await Promise.allSettled(ids.map(id => fetchJson(`${base}/${id}.json`)));
   const routes: ExamRoute[] = [];
   const skipped: string[] = [];

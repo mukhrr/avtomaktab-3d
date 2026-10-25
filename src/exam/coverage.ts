@@ -43,7 +43,8 @@ export function signsOnRoute(d: DistrictData, route: ExamRoute): Sign[] {
     if (!node) return;
     const next = route.steps[i + 1].ref;
     for (const id of node.edges) {
-      const side = edges.get(id)!;
+      const side = edges.get(id);
+      if (!side) throw new Error(`${route.id}: node ${node.id} lists missing edge ${id}`);
       const len = polyLength(side.points);
       for (const away of [1, -1] as const) {
         if ((away === 1 ? side.from : side.to) !== node.id) continue;
