@@ -33,7 +33,6 @@ export interface ExamSessionDeps {
   signs: SignSystem;
   peds: SnapshotContext['peds'];
   traffic: SnapshotContext['traffic'];
-  route: ExamRoute;
   penalties: Record<PenaltyId, PenaltyEntry>;
   playerLength: number;
   /** Puts the car at rest on `pose` in `gearbox`, belt off, with the traffic around it cleared. */
@@ -42,6 +41,8 @@ export interface ExamSessionDeps {
   audio?: AudioBackend;
   audioBase?: string;
 }
+
+const VERDICT_KEYS = new Set(['exam.violation', 'exam.passed', 'exam.failed']);
 
 export function examRules(road: RoadInfo): Rule[] {
   return [
@@ -58,9 +59,13 @@ export class ExamSession {
   onPrompt?: (p: Prompt) => void;
   /** Direction and result lines as they are spoken; violations come through onPrompt only. */
   onSubtitle?: (text: string) => void;
+  /** Scored drives only. */
   onEnd?: (r: ExamResult) => void;
-  readonly routeLine: Vec2[];
+  /** Unscored drives only: reached the finish, or left the route (R, Esc, flip, out of bounds). */
+  onFreeEnd?: (how: 'finished' | 'left') => void;
   private readonly engine: RuleEngine;
+  private _routeLine: Vec2[] = [];
+  private _scored = true;
   private examiner: Examiner | null = null;
   private matcher: MapMatcher | null = null;
   private voice: VoicePlayer | null = null;
@@ -73,7 +78,14 @@ export class ExamSession {
 
   constructor(private readonly deps: ExamSessionDeps) {
     this.engine = new RuleEngine(deps.rules ?? examRules(new RoadInfo(deps.d, deps.net, deps.signs)));
-    this.routeLine = routeLine(deps.net, deps.route);
+  }
+
+  get routeLine(): Vec2[] {
+    return this._routeLine;
+  }
+
+  get scored(): boolean {
+    return this._scored;
   }
 
   get phase(): ExamPhase | null {
@@ -113,14 +125,17 @@ export class ExamSession {
     return this.deps.penalties;
   }
 
-  start(lang: Lang, gearbox: Gearbox): void {
+  start(lang: Lang, gearbox: Gearbox, route: ExamRoute, scored: boolean): void {
     this.voice?.stop();
     this._lang = lang;
-    this.deps.placeCar(this.deps.route.start, gearbox);
+    this._scored = scored;
+    this._routeLine = routeLine(this.deps.net, route);
+    this.deps.placeCar(route.start, gearbox);
     // Rules reset after the car is placed: PullOffRule arms on the first stop it sees.
     this.engine.reset();
     this.matcher = new MapMatcher(this.deps.d, this.deps.net);
-    this.examiner = new Examiner(this.deps.route, this.deps.net, this.deps.penalties, this.deps.d, this.engine);
+    // An unscored drive never runs the rules, so the examiner has nothing held to flush at its end.
+    this.examiner = new Examiner(route, this.deps.net, this.deps.penalties, this.deps.d, scored ? this.engine : new RuleEngine([]));
     this.voice = new VoicePlayer(lang, this.deps.audioBase ?? '/audio', this.deps.audio);
     this.voice.onSubtitle = text => {
       const k = this.violationLines.indexOf(text);
@@ -140,7 +155,7 @@ export class ExamSession {
     const { d, net, signals, signs, peds, traffic, playerLength } = this.deps;
     const s = buildSnapshot({ d, net, matcher: this.matcher, signals, signs, peds, traffic, playerLength }, { ...f, prevSpeed: this.prevSpeed });
     this.prevSpeed = f.speed;
-    const violations = this.engine.update(s);
+    const violations = this._scored ? this.engine.update(s) : [];
     const briefing = ex.phase === 'briefing';
     this.t0 ??= f.t;
     this.emit(ex.update(s, briefing ? [] : violations));
@@ -164,6 +179,7 @@ export class ExamSession {
 
   private emit(prompts: Prompt[]): void {
     for (const p of prompts) {
+      if (!this._scored && VERDICT_KEYS.has(p.key)) continue;
       this._prompts.push(p);
       if (p.key === 'exam.violation') this.violationLines.push(subtitle(this._lang, p));
       this.voice?.say(p);
@@ -174,7 +190,8 @@ export class ExamSession {
   private checkEnd(): void {
     if (this.ended || this.active || !this.examiner) return;
     this.ended = true;
-    this.onEnd?.(this.examiner.result);
+    if (this._scored) this.onEnd?.(this.examiner.result);
+    else this.onFreeEnd?.(this.examiner.phase === 'finished' ? 'finished' : 'left');
   }
 }
 

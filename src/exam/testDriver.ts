@@ -938,7 +938,7 @@ export function runExam(
   for (let i = 0; i < WARMUP / DT; i++) tick();
 
   const session = new ExamSession({
-    d: w.d, net: w.net, signals: w.signals, signs: w.signs, peds: w.peds, traffic: w.traffic, route: w.route,
+    d: w.d, net: w.net, signals: w.signals, signs: w.signs, peds: w.peds, traffic: w.traffic,
     penalties: loadPenalties(), playerLength: PLAYER_LENGTH,
     placeCar: pose => {
       driver.place();
@@ -946,7 +946,7 @@ export function runExam(
       w.peds.clearNear(pose.position, START_CLEAR);
     },
   });
-  session.start('uz', 'auto');
+  session.start('uz', 'auto', w.route, true);
   observer.reset();
   const t0 = t;
   while (t - t0 < capSeconds && (session.active || (driveOn && !driver.finished))) {

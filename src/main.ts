@@ -9,6 +9,7 @@ import { fixedSteps, NO_EDGES, splitControls, STEP } from './physics/loop';
 import { ExamSession } from './exam/session';
 import { loadPenalties } from './exam/penalties';
 import type { ExamRoute } from './exam/route';
+import { drawRoute, loadRoutes } from './exam/routes';
 import { SignSystem } from './sim/signs';
 import { loadChoice, type StartChoice } from './ui/choices';
 import { createHudStore, gearLabel, type Screen } from './ui/hudStore';
@@ -58,7 +59,6 @@ const CROSSERS = 40;
 const WALKERS = 80;
 const PLAYER_LENGTH = 4.48;
 const PLAYER_WIDTH = 1.74;
-const ROUTE = 'route-1';
 /** No AI car or pedestrian is left this close to the exam start; the sims respawn farther out. */
 const START_CLEAR = 40;
 const NO_KEYS = new Set<string>();
@@ -66,13 +66,14 @@ const NO_KEYS = new Set<string>();
 const carBody = loadCarBody();
 const signArt = loadSignAtlas();
 const district: DistrictData = await (await fetch(`/districts/${DISTRICT}/district.json`)).json();
-const route: ExamRoute = await (await fetch(`/districts/${DISTRICT}/routes/${ROUTE}.json`)).json();
+const routes = await loadRoutes(DISTRICT);
+const routeById = new Map(routes.map(r => [r.id, r]));
 
 // Antialiasing and ground textures are fixed for the page load, so the preset is read before anything is built.
 const storedQuality = loadQuality();
 const loadedQuality: Quality = storedQuality ?? 'medium';
 const quality = QUALITY[loadedQuality];
-let choice: StartChoice = loadChoice();
+let choice: StartChoice = loadChoice(routes.map(r => r.id));
 
 const renderer = new THREE.WebGLRenderer({ antialias: quality.antialias, logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, quality.pixelRatioCap));
@@ -182,7 +183,7 @@ const show = (s: Screen) => {
 };
 
 const session = new ExamSession({
-  d: district, net, signals, signs, peds, traffic, route, penalties: loadPenalties(), playerLength: PLAYER_LENGTH,
+  d: district, net, signals, signs, peds, traffic, penalties: loadPenalties(), playerLength: PLAYER_LENGTH,
   placeCar: (pose, gearbox) => {
     car.gearbox = gearbox;
     car.reset(pose);
@@ -201,6 +202,10 @@ session.onPrompt = p => {
   hud.set({ toast: { seq: ++seq, id, vars: p.vars, points: e.points, tier: e.tier } });
 };
 session.onSubtitle = text => hud.set({ subtitle: { seq: ++seq, text } });
+session.onFreeEnd = how => {
+  minimap.setRoute(null);
+  hud.set({ exam: null, subtitle: null, toast: null, notice: { seq: ++seq, key: `route.${how}`, lang: session.lang } });
+};
 session.onEnd = result => {
   hud.set({ debrief: { lang: session.lang, result, startT: session.startT, routeLine: session.routeLine, penalties: session.penalties }, exam: null });
   show('debrief');
@@ -251,27 +256,36 @@ function unlockAudio() {
 
 document.addEventListener('visibilitychange', () => audio?.visibility(document.visibilityState === 'hidden'));
 
+let activeRoute: ExamRoute = routes[0];
+
 /** Runs inside the click handler, so the brief's audio starts within the user gesture. */
-function startExam() {
-  hud.set({ toast: null, subtitle: null, debrief: null, exam: { lang: choice.lang, maneuver: null, distance: 0, total: 0 } });
+function beginRun(route: ExamRoute, scored: boolean) {
+  activeRoute = route;
+  hud.set({ toast: null, subtitle: null, notice: null, debrief: null, exam: { lang: choice.lang, maneuver: null, distance: 0, total: 0, scored } });
   show('drive');
-  session.start(choice.lang, choice.gearbox);
+  session.start(choice.lang, choice.gearbox, route, scored);
+  minimap.setRoute(scored ? null : session.routeLine);
   examStep(0);
 }
 
+const startExam = (routeId?: string) => beginRun((routeId && routeById.get(routeId)) || drawRoute(routes, Math.random), true);
+
 /** Everything a start applies to the world; shared by the start screen and the `__game.start` debug hook. */
-function applyChoice(c: StartChoice) {
+function applyChoice(c: StartChoice, routeId?: string) {
   env.setTimeOfDay(c.timeOfDay);
-  if (c.mode === 'exam') return startExam();
+  if (c.mode === 'exam') return startExam(routeId);
+  const guided = routeById.get(routeId ?? c.route ?? '');
+  if (guided) return beginRun(guided, false);
   if (Math.abs(car.speed) < STOPPED) car.gearbox = c.gearbox;
-  hud.set({ exam: null, toast: null, subtitle: null });
+  minimap.setRoute(null);
+  hud.set({ exam: null, toast: null, subtitle: null, notice: null });
   show('drive');
 }
 
 const roads = district.graph.edges.map(e => e.points);
 mountHud(hud, minimap.canvas, params.has('debug'), {
   roads,
-  routeKm: route.lengthM / 1000,
+  routes: routes.map(r => ({ id: r.id, km: r.lengthM / 1000 })),
   choice: () => choice,
   onStart: (c, q) => {
     choice = c;
@@ -286,7 +300,7 @@ mountHud(hud, minimap.canvas, params.has('debug'), {
   },
   onRetry: () => {
     unlockAudio();
-    startExam();
+    beginRun(activeRoute, true);
   },
   onMenu: () => {
     session.silence();
@@ -446,7 +460,7 @@ renderer.setAnimationLoop(() => {
     });
     if (session.active) {
       const next = session.nextManeuver;
-      hud.set({ exam: { lang: session.lang, maneuver: next?.maneuver ?? null, distance: next?.distance ?? 0, total: session.result?.total ?? 0 } });
+      hud.set({ exam: { lang: session.lang, maneuver: next?.maneuver ?? null, distance: next?.distance ?? 0, total: session.result?.total ?? 0, scored: session.scored } });
     }
     frames = 0;
     hudT = 0;
@@ -469,7 +483,7 @@ renderer.setAnimationLoop(() => {
   }
 });
 
-Object.assign(window, { __game: { car, cockpit, env, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, audio: () => audio && { ...audio, ctxState: audio.ctx.state, ctxTime: audio.ctx.currentTime }, cabin: () => cabin, lastFrame, session, hud, route, start: (c: Partial<StartChoice>) => {
+Object.assign(window, { __game: { car, cockpit, env, held, pressed, rig, renderer, scene, camera, mirrors, signals, traffic, peds, events, audio: () => audio && { ...audio, ctxState: audio.ctx.state, ctxTime: audio.ctx.currentTime }, cabin: () => cabin, lastFrame, session, hud, routes, activeRoute: () => activeRoute, start: (c: Partial<StartChoice>, routeId?: string) => {
   choice = { ...choice, ...c };
-  applyChoice(choice);
+  applyChoice(choice, routeId);
 } } });

@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react';
 import type { Maneuver } from '../exam/route';
 import { t } from '../i18n';
-import type { ExamHudState, Subtitle, Toast } from './hudStore';
+import type { ExamHudState, Notice, Subtitle, Toast } from './hudStore';
 
 const TOAST_MS = 2500;
 const SUBTITLE_MS = 4000;
+const NOTICE_MS = 4000;
 const ARROWS: Record<Maneuver, string> = {
   start: '↑', straight: '↑', left: '↰', right: '↱', uturn: '↶', finish: '⚑',
 };
 
 /** Shows `item` until `ms` after it last changed. */
-function useFresh<T extends { seq: number }>(item: T | null, ms: number): T | null {
+export function useFresh<T extends { seq: number }>(item: T | null, ms: number): T | null {
   const [shown, setShown] = useState<T | null>(null);
   useEffect(() => {
     setShown(item);
@@ -28,14 +29,14 @@ export function ExamHud({ exam, toast, subtitle }: { exam: ExamHudState; toast: 
   return (
     <>
       <div className="panel exam">
-        <div className="practice">{t(L, 'exam.practiceScoring')}</div>
+        {exam.scored && <div className="practice">{t(L, 'exam.practiceScoring')}</div>}
         {exam.maneuver && (
           <div className="next">
             <span className="dir">{ARROWS[exam.maneuver]}</span>
             <span>{t(L, 'hud.metres', { m: Math.max(0, Math.round(exam.distance / 10) * 10) })}</span>
           </div>
         )}
-        <div className="points">{t(L, 'hud.points', { points: exam.total })}</div>
+        {exam.scored && <div className="points">{t(L, 'hud.points', { points: exam.total })}</div>}
       </div>
       {shownToast && (
         <div className={`toast tier-${shownToast.tier}`}>
@@ -45,4 +46,9 @@ export function ExamHud({ exam, toast, subtitle }: { exam: ExamHudState; toast: 
       {shownSub && <div className="subtitle">{shownSub.text}</div>}
     </>
   );
+}
+
+export function NoticeToast({ notice }: { notice: Notice | null }) {
+  const shown = useFresh(notice, NOTICE_MS);
+  return shown && <div className="toast notice">{t(shown.lang, shown.key)}</div>;
 }
