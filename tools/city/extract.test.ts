@@ -122,3 +122,12 @@ test('a POI way that is also a building stays a building', () => {
   expect(f.pois.find(p => p.id === '103')?.kind).toBe('hospital');
   expect(f.buildings.some(b => b.id === '103')).toBe(true);
 });
+
+test('a living street is 20 km/h at most, as clause 78 sets for a residential zone', () => {
+  const osm = parseOsm(xml);
+  const w = osm.ways.find(w => w.id === '100')!;
+  w.tags = { ...w.tags, highway: 'living_street', maxspeed: '40' };
+  expect(run(none, osm).roads.find(r => r.id === '100')?.maxspeed).toBe(20);
+  w.tags = { ...w.tags, maxspeed: '10' };
+  expect(run(none, osm).roads.find(r => r.id === '100')?.maxspeed).toBe(10);
+});

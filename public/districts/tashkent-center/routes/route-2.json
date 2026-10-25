@@ -3,122 +3,126 @@
  "district": "tashkent-center",
  "waypoints": [
   [
-   663,
-   -484.5
+   505.5,
+   -620
   ],
   [
    -34,
    -680.7
   ],
   [
-   -599.4,
-   306
+   188,
+   -118.1
+  ],
+  [
+   473.2,
+   -398.2
   ],
   [
    -305.5,
    -565.3
   ],
   [
-   -57.4,
-   -214.1
+   -60.3,
+   -202.9
   ],
   [
-   -257.2,
-   -536
+   -532.2,
+   -624.2
   ]
  ],
  "start": {
   "position": [
-   663.0245644981851,
-   -484.52119794208033
+   505.51020941554384,
+   -620.0087815111344
   ],
-  "heading": -2.4296281297599194
+  "heading": 0.7103506046792387
  },
  "finish": {
   "position": [
-   -257.2135843365927,
-   -535.9549704398131
+   -532.1975043658352,
+   -624.2079784284113
   ],
-  "heading": 1.2778026482811744
+  "heading": -1.8739523987648028
  },
  "steps": [
   {
    "ref": {
-    "edgeId": "1167292287:1",
+    "edgeId": "422575949:0",
     "dir": 1,
     "lane": 0
    },
    "maneuver": "start",
-   "nodeId": "5814784356",
+   "nodeId": "4772575931",
    "waypointIndex": 1
   },
   {
    "ref": {
-    "edgeId": "1167292287:2",
+    "edgeId": "422575949:1",
     "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "5814784360",
-   "waypointIndex": 1
-  },
-  {
-   "ref": {
-    "edgeId": "1167292287:3",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "4202364699",
-   "waypointIndex": 1
-  },
-  {
-   "ref": {
-    "edgeId": "1167292287:4",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "left",
-   "nodeId": "358033997",
-   "waypointIndex": 1
-  },
-  {
-   "ref": {
-    "edgeId": "31961902:0",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "358033124",
-   "waypointIndex": 1
-  },
-  {
-   "ref": {
-    "edgeId": "31961890:2",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "4772575942",
-   "waypointIndex": 1
-  },
-  {
-   "ref": {
-    "edgeId": "31961890:1",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "10789390332",
-   "waypointIndex": 1
-  },
-  {
-   "ref": {
-    "edgeId": "31961890:0",
-    "dir": -1,
     "lane": 0
    },
    "maneuver": "right",
+   "nodeId": "358034288",
+   "waypointIndex": 1
+  },
+  {
+   "ref": {
+    "edgeId": "109572641:0",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "right",
+   "nodeId": "979305229",
+   "waypointIndex": 1
+  },
+  {
+   "ref": {
+    "edgeId": "481044985:0",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "13057681739",
+   "waypointIndex": 1
+  },
+  {
+   "ref": {
+    "edgeId": "481044985:1",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "9654509230",
+   "waypointIndex": 1
+  },
+  {
+   "ref": {
+    "edgeId": "481044985:2",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "13057681749",
+   "waypointIndex": 1
+  },
+  {
+   "ref": {
+    "edgeId": "481044985:3",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "13057681744",
+   "waypointIndex": 1
+  },
+  {
+   "ref": {
+    "edgeId": "481044985:4",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
    "nodeId": "357156972",
    "waypointIndex": 1
   },
@@ -198,339 +202,9 @@
     "dir": 1,
     "lane": 0
    },
-   "maneuver": "right",
+   "maneuver": "left",
    "nodeId": "357888358",
    "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "1452702420:1",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "12420161214",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "1452702420:0",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "left",
-   "nodeId": "1778900251",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "422357143:0",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "1778900250",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "31953887:0",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "13526848445",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "31953887:1",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "1925729512",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "31953887:2",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "5982772437",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "31953887:3",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "left",
-   "nodeId": "3844439861",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "87034675:0",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "569757264",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "87034675:1",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "13526862016",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "87034675:2",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "357886166",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "164328097:0",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "right",
-   "nodeId": "4253800643",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "591729983:2",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "5661116868",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "591729983:1",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "5786678562",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "591729983:0",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "1578023179",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "144216194:0",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "right",
-   "nodeId": "1578023127",
-   "waypointIndex": 2
-  },
-  {
-   "ref": {
-    "edgeId": "144153768:1",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "right",
-   "nodeId": "582089396",
-   "waypointIndex": 3
-  },
-  {
-   "ref": {
-    "edgeId": "108583904:0",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "5959719070",
-   "waypointIndex": 3
-  },
-  {
-   "ref": {
-    "edgeId": "108583904:1",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "5959719069",
-   "waypointIndex": 3
-  },
-  {
-   "ref": {
-    "edgeId": "108583904:2",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "357887410",
-   "waypointIndex": 3
-  },
-  {
-   "ref": {
-    "edgeId": "333272155:2",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "13540453479",
-   "waypointIndex": 3
-  },
-  {
-   "ref": {
-    "edgeId": "333272155:1",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "4759511962",
-   "waypointIndex": 3
-  },
-  {
-   "ref": {
-    "edgeId": "333272155:0",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "3403954961",
-   "waypointIndex": 3
-  },
-  {
-   "ref": {
-    "edgeId": "97089154:0",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "left",
-   "nodeId": "357886166",
-   "waypointIndex": 3
-  },
-  {
-   "ref": {
-    "edgeId": "87034675:2",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "13526862016",
-   "waypointIndex": 3
-  },
-  {
-   "ref": {
-    "edgeId": "87034675:1",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "569757264",
-   "waypointIndex": 3
-  },
-  {
-   "ref": {
-    "edgeId": "87034675:0",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "right",
-   "nodeId": "3844439861",
-   "waypointIndex": 3
-  },
-  {
-   "ref": {
-    "edgeId": "31953887:3",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "5982772437",
-   "waypointIndex": 3
-  },
-  {
-   "ref": {
-    "edgeId": "31953887:2",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "1925729512",
-   "waypointIndex": 3
-  },
-  {
-   "ref": {
-    "edgeId": "31953887:1",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "13526848445",
-   "waypointIndex": 3
-  },
-  {
-   "ref": {
-    "edgeId": "31953887:0",
-    "dir": -1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "1778900250",
-   "waypointIndex": 3
-  },
-  {
-   "ref": {
-    "edgeId": "422357143:0",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "right",
-   "nodeId": "1778900251",
-   "waypointIndex": 3
-  },
-  {
-   "ref": {
-    "edgeId": "1452702420:0",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "12420161214",
-   "waypointIndex": 3
-  },
-  {
-   "ref": {
-    "edgeId": "1452702420:1",
-    "dir": 1,
-    "lane": 0
-   },
-   "maneuver": "straight",
-   "nodeId": "357888358",
-   "waypointIndex": 3
   },
   {
    "ref": {
@@ -538,9 +212,419 @@
     "dir": 1,
     "lane": 0
    },
-   "maneuver": "left",
+   "maneuver": "straight",
    "nodeId": "5982600543",
+   "waypointIndex": 2
+  },
+  {
+   "ref": {
+    "edgeId": "633847756:0",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "4732218863",
+   "waypointIndex": 2
+  },
+  {
+   "ref": {
+    "edgeId": "633847756:1",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "12420161221",
+   "waypointIndex": 2
+  },
+  {
+   "ref": {
+    "edgeId": "633847756:2",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "4725706198",
+   "waypointIndex": 2
+  },
+  {
+   "ref": {
+    "edgeId": "633847756:3",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "12420161219",
+   "waypointIndex": 2
+  },
+  {
+   "ref": {
+    "edgeId": "633847756:4",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "7466629083",
+   "waypointIndex": 2
+  },
+  {
+   "ref": {
+    "edgeId": "633847756:5",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "245424184",
+   "waypointIndex": 2
+  },
+  {
+   "ref": {
+    "edgeId": "1452702421:0",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "245424050",
+   "waypointIndex": 2
+  },
+  {
+   "ref": {
+    "edgeId": "183840406:0",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "13057738549",
+   "waypointIndex": 2
+  },
+  {
+   "ref": {
+    "edgeId": "183840406:1",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "12329277258",
+   "waypointIndex": 2
+  },
+  {
+   "ref": {
+    "edgeId": "183840406:2",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "357888363",
+   "waypointIndex": 2
+  },
+  {
+   "ref": {
+    "edgeId": "183843544:0",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "13057706994",
+   "waypointIndex": 2
+  },
+  {
+   "ref": {
+    "edgeId": "183843544:1",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "10789390317",
+   "waypointIndex": 2
+  },
+  {
+   "ref": {
+    "edgeId": "183843544:2",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "13526509807",
+   "waypointIndex": 2
+  },
+  {
+   "ref": {
+    "edgeId": "183843544:3",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "right",
+   "nodeId": "357888364",
+   "waypointIndex": 2
+  },
+  {
+   "ref": {
+    "edgeId": "111592902:0",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "245040122",
    "waypointIndex": 3
+  },
+  {
+   "ref": {
+    "edgeId": "111592902:1",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "245040351",
+   "waypointIndex": 3
+  },
+  {
+   "ref": {
+    "edgeId": "422575950:0",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "245424034",
+   "waypointIndex": 3
+  },
+  {
+   "ref": {
+    "edgeId": "22813507:0",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "245424050",
+   "waypointIndex": 3
+  },
+  {
+   "ref": {
+    "edgeId": "1453138088:0",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "2122589679",
+   "waypointIndex": 3
+  },
+  {
+   "ref": {
+    "edgeId": "183840407:0",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "right",
+   "nodeId": "997740257",
+   "waypointIndex": 3
+  },
+  {
+   "ref": {
+    "edgeId": "422575952:0",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "12333481353",
+   "waypointIndex": 3
+  },
+  {
+   "ref": {
+    "edgeId": "422575952:1",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "356750581",
+   "waypointIndex": 3
+  },
+  {
+   "ref": {
+    "edgeId": "846970025:0",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "9654509220",
+   "waypointIndex": 3
+  },
+  {
+   "ref": {
+    "edgeId": "846970025:1",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "9654509236",
+   "waypointIndex": 4
+  },
+  {
+   "ref": {
+    "edgeId": "481044987:0",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "9654509234",
+   "waypointIndex": 4
+  },
+  {
+   "ref": {
+    "edgeId": "481044987:1",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "right",
+   "nodeId": "979305223",
+   "waypointIndex": 4
+  },
+  {
+   "ref": {
+    "edgeId": "422575956:0",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "right",
+   "nodeId": "357888364",
+   "waypointIndex": 4
+  },
+  {
+   "ref": {
+    "edgeId": "183843544:3",
+    "dir": -1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "13526509807",
+   "waypointIndex": 4
+  },
+  {
+   "ref": {
+    "edgeId": "183843544:2",
+    "dir": -1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "10789390317",
+   "waypointIndex": 4
+  },
+  {
+   "ref": {
+    "edgeId": "183843544:1",
+    "dir": -1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "13057706994",
+   "waypointIndex": 4
+  },
+  {
+   "ref": {
+    "edgeId": "183843544:0",
+    "dir": -1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "357888363",
+   "waypointIndex": 4
+  },
+  {
+   "ref": {
+    "edgeId": "183840406:2",
+    "dir": -1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "12329277258",
+   "waypointIndex": 4
+  },
+  {
+   "ref": {
+    "edgeId": "183840406:1",
+    "dir": -1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "13057738549",
+   "waypointIndex": 4
+  },
+  {
+   "ref": {
+    "edgeId": "183840406:0",
+    "dir": -1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "245424050",
+   "waypointIndex": 4
+  },
+  {
+   "ref": {
+    "edgeId": "1452702421:0",
+    "dir": -1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "245424184",
+   "waypointIndex": 4
+  },
+  {
+   "ref": {
+    "edgeId": "633847756:5",
+    "dir": -1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "7466629083",
+   "waypointIndex": 4
+  },
+  {
+   "ref": {
+    "edgeId": "633847756:4",
+    "dir": -1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "12420161219",
+   "waypointIndex": 4
+  },
+  {
+   "ref": {
+    "edgeId": "633847756:3",
+    "dir": -1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "4725706198",
+   "waypointIndex": 4
+  },
+  {
+   "ref": {
+    "edgeId": "633847756:2",
+    "dir": -1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "12420161221",
+   "waypointIndex": 4
+  },
+  {
+   "ref": {
+    "edgeId": "633847756:1",
+    "dir": -1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "4732218863",
+   "waypointIndex": 4
+  },
+  {
+   "ref": {
+    "edgeId": "633847756:0",
+    "dir": -1,
+    "lane": 0
+   },
+   "maneuver": "right",
+   "nodeId": "5982600543",
+   "waypointIndex": 4
   },
   {
    "ref": {
@@ -550,7 +634,7 @@
    },
    "maneuver": "straight",
    "nodeId": "5982616190",
-   "waypointIndex": 4
+   "waypointIndex": 5
   },
   {
    "ref": {
@@ -560,7 +644,7 @@
    },
    "maneuver": "straight",
    "nodeId": "5982616193",
-   "waypointIndex": 4
+   "waypointIndex": 5
   },
   {
    "ref": {
@@ -570,7 +654,7 @@
    },
    "maneuver": "right",
    "nodeId": "5982616224",
-   "waypointIndex": 4
+   "waypointIndex": 5
   },
   {
    "ref": {
@@ -580,7 +664,7 @@
    },
    "maneuver": "straight",
    "nodeId": "4759451235",
-   "waypointIndex": 4
+   "waypointIndex": 5
   },
   {
    "ref": {
@@ -590,7 +674,7 @@
    },
    "maneuver": "right",
    "nodeId": "997740224",
-   "waypointIndex": 4
+   "waypointIndex": 5
   },
   {
    "ref": {
@@ -600,7 +684,7 @@
    },
    "maneuver": "straight",
    "nodeId": "4759451226",
-   "waypointIndex": 4
+   "waypointIndex": 5
   },
   {
    "ref": {
@@ -610,7 +694,7 @@
    },
    "maneuver": "straight",
    "nodeId": "245424184",
-   "waypointIndex": 4
+   "waypointIndex": 5
   },
   {
    "ref": {
@@ -618,19 +702,39 @@
     "dir": 1,
     "lane": 0
    },
-   "maneuver": "right",
+   "maneuver": "straight",
    "nodeId": "13341188968",
-   "waypointIndex": 4
+   "waypointIndex": 5
   },
   {
    "ref": {
-    "edgeId": "1018402145:0",
+    "edgeId": "633846651:1",
     "dir": 1,
     "lane": 0
    },
-   "maneuver": "right",
-   "nodeId": "1928632185",
+   "maneuver": "straight",
+   "nodeId": "13326621402",
    "waypointIndex": 5
+  },
+  {
+   "ref": {
+    "edgeId": "183829635:1",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "332441397",
+   "waypointIndex": 5
+  },
+  {
+   "ref": {
+    "edgeId": "182851751:0",
+    "dir": 1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "1928632185",
+   "waypointIndex": 6
   },
   {
    "ref": {
@@ -640,7 +744,7 @@
    },
    "maneuver": "straight",
    "nodeId": "10039580384",
-   "waypointIndex": 5
+   "waypointIndex": 6
   },
   {
    "ref": {
@@ -650,7 +754,7 @@
    },
    "maneuver": "straight",
    "nodeId": "5958512195",
-   "waypointIndex": 5
+   "waypointIndex": 6
   },
   {
    "ref": {
@@ -660,7 +764,7 @@
    },
    "maneuver": "straight",
    "nodeId": "4732218361",
-   "waypointIndex": 5
+   "waypointIndex": 6
   },
   {
    "ref": {
@@ -670,7 +774,7 @@
    },
    "maneuver": "right",
    "nodeId": "5982600544",
-   "waypointIndex": 5
+   "waypointIndex": 6
   },
   {
    "ref": {
@@ -680,7 +784,7 @@
    },
    "maneuver": "straight",
    "nodeId": "13057681572",
-   "waypointIndex": 5
+   "waypointIndex": 6
   },
   {
    "ref": {
@@ -688,32 +792,52 @@
     "dir": 1,
     "lane": 0
    },
-   "maneuver": "right",
+   "maneuver": "left",
    "nodeId": "5982600543",
-   "waypointIndex": 5
+   "waypointIndex": 6
   },
   {
    "ref": {
-    "edgeId": "633847756:0",
-    "dir": 1,
+    "edgeId": "1452702419:0",
+    "dir": -1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "357888358",
+   "waypointIndex": 6
+  },
+  {
+   "ref": {
+    "edgeId": "1452702420:1",
+    "dir": -1,
+    "lane": 0
+   },
+   "maneuver": "straight",
+   "nodeId": "12420161214",
+   "waypointIndex": 6
+  },
+  {
+   "ref": {
+    "edgeId": "1452702420:0",
+    "dir": -1,
     "lane": 0
    },
    "maneuver": "finish",
    "nodeId": null,
-   "waypointIndex": 5
+   "waypointIndex": 6
   }
  ],
- "lengthM": 6166.952890104469,
+ "lengthM": 6504.480853070048,
  "features": {
-  "signalledLeft": 3,
+  "signalledLeft": 1,
   "signalledRight": 5,
-  "signalledStraight": 4,
-  "unsignalledPriorityRight": 5,
-  "zebras": 16,
-  "signalCrossings": 11,
-  "multiLaneTurns": 12,
-  "speedZones": 0,
-  "stopSigns": 0,
-  "giveWaySigns": 3
+  "signalledStraight": 6,
+  "unsignalledPriorityRight": 6,
+  "zebras": 8,
+  "signalCrossings": 15,
+  "multiLaneTurns": 11,
+  "speedZones": 4,
+  "stopSigns": 1,
+  "giveWaySigns": 2
  }
 }

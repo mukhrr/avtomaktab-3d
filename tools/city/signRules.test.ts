@@ -4,7 +4,7 @@ import {
 } from './signRules';
 
 const POS: Record<string, Vec2> = {
-  A: [0, 0], B: [100, 0], C: [200, 0], D: [300, 0], J: [100, 0], N: [100, -100], S: [100, 100], E: [200, 0], F: [200, 100],
+  A: [0, 0], B: [100, 0], C: [200, 0], D: [300, 0], G: [400, 0], J: [100, 0], N: [100, -100], S: [100, 100], E: [200, 0], F: [200, 100],
 };
 
 const edge = (id: string, from: string, to: string, o: Partial<GraphEdge> = {}): GraphEdge => ({
@@ -52,6 +52,19 @@ describe('rule signs', () => {
     ]);
   });
 
+  it('brackets a chain of living streets once, not each block where a cross street joins', () => {
+    const d = input([
+      edge('r1', 'A', 'B'), edge('l1', 'B', 'C', { kind: 'living_street' }), edge('l2', 'C', 'D', { kind: 'living_street' }),
+      edge('x', 'C', 'F'), edge('r2', 'D', 'G'),
+    ]);
+    expect(pick(residentialZoneSigns(d))).toEqual([
+      { code: '5.38', edgeId: 'l1', dir: 1, at: 5, side: 'right' },
+      { code: '5.39', edgeId: 'l1', dir: -1, at: 5, side: 'right' },
+      { code: '5.39', edgeId: 'l2', dir: 1, at: 95, side: 'right' },
+      { code: '5.38', edgeId: 'l2', dir: -1, at: 95, side: 'right' },
+    ]);
+  });
+
   it('does not bracket the join between two living streets', () => {
     const d = input([edge('l1', 'A', 'B', { kind: 'living_street' }), edge('l2', 'B', 'C', { kind: 'living_street' })]);
     expect(residentialZoneSigns(d)).toEqual([]);
@@ -62,8 +75,8 @@ describe('rule signs', () => {
       edge('a', 'A', 'J'), edge('n', 'N', 'J'), edge('ow', 'J', 'E', { lanesBackward: 0 }), edge('c', 'E', 'D'), edge('x', 'F', 'E'),
     ]);
     expect(pick(oneWaySigns(d))).toEqual([
-      { code: '5.5', edgeId: 'ow', dir: 1, at: 10, side: 'right' },
-      { code: '3.1', edgeId: 'ow', dir: -1, at: 97, side: 'right' },
+      { code: '5.5', edgeId: 'ow', dir: 1, at: 14.5, side: 'right' },
+      { code: '3.1', edgeId: 'ow', dir: -1, at: 92.5, side: 'right' },
     ]);
   });
 
@@ -100,10 +113,22 @@ describe('rule signs', () => {
 
   it('gives the major road 2.1 and the minor approaches 2.4 at an unsignalled junction', () => {
     expect(pick(prioritySigns(input(tee()))).sort((a, b) => a.edgeId.localeCompare(b.edgeId))).toEqual([
-      { code: '2.1', edgeId: 'p1', dir: 1, at: 85, side: 'right' },
-      { code: '2.1', edgeId: 'p2', dir: -1, at: 15, side: 'right' },
-      { code: '2.4', edgeId: 'r', dir: 1, at: 85, side: 'right' },
+      { code: '2.1', edgeId: 'p1', dir: 1, at: 80.5, side: 'right' },
+      { code: '2.1', edgeId: 'p2', dir: -1, at: 19.5, side: 'right' },
+      { code: '2.4', edgeId: 'r', dir: 1, at: 80.5, side: 'right' },
     ]);
+  });
+
+  // The trim at a junction of 7 m roads is 4.5 m, so measured offsets start where the lane leaves the junction.
+  it('stands a priority sign as far back as a short edge allows, and drops it where no pole fits', () => {
+    const log: string[] = [];
+    const tee12 = input([edge('p1', 'A', 'J', { kind: 'primary' }), edge('p2', 'J', 'C', { kind: 'primary' }), edge('r', 'S', 'J', { points: [[100, 12], [100, 0]] })]);
+    expect(pick(prioritySigns(tee12, m => log.push(m))).filter(s => s.edgeId === 'r')).toEqual([{ code: '2.4', edgeId: 'r', dir: 1, at: 0, side: 'right' }]);
+    expect(log).toEqual([]);
+    const tee3 = input([edge('p1', 'A', 'J', { kind: 'primary' }), edge('p2', 'J', 'C', { kind: 'primary' }), edge('r', 'S', 'J', { points: [[100, 3], [100, 0]] })]);
+    expect(prioritySigns(tee3, m => log.push(m)).map(s => s.edgeId).sort()).toEqual(['p1', 'p2']);
+    expect(log).toHaveLength(1);
+    expect(log[0]).toContain('r dir 1');
   });
 
   it('ranks a _link road as its base kind', () => {
@@ -140,7 +165,7 @@ describe('rule signs', () => {
     const signs = crossingSigns(input([edge('e', 'A', 'B', { lanesForward: 2 })], { crossings }));
     expect(pick(signs)).toEqual([
       { code: '5.16.2', edgeId: 'e', dir: 1, at: 48.5, side: 'right' },
-      { code: '5.16.1', edgeId: 'e', dir: 1, at: 48.5, side: 'left' },
+      { code: '5.16.1', edgeId: 'e', dir: 1, at: 51.5, side: 'left' },
       { code: '5.16.2', edgeId: 'e', dir: -1, at: 51.5, side: 'right' },
     ]);
   });
@@ -174,6 +199,17 @@ describe('rule signs', () => {
     ]);
   });
 
+  it('slides a pole out of another road\'s carriageway, and drops it when there is no room', () => {
+    const pois = [{ id: 'p', kind: 'parking' as const, position: [50, 20] as Vec2 }];
+    const across = edge('w', 'N', 'S', { kind: 'service', points: [[50, -20], [50, 20]] });
+    const d = input([edge('e', 'A', 'C', { points: [[0, 0], [200, 0]] }), across], { pois });
+    expect(pick(poiSigns(d)).map(s => [s.dir, s.at])).toEqual([[1, 53], [-1, 47]]);
+    const log: string[] = [];
+    const wide = input([edge('e', 'A', 'C', { points: [[0, 0], [200, 0]] }), { ...across, width: 40 }], { pois });
+    expect(poiSigns(wide, m => log.push(m))).toEqual([]);
+    expect(log).toHaveLength(2);
+  });
+
   it('keeps a hand sign and drops the rule sign of the same code within 15 m', () => {
     const d = input([edge('e', 'A', 'B', { maxspeed: 40 })]);
     const out = placeRuleSigns(d, [hand('3.24', 20, { value: 40 })]);
@@ -194,6 +230,12 @@ describe('rule signs', () => {
     const d = input([edge('e', 'A', 'B', { maxspeed: 40 })]);
     const out = placeRuleSigns(d, [hand('1.21', 10), hand('3.19', 10), hand('3.18.2', 10)]);
     expect(out.find(s => s.code === '3.24' && s.dir === 1)?.at).toBe(25);
+  });
+
+  it('drops a moved rule sign that lands within 15 m of a sign of the same code', () => {
+    const d = input([edge('e', 'A', 'B', { maxspeed: 40 })]);
+    const out = placeRuleSigns(d, [hand('1.21', 10), hand('3.19', 10), hand('3.18.2', 10), hand('3.24', 35, { value: 40 })]);
+    expect(out.filter(s => s.code === '3.24' && s.dir === 1).map(s => s.origin)).toEqual(['hand']);
   });
 
   it('drops and logs a rule sign that would move off the edge', () => {
@@ -229,6 +271,6 @@ describe('rule signs', () => {
     expect(a).toEqual(b);
     expect(new Set(a).size).toBe(a.length);
     expect(a).toContain('speed-p1-1-10.0');
-    expect(a).toContain('priority-p1-1-85.0');
+    expect(a).toContain('priority-p1-1-80.5');
   });
 });

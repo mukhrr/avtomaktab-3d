@@ -37,6 +37,8 @@ const DEFAULT_WIDTH: Record<string, number> = {
 const LINK_WIDTH = 6;
 const LANE_WIDTH = 3.5;
 const SLOW_KINDS = new Set(['living_street', 'service']);
+/** Clause 78: 20 km/h in a residential zone, whatever the map says. */
+const RESIDENTIAL_ZONE_LIMIT = 20;
 const GREEN_LEISURE = new Set(['park', 'garden']);
 const GREEN_LANDUSE = new Set(['grass', 'forest', 'recreation_ground']);
 const WATERWAY_WIDTH: Record<string, number> = { canal: 9, river: 9, stream: 3 };
@@ -157,7 +159,7 @@ export function extractFeatures(
         lanes: lanesIn ?? Math.max(1, Math.round(width / LANE_WIDTH)),
         oneway: o.oneway ?? ['yes', 'true', '1'].includes(t.oneway ?? ''),
         name: o.name ?? t['name:uz'] ?? t.name ?? '',
-        maxspeed: o.maxspeed ?? leadingNumber(t.maxspeed) ?? (SLOW_KINDS.has(kind) ? 20 : 60),
+        maxspeed: Math.min(o.maxspeed ?? leadingNumber(t.maxspeed) ?? (SLOW_KINDS.has(kind) ? 20 : 60), kind === 'living_street' ? RESIDENTIAL_ZONE_LIMIT : Infinity),
         points: pts,
       });
       result.roadNodeIds.set(w.id, w.nodeIds);

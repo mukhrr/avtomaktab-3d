@@ -63,7 +63,7 @@ export class LaneNetwork {
   private paths = new Map<string, LanePath>();
   private connectors = new Map<string, Vec2[]>();
 
-  constructor(d: DistrictData) {
+  constructor(d: Pick<DistrictData, 'graph'>) {
     for (const e of d.graph.edges) this.edges.set(e.id, e);
     for (const n of d.graph.nodes) {
       this.nodes.set(n.id, n);

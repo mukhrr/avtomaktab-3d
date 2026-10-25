@@ -5,6 +5,7 @@ import { CODE } from '../shared/signCatalogue';
 import { LaneNetwork } from '../traffic/lanes';
 import { junctionPolygon, pointAlong } from '../world/roadGeometry';
 import { signPose, signSpots } from '../world/signMount';
+import { distanceToPolyline } from '../../tools/city/controllers';
 import { routeConflicts } from '../../tools/signs/coverageSpots';
 import { missingEntries, signsOnRoute } from './coverage';
 import type { ExamRoute } from './route';
@@ -50,18 +51,25 @@ describe('tashkent-center coverage', () => {
     expect(signsOutside.map(s => s.id)).toEqual([]);
   });
 
-  // The examiner keeps the mapped limit, so these must not change the legal limit on a lane a route drives.
+  // The examiner keeps the mapped limit for these, so they must not stand on a lane a route drives.
   it('puts no limit-changing or dead-end coverage sign on a lane a route drives', () => {
     const driven = new Set(routes.flatMap(r => r.steps.map(s => `${s.ref.edgeId}|${s.ref.dir}`)));
     const onDriven = d.signs.filter(s => s.origin === 'coverage' && ['5.22', '5.23', '5.24', '5.25', '5.19.1'].includes(s.code) && driven.has(`${s.edgeId}|${s.dir}`));
     expect(onDriven.map(s => s.id)).toEqual([]);
-    const limited = new Set(d.signs.filter(s => s.code === CODE.speedLimit).map(s => `${s.edgeId}|${s.dir}`));
-    const edges = new Map(d.graph.edges.map(e => [e.id, e]));
-    const badEnds = d.signs.filter(s => s.origin === 'coverage' && s.code === '3.25' && (limited.has(`${s.edgeId}|${s.dir}`) || edges.get(s.edgeId)!.maxspeed !== 60));
-    expect(badEnds.map(s => s.id)).toEqual([]);
   });
 
-  it('stands every coverage pole outside the junction areas', () => {
+  // speedLimitAt honours 3.25, so it must end a 3.24 of its value that a route passes first.
+  it('ends a real speed limit with each coverage end-of-limit sign, on a route', () => {
+    const ends = d.signs.filter(s => s.origin === 'coverage' && s.code === '3.25');
+    expect(ends.length).toBeGreaterThan(0);
+    for (const end of ends) {
+      const start = d.signs.find(s => s.code === CODE.speedLimit && s.edgeId === end.edgeId && s.dir === end.dir && s.value === end.value && (end.at - s.at) * s.dir > 0);
+      expect(start, end.id).toBeDefined();
+      expect(routes.some(r => signsOnRoute(d, r).some(s => s.id === start!.id) && signsOnRoute(d, r).some(s => s.id === end.id)), end.id).toBe(true);
+    }
+  });
+
+  it('stands every pole outside the junction areas', () => {
     const edges = new Map(d.graph.edges.map(e => [e.id, e]));
     const polys = d.graph.nodes.filter(n => n.edges.length >= 3).map(n => ({ id: n.id, poly: junctionPolygon(n, n.edges.map(id => edges.get(id)!)) }));
     const inside = ([x, z]: Vec2, p: Vec2[]) => {
@@ -71,11 +79,22 @@ describe('tashkent-center coverage', () => {
       }
       return c;
     };
-    const inJunction = d.signs.filter(s => s.origin === 'coverage').flatMap(s => {
+    const inJunction = d.signs.flatMap(s => {
       const p = signPose(edges.get(s.edgeId)!, s);
       return polys.filter(j => inside([p.x, p.z], j.poly)).map(j => `${s.id} in ${j.id}`);
     });
     expect(inJunction).toEqual([]);
+  });
+
+  // Half a metre of slack: a pole on the kerb of a road that meets another at a shallow angle grazes its edge line.
+  it('stands no pole inside another road\'s carriageway', () => {
+    const inRoad = d.signs.flatMap(s => {
+      const p = signPose(d.graph.edges.find(e => e.id === s.edgeId)!, s);
+      return d.graph.edges
+        .filter(e => e.id !== s.edgeId && distanceToPolyline(e.points, [p.x, p.z]).dist < e.width / 2 - 0.5)
+        .map(e => `${s.id} in ${e.id}`);
+    });
+    expect(inRoad).toEqual([]);
   });
 
   it('spreads coverage signs so no route carries more than 60', () => {

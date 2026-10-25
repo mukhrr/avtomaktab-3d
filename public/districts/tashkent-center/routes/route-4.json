@@ -794,7 +794,7 @@
   "zebras": 5,
   "signalCrossings": 12,
   "multiLaneTurns": 8,
-  "speedZones": 8,
+  "speedZones": 4,
   "stopSigns": 0,
   "giveWaySigns": 4
  }
