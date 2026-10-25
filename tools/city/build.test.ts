@@ -73,6 +73,13 @@ describe('signs', () => {
     expect(() => build(sign({ code: '3.24' }))).toThrow('value');
   });
 
+  it('takes a number for a speed and a string for a time', () => {
+    expect(() => build(sign({ code: '3.24', value: '60' }))).toThrow('numeric');
+    expect(() => build(sign({ code: '3.24', value: 60 }))).not.toThrow();
+    expect(() => build(sign({ plates: [{ code: '7.5.4', value: 8 }] }))).toThrow('text');
+    expect(() => build(sign({ plates: [{ code: '7.5.4', value: '8-19' }] }))).not.toThrow();
+  });
+
   it('rejects a plate that is not in group 7', () => {
     expect(() => build(sign({ plates: [{ code: '2.5' }] }))).toThrow('plate');
   });

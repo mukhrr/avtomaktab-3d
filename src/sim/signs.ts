@@ -56,7 +56,7 @@ export class SignSystem {
   speedLimitAt(edgeId: string, dir: 1 | -1, s: number): number {
     const passed = (this.lists.get(key(edgeId, dir)) ?? []).filter(g => (s - g.at) * dir >= 0);
     const limit = passed.filter(g => g.code === CODE.speedLimit).at(-1);
-    if (limit?.value !== undefined) return limit.value;
+    if (typeof limit?.value === 'number') return limit.value;
     if (passed.some(g => g.code === CODE.children && (s - g.at) * dir <= SCHOOL_ZONE_LENGTH)) return SCHOOL_ZONE_LIMIT;
     return this.edges.get(edgeId)?.maxspeed ?? 0;
   }

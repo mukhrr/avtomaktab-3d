@@ -101,10 +101,10 @@ export interface Sign {
   edgeId: string;
   dir: 1 | -1;
   at: number;
-  /** Required when the catalogue entry has a valueKind; km/h for a speed limit. */
-  value?: number;
+  /** Required when the catalogue entry has a valueKind; km/h for a speed limit. A string for time ('8-19') and text kinds, a number otherwise. */
+  value?: number | string;
   /** Group 7 plates under the sign, top to bottom. */
-  plates?: { code: string; value?: number }[];
+  plates?: { code: string; value?: number | string }[];
   /** Side of the road the pole stands on, relative to travel. Defaults to right. */
   side?: 'right' | 'left';
   origin: 'hand' | 'rule' | 'coverage';

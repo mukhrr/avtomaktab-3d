@@ -98,6 +98,10 @@ export function loadCatalogue(): CatalogueEntry[] {
   return (cache ??= validateCatalogue(raw));
 }
 
+export function plateKey(code: string, value?: number | string): string {
+  return value === undefined ? code : `${code}:${value}`;
+}
+
 export function entry(code: string): CatalogueEntry {
   const found = loadCatalogue().find((e) => e.number === code);
   if (!found) throw new Error(`signCatalogue: unknown sign code "${code}"`);

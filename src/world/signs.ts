@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { DistrictData, GraphEdge, Sign } from '../shared/district';
-import { CODE } from '../shared/signCatalogue';
+import { CODE, plateKey } from '../shared/signCatalogue';
 import { pointAlong } from './roadGeometry';
 
 const CURB_GAP = 1;
@@ -20,9 +20,6 @@ const SHAPE_OF: Record<SignType, Shape> = {
   noEntry: 'circle', noLeftTurn: 'circle', noRightTurn: 'circle', noUTurn: 'circle', speedLimit: 'circle',
 };
 const SHAPES: Shape[] = ['circle', 'triangle', 'octagon', 'square'];
-
-/** Atlas cell identity: speed limits get one cell per value. */
-export const plateKey = (s: Sign): string => (s.code === CODE.speedLimit ? `speedLimit:${s.value}` : GLYPH_OF_CODE.get(s.code) ?? s.code);
 
 /** Where a sign's pole stands and which way its face points (toward oncoming traffic). */
 export function signPose(edge: GraphEdge, s: Sign): { x: number; z: number; heading: number } {
@@ -115,7 +112,8 @@ function person(g: CanvasRenderingContext2D, x: number, y: number, h: number): v
 
 function drawGlyph(g: CanvasRenderingContext2D, key: string): void {
   const size = CELL_PX, c = size / 2;
-  const type = key.split(':')[0] as SignType;
+  const [code, value] = key.split(':');
+  const type = GLYPH_OF_CODE.get(code)!;
   switch (type) {
     case 'stop':
       g.fillStyle = WHITE;
@@ -184,7 +182,7 @@ function drawGlyph(g: CanvasRenderingContext2D, key: string): void {
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.font = `bold ${size * 0.42}px sans-serif`;
-      g.fillText(key.split(':')[1], c, c + size * 0.02);
+      g.fillText(value, c, c + size * 0.02);
       break;
     }
   }
@@ -241,7 +239,7 @@ function plateMaterial(texture: THREE.Texture, cellSize: THREE.Vector2): THREE.M
 /** Signs as one pole mesh plus one plate mesh per shape, all plates sharing a single glyph atlas. */
 export function addSigns(scene: THREE.Scene, d: DistrictData): void {
   if (!d.signs.length) return;
-  const keys = [...new Set(d.signs.map(plateKey))];
+  const keys = [...new Set(d.signs.map(s => plateKey(s.code, s.value)))];
   const { texture, rows } = drawAtlas(keys);
   const cellSize = new THREE.Vector2(1 / COLS, 1 / rows);
   const cellOf = (key: string) => {
@@ -260,7 +258,7 @@ export function addSigns(scene: THREE.Scene, d: DistrictData): void {
     const own = placed.filter(s => SHAPE_OF[GLYPH_OF_CODE.get(s.code)!] === shape);
     const geo = plateGeometry(shape);
     const cells = new Float32Array(own.length * 2);
-    own.forEach((s, i) => cells.set(cellOf(plateKey(s)), i * 2));
+    own.forEach((s, i) => cells.set(cellOf(plateKey(s.code, s.value)), i * 2));
     geo.setAttribute('aCell', new THREE.InstancedBufferAttribute(cells, 2));
     return { own, mesh: new THREE.InstancedMesh(geo, material, own.length) };
   });

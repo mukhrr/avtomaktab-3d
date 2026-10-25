@@ -1,7 +1,7 @@
 import { testNetwork } from '../traffic/testNetwork';
 import type { Sign } from '../shared/district';
-import { plateKey, signPose } from './signs';
-import { CODE } from '../shared/signCatalogue';
+import { signPose } from './signs';
+import { CODE, plateKey } from '../shared/signCatalogue';
 
 const edge = testNetwork().graph.edges.find(e => e.id === 'e')!;
 const sign = (dir: 1 | -1): Sign => ({ id: 's', code: CODE.stop, edgeId: 'e', dir, at: 100, origin: 'hand' });
@@ -24,8 +24,9 @@ describe('signPose', () => {
 
 describe('plateKey', () => {
   it('gives each speed limit value its own plate', () => {
-    const limit = (value: number): Sign => ({ ...sign(1), code: CODE.speedLimit, value });
-    expect(plateKey(limit(50))).not.toBe(plateKey(limit(60)));
-    expect(plateKey(sign(1))).toBe('stop');
+    expect(plateKey(CODE.speedLimit, 50)).not.toBe(plateKey(CODE.speedLimit, 60));
+    expect(plateKey(CODE.stop)).toBe('2.5');
+    expect(plateKey(CODE.speedLimit, 60)).toBe('3.24:60');
+    expect(plateKey('7.5.4', '8-19')).toBe('7.5.4:8-19');
   });
 });
