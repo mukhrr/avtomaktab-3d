@@ -34,4 +34,11 @@
  <way id="104"><nd ref="12"/><nd ref="13"/><nd ref="14"/><nd ref="15"/><nd ref="12"/><tag k="leisure" v="park"/></way>
  <way id="105"><nd ref="1"/><nd ref="999"/><tag k="highway" v="service"/></way>
  <way id="106"><nd ref="12"/><nd ref="13"/><nd ref="14"/><nd ref="12"/><tag k="building" v="yes"/><tag k="height" v="tall"/></way>
+ <!-- school (closed way, no building tag) and a parking node -->
+ <node id="40" lat="41.3101" lon="69.2781"/>
+ <node id="41" lat="41.3101" lon="69.2785"/>
+ <node id="42" lat="41.3103" lon="69.2785"/>
+ <node id="43" lat="41.3103" lon="69.2781"/>
+ <node id="44" lat="41.3114" lon="69.2796"><tag k="amenity" v="parking"/></node>
+ <way id="107"><nd ref="40"/><nd ref="41"/><nd ref="42"/><nd ref="43"/><nd ref="40"/><tag k="amenity" v="school"/></way>
 </osm>

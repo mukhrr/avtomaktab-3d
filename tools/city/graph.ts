@@ -39,6 +39,7 @@ export function buildRoadGraph(
         width: r.width,
         maxspeed: r.maxspeed,
         name: r.name,
+        kind: r.kind,
       };
       edges.push(edge);
       nodeFor(edge.from).edges.push(edge.id);

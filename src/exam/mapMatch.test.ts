@@ -19,7 +19,7 @@ function withParallel(): DistrictData {
   ];
   const par: GraphEdge = {
     id: 'par', from: 'p1', to: 'p2', roadId: 'par', points: [[-120, 8], [-20, 8]], nodeIds: ['p1', 'p2'],
-    lanesForward: 1, lanesBackward: 1, width: 7, maxspeed: 30, name: 'par',
+    lanesForward: 1, lanesBackward: 1, width: 7, maxspeed: 30, name: 'par', kind: 'residential',
   };
   d.graph.nodes.push(...nodes);
   d.graph.edges.push(par);

@@ -15,7 +15,7 @@ interface SignalInput {
   direction?: SignalDirection;
 }
 
-function distanceToPolyline(points: Vec2[], [px, pz]: Vec2): { dist: number; at: number } {
+export function distanceToPolyline(points: Vec2[], [px, pz]: Vec2): { dist: number; at: number } {
   let best = { dist: Infinity, at: 0 }, walked = 0;
   for (let i = 1; i < points.length; i++) {
     const [ax, az] = points[i - 1], [bx, bz] = points[i];

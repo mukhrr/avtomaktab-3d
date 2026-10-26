@@ -5,7 +5,7 @@ const xml = readFileSync(new URL('./fixtures/mini.osm.xml', import.meta.url), 'u
 const osm = parseOsm(xml);
 
 test('parses all nodes with numeric coordinates', () => {
-  expect(osm.nodes.size).toBe(21);
+  expect(osm.nodes.size).toBe(26);
   expect(osm.nodes.get('2')).toMatchObject({ lat: 41.311, lon: 69.279 });
 });
 

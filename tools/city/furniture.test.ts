@@ -5,7 +5,7 @@ import { placeFurniture } from './furniture';
 // One 8 m wide road along x at z = 0, with a junction at its east end.
 const edge: GraphEdge = {
   id: 'r:0', from: 'a', to: 'b', roadId: 'r', points: [[0, 0], [100, 0]], nodeIds: ['1', '2'],
-  lanesForward: 1, lanesBackward: 1, width: 8, maxspeed: 60, name: '',
+  lanesForward: 1, lanesBackward: 1, width: 8, maxspeed: 60, name: '', kind: 'residential',
 };
 const side: GraphEdge = { ...edge, id: 's:0', from: 'b', to: 'c', roadId: 's', points: [[100, 0], [100, 60]], nodeIds: ['2', '3'] };
 const nodes: GraphNode[] = [

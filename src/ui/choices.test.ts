@@ -5,14 +5,14 @@ afterEach(() => vi.unstubAllGlobals());
 test('without localStorage the defaults are used and saving does not throw', () => {
   vi.stubGlobal('localStorage', { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } });
   expect(loadChoice()).toEqual(DEFAULT_CHOICE);
-  expect(() => saveChoice({ mode: 'free', lang: 'ru', gearbox: 'manual', timeOfDay: 'evening', sound: true, volume: 0.7 })).not.toThrow();
+  expect(() => saveChoice({ mode: 'free', lang: 'ru', gearbox: 'manual', timeOfDay: 'evening', sound: true, volume: 0.7, route: null })).not.toThrow();
 });
 
 test('a saved choice comes back, junk falls back field by field', () => {
   const mem = new Map<string, string>();
   vi.stubGlobal('localStorage', { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => mem.set(k, v) });
-  saveChoice({ mode: 'free', lang: 'ru', gearbox: 'manual', timeOfDay: 'evening', sound: true, volume: 0.7 });
-  expect(loadChoice()).toEqual({ mode: 'free', lang: 'ru', gearbox: 'manual', timeOfDay: 'evening', sound: true, volume: 0.7 });
+  saveChoice({ mode: 'free', lang: 'ru', gearbox: 'manual', timeOfDay: 'evening', sound: true, volume: 0.7, route: null });
+  expect(loadChoice()).toEqual({ mode: 'free', lang: 'ru', gearbox: 'manual', timeOfDay: 'evening', sound: true, volume: 0.7, route: null });
   mem.set('avtomaktab.start', '{"mode":"x","lang":"ru"}');
   expect(loadChoice()).toEqual({ ...DEFAULT_CHOICE, lang: 'ru' });
 });
@@ -41,4 +41,15 @@ test('sound defaults to on at 0.7 and invalid stored values fall back to those',
   expect(loadChoice()).toMatchObject({ sound: false, volume: 0.25 });
   mem.set('avtomaktab.start', '{"volume":0}');
   expect(loadChoice().volume).toBe(0);
+});
+
+test('remembers the free-driving route choice', () => {
+  const mem = new Map<string, string>();
+  vi.stubGlobal('localStorage', { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => mem.set(k, v) });
+  expect(DEFAULT_CHOICE.route).toBeNull();
+  saveChoice({ ...DEFAULT_CHOICE, mode: 'free', route: 'route-1' });
+  expect(loadChoice(['route-1', 'route-2']).route).toBe('route-1');
+  expect(loadChoice(['route-2']).route).toBeNull();
+  mem.set('avtomaktab.start', '{"route":7}');
+  expect(loadChoice(['route-1']).route).toBeNull();
 });

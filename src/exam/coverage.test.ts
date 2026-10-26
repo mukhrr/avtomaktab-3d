@@ -1,0 +1,122 @@
+import { describe, expect, it } from 'vitest';
+import { LaneNetwork } from '../traffic/lanes';
+import { testNetwork } from '../traffic/testNetwork';
+import type { DistrictData, Sign } from '../shared/district';
+import { CODE, loadCatalogue } from '../shared/signCatalogue';
+import { entriesOnRoute, missingEntries, signsOnRoute } from './coverage';
+import { planRoute, type ExamRoute } from './route';
+
+const sign = (id: string, code: string, edgeId: string, dir: 1 | -1, at: number, extra: Partial<Sign> = {}): Sign =>
+  ({ id, code, edgeId, dir, at, origin: 'hand', ...extra });
+
+// Starts 100 m up w toward the cross, crosses it onto e, finishes on tStub.
+function setup(signs: Sign[]) {
+  const d: DistrictData = testNetwork();
+  d.signs = signs;
+  return { d, route: planRoute(new LaneNetwork(d), d, [[-100, 3], [120, 3], [237, 30]]) };
+}
+const ids = (d: DistrictData, route: ReturnType<typeof setup>['route']) => signsOnRoute(d, route).map(s => s.id);
+
+describe('signsOnRoute', () => {
+  it('names a junction that lists a missing edge', () => {
+    const { d, route } = setup([]);
+    const node = route.steps.find(s => s.nodeId)!.nodeId!;
+    d.graph.nodes = d.graph.nodes.map(n => (n.id === node ? { ...n, edges: [...n.edges, 'ghost'] } : n));
+    expect(() => signsOnRoute(d, route)).toThrow(`node ${node} lists missing edge ghost`);
+  });
+
+  it('counts a sign on a lane the route drives', () => {
+    const { d, route } = setup([sign('a', CODE.speedLimit, 'e', 1, 100)]);
+    expect(ids(d, route)).toEqual(['a']);
+  });
+
+  it('does not count a sign on the opposite direction of a route edge', () => {
+    const { d, route } = setup([sign('a', CODE.speedLimit, 'e', -1, 100)]);
+    expect(ids(d, route)).toEqual([]);
+  });
+
+  it('counts a no-entry on a side street at a junction the route crosses', () => {
+    const { d, route } = setup([
+      sign('near', CODE.noEntry, 'n', 1, 10),
+      sign('far', CODE.noEntry, 'n', 1, 90),
+      sign('approaching', CODE.noEntry, 'n', -1, 10),
+    ]);
+    expect(ids(d, route)).toEqual(['near']);
+  });
+
+  it('counts the rule 3.1 placement, dir -1 near the edge end that is the crossed node', () => {
+    const { d, route } = setup([sign('rule', CODE.noEntry, 's', -1, 117), sign('far', CODE.noEntry, 's', -1, 60)]);
+    expect(ids(d, route)).toEqual(['rule']);
+  });
+
+  it('does not count a sign on the reverse lane of the edge the route arrived on', () => {
+    const { d, route } = setup([sign('back', CODE.noEntry, 'w', 1, 10)]);
+    expect(ids(d, route)).toEqual([]);
+  });
+
+  it('counts each sign once on a route that revisits a node and an edge', () => {
+    const { d, route } = setup([
+      sign('a', CODE.speedLimit, 'w', -1, 50),
+      sign('side', CODE.noEntry, 'n', 1, 10),
+      sign('b', CODE.speedLimit, 'e', 1, 100),
+      sign('c', CODE.speedLimit, 'w', 1, 50),
+      sign('past', CODE.speedLimit, 'w', 1, 150),
+    ]);
+    const lane = (edgeId: string, dir: 1 | -1) => ({ edgeId, dir, lane: 0 });
+    const loop = {
+      ...route,
+      start: { position: [-100, 3] as [number, number], heading: 0 },
+      finish: { position: [-100, -3] as [number, number], heading: 0 },
+      steps: [
+        { ref: lane('w', -1), maneuver: 'start', nodeId: 'cross', waypointIndex: 1 },
+        { ref: lane('e', 1), maneuver: 'uturn', nodeId: 't', waypointIndex: 1 },
+        { ref: lane('e', -1), maneuver: 'uturn', nodeId: 'cross', waypointIndex: 1 },
+        { ref: lane('w', 1), maneuver: 'finish', nodeId: null, waypointIndex: 1 },
+      ],
+    } as ExamRoute;
+    expect(ids(d, loop)).toEqual(['a', 'side', 'b', 'c']);
+  });
+
+  it('counts any code, not only junction signs', () => {
+    const { d, route } = setup([sign('a', CODE.speedLimit, 'n', 1, 10)]);
+    expect(ids(d, route)).toEqual(['a']);
+  });
+
+  it('does not count a sign before the start or after the finish', () => {
+    const { d, route } = setup([
+      sign('behind', CODE.speedLimit, 'w', -1, 150),
+      sign('ahead', CODE.speedLimit, 'w', -1, 50),
+      sign('past', CODE.speedLimit, 'tStub', 1, 36),
+      sign('before-finish', CODE.speedLimit, 'tStub', 1, 20),
+    ]);
+    expect(ids(d, route)).toEqual(['ahead', 'before-finish']);
+  });
+
+  it('lists signs in route order', () => {
+    const { d, route } = setup([
+      sign('c', CODE.speedLimit, 'tStub', 1, 20),
+      sign('b', CODE.speedLimit, 'e', 1, 100),
+      sign('a', CODE.speedLimit, 'w', -1, 50),
+    ]);
+    expect(ids(d, route)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('entriesOnRoute', () => {
+  it('counts the plates under a counted sign', () => {
+    const { d, route } = setup([
+      sign('a', CODE.speedLimit, 'e', 1, 100, { plates: [{ code: '7.2.1' }, { code: '7.1.1', value: 50 }] }),
+      sign('off', CODE.stop, 'e', -1, 100, { plates: [{ code: '7.4.1' }] }),
+    ]);
+    expect(entriesOnRoute(d, route)).toEqual(new Set([CODE.speedLimit, '7.2.1', '7.1.1']));
+  });
+});
+
+describe('missingEntries', () => {
+  it('lists catalogue numbers no route passes', () => {
+    const { d, route } = setup([sign('a', CODE.stop, 'e', 1, 100)]);
+    const missing = missingEntries(d, [route]);
+    expect(missing).toHaveLength(loadCatalogue().length - 1);
+    expect(missing).not.toContain(CODE.stop);
+  });
+});

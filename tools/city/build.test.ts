@@ -39,12 +39,37 @@ describe('signs', () => {
   const build = (...signs: Sign[]) => buildDistrict(xml, config, { removeWays: [], roads: {}, buildingHeights: {}, buildingStyles: {} }, signs);
   const sign = (extra: Partial<Sign>): Sign => ({ id: 's1', code: CODE.giveWay, edgeId: edge.id, dir: 1, at: 5, origin: 'hand', ...extra });
 
-  it('defaults to no signs', () => {
-    expect(d.signs).toEqual([]);
+  it('defaults to no hand signs, only rule signs', () => {
+    expect(d.signs.filter(s => s.origin !== 'rule')).toEqual([]);
+  });
+
+  it('adds rule signs after the hand signs', () => {
+    expect(d.signs.map(s => s.id)).toEqual(['crossing-100:0-1-40.3', 'crossing-100:0--1-43.3']);
+    expect(build(sign({})).signs.map(s => s.id)).toEqual(['s1', ...d.signs.map(s => s.id)]);
   });
 
   it('keeps valid signs in the district', () => {
-    expect(build(sign({}), sign({ id: 's2', at: len })).signs.map(s => s.id)).toEqual(['s1', 's2']);
+    expect(build(sign({}), sign({ id: 's2', at: len })).signs.filter(s => s.origin === 'hand').map(s => s.id)).toEqual(['s1', 's2']);
+  });
+
+  it('merges coverage signs after the rule signs and validates them with the hand signs', () => {
+    const withCoverage = (...coverage: Sign[]) =>
+      buildDistrict(xml, config, { removeWays: [], roads: {}, buildingHeights: {}, buildingStyles: {} }, [sign({})], () => {}, coverage);
+    const cov = sign({ id: 'c1', code: '3.26', at: 20, origin: 'coverage' });
+    expect(withCoverage(cov).signs.map(s => s.id)).toEqual(['s1', ...d.signs.map(s => s.id), 'c1']);
+    expect(() => withCoverage({ ...cov, id: 's1' })).toThrow(/duplicate/);
+    expect(() => withCoverage({ ...cov, edgeId: 'nope:0' })).toThrow(/c1.*nope:0/);
+  });
+
+  it('moves a coverage sign 15 m on from a full hand pole instead of failing', () => {
+    const full = [sign({}), sign({ id: 's2', code: CODE.noUTurn }), sign({ id: 's3', code: CODE.noLeftTurn })];
+    const out = buildDistrict(xml, config, { removeWays: [], roads: {}, buildingHeights: {}, buildingStyles: {} }, full, () => {}, [sign({ id: 'c1', code: '3.26', origin: 'coverage' })]);
+    expect(out.signs.find(s => s.id === 'c1')?.at).toBe(20);
+  });
+
+  it('stamps coverage origin on coverage signs whatever they carry', () => {
+    const out = buildDistrict(xml, config, { removeWays: [], roads: {}, buildingHeights: {}, buildingStyles: {} }, [], () => {}, [sign({ id: 'c1', code: '3.26', at: 20 })]);
+    expect(out.signs.find(s => s.id === 'c1')?.origin).toBe('coverage');
   });
 
   it('rejects a sign on a missing edge', () => {
@@ -58,6 +83,10 @@ describe('signs', () => {
 
   it('rejects a sign for a direction without lanes', () => {
     expect(() => build(sign({ dir: -1 }))).toThrow(/s1.*direction/);
+  });
+
+  it('lets only a no entry sign face a direction without lanes', () => {
+    expect(() => build(sign({ dir: -1, code: CODE.noEntry }))).not.toThrow();
   });
 
   it('rejects duplicate ids and a speed limit without a value', () => {

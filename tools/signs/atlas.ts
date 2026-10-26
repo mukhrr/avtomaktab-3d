@@ -17,7 +17,7 @@ const EXAMPLE: Record<Exclude<ValueKind, 'speed' | 'text'>, number | string> = {
   mass: 3.5, height: 3.5, width: 2.5, length: 10, distance: 100, time: '8-19',
 };
 const TEXT_EXAMPLE: Record<string, string> = {
-  '5.20.1': '500', '5.20.2': '39', '5.22': 'Chirchiq', '5.29.1': '39', '5.29.2': '39', '7.20': '3', '7.24': '1234',
+  '5.20.1': '500', '5.20.2': '39', '5.22': 'Toshkent', '5.29.1': '39', '5.29.2': '39', '7.20': '3', '7.24': '1234',
 };
 
 type Variant = { key: string; value: number | string | undefined };

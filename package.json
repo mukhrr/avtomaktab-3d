@@ -17,7 +17,8 @@
     "model:gentra": "tsx tools/model/gentra.ts",
     "signs:fetch": "tsx tools/signs/fetch.ts",
     "signs:atlas": "tsx tools/signs/atlas.ts",
-    "signs:credits": "tsx tools/signs/credits.ts"
+    "signs:credits": "tsx tools/signs/credits.ts",
+    "signs:spots": "tsx tools/signs/coverageSpots.ts"
   },
   "keywords": [],
   "author": "Mukher",

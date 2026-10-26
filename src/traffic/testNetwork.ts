@@ -21,7 +21,7 @@ const nodePos: Record<string, Vec2> = {
 function edge(id: string, from: string, to: string, via: Vec2[], lanes: typeof TWO_WAY | typeof ONEWAY): GraphEdge {
   const points = [nodePos[from], ...via, nodePos[to]];
   const nodeIds = [from, ...via.map((_, i) => `${id}_${i}`), to];
-  return { id, from, to, roadId: id, points, nodeIds, ...lanes, maxspeed: 60, name: id };
+  return { id, from, to, roadId: id, points, nodeIds, ...lanes, maxspeed: 60, name: id, kind: 'residential' };
 }
 
 const polyLength = (pts: Vec2[]) =>
@@ -75,7 +75,7 @@ export function testNetwork(): DistrictData {
     name: 'test-network',
     origin: { lat: 0, lon: 0 },
     bounds: { minX: -130, maxX: 380, minZ: -130, maxZ: 130 },
-    roads, buildings: [], areas: [], waterways: [], signals, crossings, controllers, signs: [], furniture: [], landmarks: [],
+    roads, buildings: [], areas: [], waterways: [], signals, crossings, controllers, signs: [], furniture: [], landmarks: [], pois: [],
     graph: { nodes, edges },
   };
 }

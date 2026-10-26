@@ -49,6 +49,7 @@
 .hud .toast.tier-fail { background: #ff4d3a; color: #fff; }
 .hud .toast.tier-high { background: #ffb02e; }
 .hud .toast.tier-low { background: #f2d74e; }
+.hud .toast.notice { background: #2f7d4f; color: #fff; }
 .hud .subtitle { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); max-width: 70vw; padding: 6px 12px; border-radius: 6px; background: #000b; font-size: 18px; text-align: center; text-shadow: none; }
 .hud .debrief h1.pass { color: #3ddc5a; }
 .hud .debrief h1.fail { color: #ff4d3a; }

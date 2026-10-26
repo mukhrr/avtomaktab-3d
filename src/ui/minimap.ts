@@ -1,4 +1,4 @@
-import type { DistrictData } from '../shared/district';
+import type { DistrictData, Vec2 } from '../shared/district';
 import { FOOT_KINDS } from '../../tools/city/extract';
 
 const SIZE = 400;
@@ -33,12 +33,30 @@ export function createMinimap(d: DistrictData) {
     g.stroke();
   }
 
+  const routeLayer = document.createElement('canvas');
+  routeLayer.width = layer.width;
+  routeLayer.height = layer.height;
+  let hasRoute = false;
+
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = SIZE;
   const ctx = canvas.getContext('2d')!;
 
   return {
     canvas,
+    /** The guided route drawn over the roads; null clears it. */
+    setRoute(line: Vec2[] | null) {
+      const rg = routeLayer.getContext('2d')!;
+      rg.clearRect(0, 0, routeLayer.width, routeLayer.height);
+      hasRoute = !!line && line.length > 1;
+      if (!hasRoute) return;
+      rg.strokeStyle = '#3d8bff';
+      rg.lineWidth = 6;
+      rg.lineCap = rg.lineJoin = 'round';
+      rg.beginPath();
+      line!.forEach(([x, z], i) => (i ? rg.lineTo(lx(x), lz(z)) : rg.moveTo(lx(x), lz(z))));
+      rg.stroke();
+    },
     /** heading: radians, 0 = facing +z. */
     draw(x: number, z: number, heading: number) {
       ctx.save();
@@ -51,6 +69,7 @@ export function createMinimap(d: DistrictData) {
       ctx.translate(SIZE / 2, SIZE / 2);
       ctx.rotate(heading + Math.PI);
       ctx.drawImage(layer, -lx(x), -lz(z));
+      if (hasRoute) ctx.drawImage(routeLayer, -lx(x), -lz(z));
       ctx.restore();
       ctx.fillStyle = '#ff4d3a';
       ctx.beginPath();

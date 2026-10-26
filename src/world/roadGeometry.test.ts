@@ -3,7 +3,7 @@ import { junctionPolygon, junctionTrim, ribbon, trimEdge } from './roadGeometry'
 import { signedArea } from '../../tools/city/extract';
 
 const edge = (id: string, from: string, to: string, points: Vec2[], width = 6): GraphEdge => ({
-  id, from, to, roadId: id, points, nodeIds: points.map((_, i) => `${id}${i}`), width, lanesForward: 1, lanesBackward: 1, maxspeed: 60, name: '',
+  id, from, to, roadId: id, points, nodeIds: points.map((_, i) => `${id}${i}`), width, lanesForward: 1, lanesBackward: 1, maxspeed: 60, name: '', kind: 'residential',
 });
 const center: GraphNode = { id: 'c', position: [0, 0], edges: ['n', 'e', 's', 'w'] };
 const cross = [

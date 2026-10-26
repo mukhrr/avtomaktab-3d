@@ -903,10 +903,10 @@ const DT = 1 / 60;
 const WARMUP = 30;
 const START_CLEAR = 40;
 
-export function loadWorld(traffic: { cars: number; crossers: number; walkers: number; seed?: number }): DriverWorld {
+export function loadWorld(traffic: { cars: number; crossers: number; walkers: number; seed?: number }, routeId = 'route-1'): DriverWorld {
   const root = new URL('../../public/districts/tashkent-center/', import.meta.url);
   const d: DistrictData = JSON.parse(readFileSync(new URL('district.json', root), 'utf8'));
-  const route: ExamRoute = JSON.parse(readFileSync(new URL('routes/route-1.json', root), 'utf8'));
+  const route: ExamRoute = JSON.parse(readFileSync(new URL(`routes/${routeId}.json`, root), 'utf8'));
   const net = new LaneNetwork(d);
   const signals = new SignalSystem(d);
   const signs = new SignSystem(d);
@@ -938,7 +938,7 @@ export function runExam(
   for (let i = 0; i < WARMUP / DT; i++) tick();
 
   const session = new ExamSession({
-    d: w.d, net: w.net, signals: w.signals, signs: w.signs, peds: w.peds, traffic: w.traffic, route: w.route,
+    d: w.d, net: w.net, signals: w.signals, signs: w.signs, peds: w.peds, traffic: w.traffic,
     penalties: loadPenalties(), playerLength: PLAYER_LENGTH,
     placeCar: pose => {
       driver.place();
@@ -946,7 +946,7 @@ export function runExam(
       w.peds.clearNear(pose.position, START_CLEAR);
     },
   });
-  session.start('uz', 'auto');
+  session.start('uz', 'auto', w.route, true);
   observer.reset();
   const t0 = t;
   while (t - t0 < capSeconds && (session.active || (driveOn && !driver.finished))) {

@@ -6,15 +6,17 @@ import { buildControllers } from './controllers';
 import { crossingsOffJunctions } from './crossings';
 import { placeFurniture } from './furniture';
 import { extractFeatures, type Overrides } from './extract';
-import { entry } from '../../src/shared/signCatalogue';
+import { CODE, entry } from '../../src/shared/signCatalogue';
 import { signSpots } from '../../src/world/signMount';
 import { checkAtlasCovers, type Atlas } from '../signs/atlas';
 import { buildRoadGraph } from './graph';
 import { extractLandmarks } from './landmarks';
 import { parseOsm } from './osm';
+import { placeRuleSigns } from './signRules';
 import { makeProjection } from './projection';
 
-export function validateSigns(signs: Sign[], edges: DistrictData['graph']['edges']): void {
+/** With `poles: false`, only each sign on its own and id uniqueness; pole capacity waits for the merge. */
+export function validateSigns(signs: Sign[], edges: DistrictData['graph']['edges'], { poles = true } = {}): void {
   const byId = new Map(edges.map(e => [e.id, e]));
   const ids = new Set<string>();
   for (const s of signs) {
@@ -23,7 +25,8 @@ export function validateSigns(signs: Sign[], edges: DistrictData['graph']['edges
     const e = byId.get(s.edgeId);
     if (!e) throw new Error(`sign ${s.id} refers to missing edge ${s.edgeId}`);
     if (!(s.at >= 0 && s.at <= edgeLength(e))) throw new Error(`sign ${s.id} is ${s.at} m along ${e.id}, outside its length`);
-    if ((s.dir === 1 ? e.lanesForward : e.lanesBackward) === 0) throw new Error(`sign ${s.id} faces a direction ${e.id} has no lanes in`);
+    // 3.1 at a one-way's end faces the direction nobody may drive.
+    if ((s.dir === 1 ? e.lanesForward : e.lanesBackward) === 0 && s.code !== CODE.noEntry) throw new Error(`sign ${s.id} faces a direction ${e.id} has no lanes in`);
     const checkValue = (code: string, value: number | string | undefined, what: string) => {
       const kind = entry(code).valueKind;
       if (!kind) return;
@@ -37,6 +40,7 @@ export function validateSigns(signs: Sign[], edges: DistrictData['graph']['edges
       checkValue(p.code, p.value, 'plate on sign');
     }
   }
+  if (!poles) return;
   for (const spot of signSpots(signs)) {
     if (spot.signs.length > 3) {
       throw new Error(`${spot.signs.length} signs on one pole at ${spot.at} m along ${spot.edgeId} (dir ${spot.dir}, ${spot.side}): ${spot.signs.map(s => s.id).join(', ')}; at most 3`);
@@ -44,7 +48,10 @@ export function validateSigns(signs: Sign[], edges: DistrictData['graph']['edges
   }
 }
 
-export function buildDistrict(xml: string, config: DistrictConfig, overrides: Overrides, signs: Sign[] = [], log: (message: string) => void = () => {}): DistrictData {
+export function buildDistrict(
+  xml: string, config: DistrictConfig, overrides: Overrides, hand: Sign[] = [], log: (message: string) => void = () => {}, coverage: Sign[] = [],
+): DistrictData {
+  coverage = coverage.map(s => ({ ...s, origin: 'coverage' }));
   const osm = parseOsm(xml);
   const project = makeProjection(config.origin);
   const { roadNodeIds, crossingNodes, furniture: rawFurniture, ...features } = extractFeatures(osm, project, overrides);
@@ -59,8 +66,10 @@ export function buildDistrict(xml: string, config: DistrictConfig, overrides: Ov
     const edge = graph.edges.find(e => e.id === hit.edgeId)!;
     crossings.push({ id: c.id, position: edge.points[hit.index], kind: c.kind, edgeId: hit.edgeId, at: hit.at, width: edge.width });
   }
-  validateSigns(signs, graph.edges);
+  validateSigns([...hand, ...coverage], graph.edges, { poles: false });
   const built = buildControllers(features.signals, graph.edges, graph.nodes, crossingsOffJunctions(crossings, graph.edges, graph.nodes));
+  const signs = placeRuleSigns({ graph, crossings: built.crossings, controllers: built.controllers, pois: features.pois }, hand, log, coverage);
+  validateSigns(signs, graph.edges);
   const furniture = placeFurniture(rawFurniture, graph.edges, graph.nodes, built.crossings, new Map(features.roads.map(r => [r.id, r.kind])), features.buildings.map(b => b.footprint));
   for (const kind of ['busStop', 'bench', 'bin'] as const) {
     const n = furniture.items.filter(i => i.kind === kind).length;
@@ -86,6 +95,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     JSON.parse(readFileSync(`${dir}/overrides.json`, 'utf8')),
     existsSync(`${dir}/signs.json`) ? JSON.parse(readFileSync(`${dir}/signs.json`, 'utf8')) : [],
     console.info,
+    existsSync(`${dir}/coverage.json`) ? JSON.parse(readFileSync(`${dir}/coverage.json`, 'utf8')) : [],
   );
   checkAtlasCovers(d.signs, JSON.parse(readFileSync('public/signs/atlas.json', 'utf8')) as Atlas);
   const outDir = `public/districts/${district}`;

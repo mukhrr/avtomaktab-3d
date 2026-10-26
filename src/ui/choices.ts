@@ -10,12 +10,15 @@ export interface StartChoice {
   sound: boolean;
   /** 0 to 1. */
   volume: number;
+  /** Free driving only: the route to be guided along without scoring; null for none. */
+  route: string | null;
 }
 
 const KEY = 'avtomaktab.start';
-export const DEFAULT_CHOICE: StartChoice = { mode: 'exam', lang: 'uz', gearbox: 'auto', timeOfDay: 'noon', sound: true, volume: 0.7 };
+export const DEFAULT_CHOICE: StartChoice = { mode: 'exam', lang: 'uz', gearbox: 'auto', timeOfDay: 'noon', sound: true, volume: 0.7, route: null };
 
-export function loadChoice(): StartChoice {
+/** `knownRoutes` drops a stored route that no longer exists; without it any stored id is kept. */
+export function loadChoice(knownRoutes?: readonly string[]): StartChoice {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<StartChoice>;
     return {
@@ -25,6 +28,7 @@ export function loadChoice(): StartChoice {
       timeOfDay: raw.timeOfDay === 'morning' || raw.timeOfDay === 'evening' || raw.timeOfDay === 'noon' ? raw.timeOfDay : DEFAULT_CHOICE.timeOfDay,
       sound: typeof raw.sound === 'boolean' ? raw.sound : DEFAULT_CHOICE.sound,
       volume: typeof raw.volume === 'number' && raw.volume >= 0 && raw.volume <= 1 ? raw.volume : DEFAULT_CHOICE.volume,
+      route: typeof raw.route === 'string' && (!knownRoutes || knownRoutes.includes(raw.route)) ? raw.route : null,
     };
   } catch {
     return DEFAULT_CHOICE;

@@ -13,10 +13,14 @@ export interface ExamHudState {
   maneuver: Maneuver | null;
   distance: number;
   total: number;
+  /** False on a guided free drive: directions only, no points. */
+  scored: boolean;
 }
 
 /** `seq` changes on every new toast or subtitle, so the same text twice still restarts its timer. */
 export interface Toast { seq: number; id: string; vars: Record<string, string | number>; points: number; tier: Tier }
+/** A plain message in the current language, such as the route having ended. */
+export interface Notice { seq: number; key: string; lang: Lang }
 export interface Subtitle { seq: number; text: string }
 
 export interface DebriefData {
@@ -57,6 +61,7 @@ export interface HudState {
   exam: ExamHudState | null;
   toast: Toast | null;
   subtitle: Subtitle | null;
+  notice: Notice | null;
   debrief: DebriefData | null;
 }
 
@@ -70,7 +75,7 @@ export const gearLabel = (gearbox: Gearbox, gear: number): string =>
   gear === -1 ? 'R' : gear === 0 ? 'N' : gearbox === 'auto' ? `D${gear}` : String(gear);
 
 export function createHudStore(): HudStore {
-  let state: HudState = { speedKmh: 0, gear: 'N', rpm: 0, running: true, gearbox: 'auto', street: '', fps: 0, drawCalls: 0, mainCalls: 0, mainTris: 0, cpuP50: 0, cpuP95: 0, gpuP50: null, gpuP95: null, indicator: null, hazard: false, belt: false, glance: null, screen: 'menu', probing: false, quality: 'medium', loadedQuality: 'medium', exam: null, toast: null, subtitle: null, debrief: null };
+  let state: HudState = { speedKmh: 0, gear: 'N', rpm: 0, running: true, gearbox: 'auto', street: '', fps: 0, drawCalls: 0, mainCalls: 0, mainTris: 0, cpuP50: 0, cpuP95: 0, gpuP50: null, gpuP95: null, indicator: null, hazard: false, belt: false, glance: null, screen: 'menu', probing: false, quality: 'medium', loadedQuality: 'medium', exam: null, toast: null, subtitle: null, notice: null, debrief: null };
   const listeners = new Set<() => void>();
   return {
     set(p) {

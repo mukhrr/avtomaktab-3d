@@ -179,7 +179,7 @@ function ringArms(d: DistrictData): void {
   for (const [id, from, to] of [['nw', 'n', 'w'], ['ws', 'w', 's']]) {
     d.graph.edges.push({
       id, from, to, roadId: id, points: [pos.get(from)!, pos.get(to)!], nodeIds: [from, to],
-      lanesForward: 1, lanesBackward: 1, width: 7, maxspeed: 60, name: id,
+      lanesForward: 1, lanesBackward: 1, width: 7, maxspeed: 60, name: id, kind: 'residential',
     });
     for (const n of d.graph.nodes) if (n.id === from || n.id === to) n.edges.push(id);
   }

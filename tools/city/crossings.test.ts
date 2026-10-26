@@ -4,7 +4,7 @@ import { CROSSING_HALF_LENGTH, crossingsOffJunctions } from './crossings';
 
 const arm = (name: string, end: [number, number]): GraphEdge => ({
   id: name, from: 'c', to: `${name}-end`, roadId: name, points: [[0, 0], end], nodeIds: ['c', `${name}-end`],
-  lanesForward: 1, lanesBackward: 1, width: 7, maxspeed: 60, name,
+  lanesForward: 1, lanesBackward: 1, width: 7, maxspeed: 60, name, kind: 'residential',
 });
 const edges = [arm('N', [0, -60]), arm('E', [60, 0]), arm('W', [-60, 0])];
 const nodes: GraphNode[] = [
